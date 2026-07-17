@@ -1,7 +1,7 @@
 # Vilai Viet Revit Add-in UI Design System v3 — Strict
 
-Effective date: 2026-07-17  
-Canonical theme: Light  
+Effective date: 2026-07-17
+Canonical theme: Light
 Enforcement: `tests/ui/Assert-XamlContracts.ps1`
 
 This document is a release contract. A rule marked **MUST** is not optional and must be enforced by an automated gate or an explicit, documented exception.
@@ -11,7 +11,7 @@ This document is a release contract. A rule marked **MUST** is not optional and 
 - `Antigravity.Core/UI/Themes/DesignTokens.xaml` is the only shared palette and spacing source.
 - `Typography.xaml`, `Controls.xaml`, and `DataControls.xaml` are the only shared style sources.
 - Shared keys **MUST** start with `Vv`. Local keys **MUST** use a module prefix and must not shadow a `Vv` key.
-- Every normal Window **MUST** merge the four dictionaries exactly once and use `BrandHeader` plus `BrandSignature`.
+- Every normal Window **MUST** merge the four dictionaries exactly once and use `BrandHeader`.
 - Copying logo paths, brand Runs, or raw `TextBlock Text="@manhns"` into a Window is prohibited.
 
 ## 2. Resource safety
@@ -29,12 +29,12 @@ Normal windows use three semantic areas:
 
 1. Header: `Auto`, shared `BrandHeader`.
 2. Body: `*`, owns remaining space; long content scrolls internally.
-3. Footer: `Auto`, remains visible at minimum size and contains actions plus `BrandSignature` in separate columns.
+3. Footer: `Auto`, remains visible at minimum size and contains actions and status only.
 
 - Do not use blank `*` rows, oversized fixed spacers, or negative margins to position content.
 - DataGrid/ListView/TreeView **MUST** live in a star-sized row or column and stretch in both directions.
 - A collapsed secondary pane must not reserve half the result area. The primary pane spans released columns.
-- Footer and signature must never share an overlay cell with action buttons.
+- Footer actions must never overlap status text or scroll with the body.
 
 ## 4. Approved profiles
 
@@ -46,6 +46,7 @@ Normal windows use three semantic areas:
 | Tall Exception | 480–600 × 640–720 | 440 × 520 | Only when two-column reflow would damage the workflow |
 
 - New normal workflows default to Standard Landscape.
+- Feature-dense tools with four or more action groups **MUST** use a two- or three-column landscape workspace. A single tall column is prohibited.
 - A Tall Exception requires a comment in XAML and an entry in the QA matrix.
 - `PenOverlayWindow` is the only transparent/topmost shell exception currently approved.
 
@@ -59,6 +60,7 @@ Normal windows use three semantic areas:
 - White foreground is only allowed on accent/danger surfaces, never on white or subtle surfaces.
 - `#9BA3AF` and `#AAAAAA` are prohibited for readable content on white.
 - Disabled state remains readable and must not be communicated by opacity alone.
+- DataGrid, ListView, ComboBox, and input surfaces **MUST** use the shared light styles. Module-local dark grids or dark combo boxes are prohibited.
 
 Reference: https://www.w3.org/TR/WCAG22/#contrast-minimum
 
@@ -77,8 +79,8 @@ Reference: https://www.w3.org/WAI/WCAG22/Understanding/target-size-minimum
 
 - Header background is white with the canonical navy/red vector mark and divider.
 - `BrandHeader.TitleText` contains the module/action name; `SubtitleText` contains a short instruction or runtime summary.
-- Exactly one `BrandSignature` is required. It is bottom-right, 12 DIP SemiBold, `#6B7280`, non-focusable and non-hit-testable.
-- Signature placement cannot use a negative margin or overlap an action area.
+- `@manhns` is owned by `BrandHeader` and appears immediately after the module title at 12 DIP SemiBold in `#6B7280`.
+- Normal windows **MUST NOT** place `BrandSignature`, raw `@manhns`, or any signature in the footer/body. The approved drawing overlay is the only local-signature exception.
 
 ## 8. Interaction preservation
 
@@ -100,6 +102,13 @@ Before deployment:
 
 No visual change is complete from XAML parsing alone. Revit runtime QA remains a separate mandatory release step.
 
-## 10. Approved exception
+## 10. UI language
+
+- All user-facing text **MUST** be English: window titles, headers, labels, buttons, tooltips, status text, validation messages, TaskDialogs, and Ribbon panel/button text.
+- Internal comments, diagnostic logs, model data, imported names, and contractual export schemas are not UI copy and may retain their source language.
+- UTF-8 is mandatory for XAML and C# source. Mojibake sequences are release-blocking defects.
+- New visible strings must be included in the strict UI contract or an equivalent automated language gate.
+
+## 11. Approved exception
 
 `Antigravity.CheckFloorElevation/UI/PenOverlayWindow.xaml` may remain transparent, borderless and topmost. It must preserve its safe-area signature, keyboard escape path and drawing hit-testing behavior.

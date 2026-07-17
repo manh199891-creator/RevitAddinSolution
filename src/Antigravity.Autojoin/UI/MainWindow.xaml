@@ -122,7 +122,7 @@
 
             <!-- 2: Scope -->
             <StackPanel Grid.Row="2" Margin="0,5,0,0">
-                <TextBlock Text="PHẠM VI ÁP DỤNG" Style="{StaticResource VvBodyTextStyle}" FontSize="11" FontWeight="Bold" Foreground="{DynamicResource VvTextSecondaryBrush}"/>
+                <TextBlock Text="SCOPE" Style="{StaticResource VvBodyTextStyle}" FontSize="11" FontWeight="Bold" Foreground="{DynamicResource VvTextSecondaryBrush}"/>
                 <StackPanel Orientation="Horizontal" Margin="5,5,0,0">
                     <RadioButton x:Name="RbActiveView" Content="Active View" IsChecked="True"/>
                     <RadioButton x:Name="RbSelection"  Content="Selection"/>
@@ -139,7 +139,7 @@
                     <RowDefinition Height="Auto"/>
                 </Grid.RowDefinitions>
                 <Grid Margin="0,0,0,5">
-                    <TextBlock Text="QUY TẮC JOIN THEO CẶP" Style="{StaticResource VvBodyTextStyle}" FontWeight="Bold" Foreground="{DynamicResource VvTextSecondaryBrush}"/>
+                    <TextBlock Text="PAIR-BASED JOIN RULES" Style="{StaticResource VvBodyTextStyle}" FontWeight="Bold" Foreground="{DynamicResource VvTextSecondaryBrush}"/>
                     <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
                         <Button x:Name="BtnAddRule"    Content="＋" Width="24" Height="24" Style="{StaticResource SecondaryBtn}" Margin="0,0,4,0" Click="BtnAddRule_Click" Padding="0"/>
                         <Button x:Name="BtnRemoveRule" Content="🗑" Width="24" Height="24" Style="{StaticResource SecondaryBtn}" Click="BtnRemoveRule_Click" Padding="0"/>
@@ -168,7 +168,7 @@
                                               SelectedItem="{Binding CategoryB, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
                                               Style="{StaticResource VvComboBoxStyle}"
                                               SelectionChanged="CategoryComboBox_SelectionChanged"/>
-                                    <CheckBox Grid.Column="3" Content="Sử dụng" IsChecked="{Binding IsEnabled}" Margin="10,0,0,0" ToolTip="Bật/Tắt cặp kết nối này"/>
+                                    <CheckBox Grid.Column="3" Content="Enabled" IsChecked="{Binding IsEnabled}" Margin="10,0,0,0" ToolTip="Enable or disable this join pair"/>
                                 </Grid>
                             </DataTemplate>
                         </ListView.ItemTemplate>
@@ -180,8 +180,8 @@
                     </ListView>
                 </Border>
                 <StackPanel Grid.Row="2" Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,8,0,0">
-                    <Button x:Name="BtnReload" Content="↺  Tải lại" Style="{StaticResource SecondaryBtn}" Margin="0,0,6,0" Click="BtnReload_Click" Padding="10,5"/>
-                    <Button x:Name="BtnSave"   Content="💾  Lưu cấu hình" Style="{StaticResource SecondaryBtn}" Click="BtnSave_Click" Padding="10,5"/>
+                    <Button x:Name="BtnReload" Content="↺  Reload" Style="{StaticResource SecondaryBtn}" Margin="0,0,6,0" Click="BtnReload_Click" Padding="10,5"/>
+                    <Button x:Name="BtnSave"   Content="💾  Save Configuration" Style="{StaticResource SecondaryBtn}" Click="BtnSave_Click" Padding="10,5"/>
                 </StackPanel>
             </Grid>
 
@@ -191,7 +191,7 @@
             <Grid Grid.Row="6">
                 <StackPanel VerticalAlignment="Center">
                     <TextBlock Text="⚡ AUTO JOIN REALTIME" FontWeight="Bold" Foreground="{DynamicResource VvTextPrimaryBrush}" FontSize="12"/>
-                    <TextBlock Text="Tự động join khi vẽ mới hoặc chỉnh sửa" FontSize="11" Foreground="{DynamicResource VvTextSecondaryBrush}"/>
+                    <TextBlock Text="Join automatically when elements are created or modified" FontSize="11" Foreground="{DynamicResource VvTextSecondaryBrush}"/>
                 </StackPanel>
                 <CheckBox x:Name="ChkDmuEnabled" HorizontalAlignment="Right" VerticalAlignment="Center" Checked="ChkDmu_Changed" Unchecked="ChkDmu_Changed"/>
             </Grid>
@@ -207,7 +207,7 @@
             <!-- 10: Status -->
             <StackPanel Grid.Row="10" Margin="0,0,0,0">
                 <ProgressBar x:Name="PrgBar" IsIndeterminate="True" Height="2" Margin="0,0,0,4" Visibility="Collapsed" Foreground="{DynamicResource VvAccentBrush}" Background="Transparent"/>
-                <TextBlock x:Name="TxtStatus" Text="Sẵn sàng." Foreground="{DynamicResource VvTextSecondaryBrush}" FontSize="11" TextWrapping="Wrap"/>
+                <TextBlock x:Name="TxtStatus" Text="Ready." Foreground="{DynamicResource VvTextSecondaryBrush}" FontSize="11" TextWrapping="Wrap"/>
             </StackPanel>
         </Grid>
 
@@ -223,17 +223,17 @@
                 </Grid.RowDefinitions>
 
                 <StackPanel Grid.Row="0">
-                    <TextBlock Text="KẾT QUẢ THỰC HIỆN" FontSize="12" FontWeight="Bold" Foreground="{DynamicResource VvAccentBrush}" Margin="0,0,0,12"/>
+                    <TextBlock Text="EXECUTION RESULTS" FontSize="12" FontWeight="Bold" Foreground="{DynamicResource VvAccentBrush}" Margin="0,0,0,12"/>
                     <Grid>
                         <Grid.ColumnDefinitions>
                             <ColumnDefinition Width="*"/>
                             <ColumnDefinition Width="Auto"/>
                         </Grid.ColumnDefinitions>
                         <StackPanel>
-                            <TextBlock Text="Tổng giao cắt tìm thấy:" Foreground="{DynamicResource VvTextSecondaryBrush}" Margin="0,0,0,4"/>
-                            <TextBlock Text="Đã Join thành công:" Foreground="{DynamicResource VvTextSecondaryBrush}" Margin="0,0,0,4"/>
-                            <TextBlock Text="Đã được Join trước đó:" Foreground="{DynamicResource VvTextSecondaryBrush}" Margin="0,0,0,4"/>
-                            <TextBlock Text="Bị lỗi / Không Join được:" Foreground="#D8262C" FontWeight="Bold"/>
+                            <TextBlock Text="Intersections found:" Foreground="{DynamicResource VvTextSecondaryBrush}" Margin="0,0,0,4"/>
+                            <TextBlock Text="Joined successfully:" Foreground="{DynamicResource VvTextSecondaryBrush}" Margin="0,0,0,4"/>
+                            <TextBlock Text="Previously joined:" Foreground="{DynamicResource VvTextSecondaryBrush}" Margin="0,0,0,4"/>
+                            <TextBlock Text="Failed or unable to join:" Foreground="#D8262C" FontWeight="Bold"/>
                         </StackPanel>
                         <StackPanel Grid.Column="1" HorizontalAlignment="Right">
                             <TextBlock x:Name="TxtTotalInt" Text="0" TextAlignment="Right" Foreground="{DynamicResource VvTextPrimaryBrush}" Margin="0,0,0,4"/>
@@ -246,13 +246,13 @@
 
                 <Separator Grid.Row="1" Background="{DynamicResource VvBorderBrush}" Margin="0,12"/>
 
-                <TextBlock Grid.Row="2" Text="DANH SÁCH GIAO CẮT CHƯA XỬ LÝ ĐƯỢC" FontSize="11" FontWeight="Bold" Foreground="#D8262C" Margin="0,0,0,8"/>
+                <TextBlock Grid.Row="2" Text="UNRESOLVED INTERSECTIONS" FontSize="11" FontWeight="Bold" Foreground="#D8262C" Margin="0,0,0,8"/>
 
                 <ListView x:Name="FailedListView" Grid.Row="3" Background="{DynamicResource VvSurfaceBrush}" BorderBrush="{DynamicResource VvBorderBrush}" BorderThickness="1" Foreground="{DynamicResource VvTextPrimaryBrush}">
                     <ListView.View>
                         <GridView>
-                            <GridViewColumn Header="Phần tử A" Width="120" DisplayMemberBinding="{Binding ElementA}"/>
-                            <GridViewColumn Header="Phần tử B" Width="120" DisplayMemberBinding="{Binding ElementB}"/>
+                            <GridViewColumn Header="Element A" Width="120" DisplayMemberBinding="{Binding ElementA}"/>
+                            <GridViewColumn Header="Element B" Width="120" DisplayMemberBinding="{Binding ElementB}"/>
                             <GridViewColumn Header="Lý do"     Width="150" DisplayMemberBinding="{Binding Reason}"/>
                         </GridView>
                     </ListView.View>
@@ -270,8 +270,8 @@
                         </Style>
                     </ListView.ItemContainerStyle>
                 </ListView>
-                
-                <controls:BrandSignature Margin="0,8,0,0"/>
+
+
             </Grid>
         </Border>
     </Grid>

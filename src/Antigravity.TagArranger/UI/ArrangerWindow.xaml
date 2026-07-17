@@ -3,10 +3,10 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:controls="clr-namespace:Antigravity.Core.UI.Controls;assembly=Antigravity.Core"
         Title="Vilai Viet Tag Arranger"
-        Width="340"
-        Height="680"
-        MinWidth="320"
-        MinHeight="640"
+        Width="1080"
+        Height="640"
+        MinWidth="900"
+        MinHeight="560"
         ResizeMode="CanResize"
         WindowStartupLocation="CenterOwner"
         Background="#FFFFFF" FontFamily="Segoe UI" UseLayoutRounding="True" SnapsToDevicePixels="True">
@@ -102,39 +102,34 @@
     </ResourceDictionary>
     </Window.Resources>
 
-    <ScrollViewer VerticalScrollBarVisibility="Auto">
-    <Grid Margin="14">
+    <Grid x:Name="TagWorkspace" Margin="16">
+        <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="*"/>
+            <ColumnDefinition Width="16"/>
+            <ColumnDefinition Width="*"/>
+            <ColumnDefinition Width="16"/>
+            <ColumnDefinition Width="*"/>
+        </Grid.ColumnDefinitions>
         <Grid.RowDefinitions>
-            <RowDefinition Height="Auto"/>  <!-- 0: Header -->
+            <RowDefinition Height="Auto"/>
             <RowDefinition Height="8"/>
-            <RowDefinition Height="Auto"/>  <!-- 2: Align -->
+            <RowDefinition Height="Auto"/>
             <RowDefinition Height="8"/>
-            <RowDefinition Height="Auto"/>  <!-- 4: Anti-Overlap -->
+            <RowDefinition Height="Auto"/>
             <RowDefinition Height="8"/>
-            <RowDefinition Height="Auto"/>  <!-- 6: Distribute -->
+            <RowDefinition Height="*"/>
             <RowDefinition Height="8"/>
-            <RowDefinition Height="Auto"/>  <!-- 8: Leader -->
-            <RowDefinition Height="8"/>
-            <RowDefinition Height="Auto"/>  <!-- 10: Smart Stack -->
-            <RowDefinition Height="8"/>
-            <RowDefinition Height="Auto"/>  <!-- 12: Merge -->
-            <RowDefinition Height="8"/>
-            <RowDefinition Height="Auto"/>  <!-- 14: Options -->
-            <RowDefinition Height="8"/>
-            <RowDefinition Height="Auto"/>  <!-- 16: AutoTag -->
-            <RowDefinition Height="8"/>
-            <RowDefinition Height="*"/>     <!-- 18: Status -->
-            <RowDefinition Height="Auto"/>  <!-- 19: Close -->
+            <RowDefinition Height="Auto"/>
         </Grid.RowDefinitions>
 
         <!-- Header -->
-        <controls:BrandHeader Grid.Row="0" TitleText="Tag Arranger" SubtitleText="Align, arrange, and manage annotation leaders."/>
+        <controls:BrandHeader Grid.Row="0" Grid.ColumnSpan="5" TitleText="Tag Arranger" SubtitleText="Align, arrange, and manage annotation leaders."/>
 
-        <Rectangle Grid.Row="1" Fill="{StaticResource LineBrush}" Height="1"/>
+        <Rectangle Grid.Row="1" Grid.ColumnSpan="5" Fill="{StaticResource LineBrush}" Height="1"/>
 
         <!-- Align Section -->
-        <StackPanel Grid.Row="2">
-            <TextBlock Text="ALIGN (Căn thẳng hàng)" Style="{StaticResource HeaderStyle}" Margin="0,0,0,8"/>
+        <StackPanel Grid.Row="2" Grid.Column="0">
+            <TextBlock Text="ALIGN" Style="{StaticResource HeaderStyle}" Margin="0,0,0,8"/>
             <Grid Margin="0,0,0,8">
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="Auto"/>
@@ -145,7 +140,7 @@
                 <TextBox x:Name="TxtAlignOffset" Grid.Column="1" Text="0" Background="#F5F5F5"
                          Foreground="Black" BorderThickness="0" Padding="8,4" Height="28"
                          FontFamily="Segoe UI" FontSize="12"
-                         ToolTip="Khoảng cách cách xa reference (ví dụ nhập 200 để Tag cách Dimension 200mm)"/>
+                         ToolTip="Distance from the reference; for example, enter 200 for a 200 mm offset"/>
             </Grid>
             <StackPanel Orientation="Horizontal" HorizontalAlignment="Center">
                 <Button Style="{StaticResource IconBtn}" Content="⬆" ToolTip="Align Top" Click="BtnAlignTop_Click"/>
@@ -157,11 +152,11 @@
             </StackPanel>
         </StackPanel>
 
-        <Rectangle Grid.Row="3" Fill="{StaticResource LineBrush}" Height="1"/>
+        <Rectangle Grid.Row="3" Grid.Column="0" Fill="{StaticResource LineBrush}" Height="1"/>
 
         <!-- Anti-Overlap Section -->
-        <StackPanel Grid.Row="4">
-            <TextBlock Text="ANTI-OVERLAP (Chống đè chữ)" Style="{StaticResource HeaderStyle}" Margin="0,0,0,8"/>
+        <StackPanel Grid.Row="4" Grid.Column="0">
+            <TextBlock Text="ANTI-OVERLAP" Style="{StaticResource HeaderStyle}" Margin="0,0,0,8"/>
             <Grid>
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="Auto"/>
@@ -176,11 +171,11 @@
             <Button Style="{StaticResource ActionBtn}" Content="UNTANGLE" Click="BtnUntangle_Click" Margin="0,8,0,0"/>
         </StackPanel>
 
-        <Rectangle Grid.Row="5" Fill="{StaticResource LineBrush}" Height="1"/>
+        <Rectangle Grid.Row="5" Grid.Column="0" Fill="{StaticResource LineBrush}" Height="1"/>
 
         <!-- Distribute Section -->
-        <StackPanel Grid.Row="6">
-            <TextBlock Text="DISTRIBUTE (Giãn đều)" Style="{StaticResource HeaderStyle}" Margin="0,0,0,8"/>
+        <StackPanel Grid.Row="6" Grid.Column="0">
+            <TextBlock Text="DISTRIBUTE" Style="{StaticResource HeaderStyle}" Margin="0,0,0,8"/>
             <StackPanel Orientation="Horizontal" HorizontalAlignment="Center">
                 <Button Width="120" Height="32" Content="↔ Horizontal"
                         Background="{StaticResource SecondaryBrush}" Foreground="#000000"
@@ -193,12 +188,12 @@
             </StackPanel>
         </StackPanel>
 
-        <Rectangle Grid.Row="7" Fill="{StaticResource LineBrush}" Height="1"/>
+        <Rectangle Grid.Row="7" Grid.Column="0" Fill="{StaticResource LineBrush}" Height="1"/>
 
         <!-- Leader Management Section -->
-        <StackPanel Grid.Row="8">
+        <StackPanel Grid.Row="2" Grid.Column="2">
             <TextBlock Style="{StaticResource HeaderStyle}" Margin="0,0,0,8">
-                <Run Text="LEADER " Foreground="{StaticResource GoldBrush}"/><Run Text="(Quản lý đường dẫn)"/>
+                <Run Text="LEADER " Foreground="{StaticResource GoldBrush}"/><Run Text="(Leader management)"/>
             </TextBlock>
 
             <!-- Leader Angle -->
@@ -212,7 +207,7 @@
                 <TextBox x:Name="TxtLeaderAngle" Grid.Column="1" Text="45" Background="#F5F5F5"
                          Foreground="Black" BorderThickness="0" Padding="6,4" Height="26"
                          FontFamily="Segoe UI" FontSize="12"/>
-                <Button Grid.Column="2" Style="{StaticResource OrangeBtn}" Content="SET ANGLE" 
+                <Button Grid.Column="2" Style="{StaticResource OrangeBtn}" Content="SET ANGLE"
                         Click="BtnSetLeaderAngle_Click" Margin="8,0,0,0" Width="90"/>
             </Grid>
 
@@ -232,20 +227,20 @@
             <!-- Leader Action Buttons -->
             <StackPanel Orientation="Horizontal" HorizontalAlignment="Center">
                 <Button Style="{StaticResource OrangeBtn}" Content="STRAIGHTEN" Width="85"
-                        ToolTip="Làm thẳng landing line (nằm ngang)" Click="BtnStraightenLeaders_Click"/>
+                        ToolTip="Make landing lines horizontal" Click="BtnStraightenLeaders_Click"/>
                 <Button Style="{StaticResource OrangeBtn}" Content="PARALLELIZE" Width="85" Margin="4,0,4,0"
-                        ToolTip="Làm tất cả leader song song (theo tag đầu tiên)" Click="BtnParallelizeLeaders_Click"/>
+                        ToolTip="Make all leaders parallel to the first tag" Click="BtnParallelizeLeaders_Click"/>
                 <Button Style="{StaticResource OrangeBtn}" Content="ORTHOGONAL" Width="85"
-                        ToolTip="Bẻ góc vuông tự động (ngang -> dọc)" Click="BtnOrthogonalLeaders_Click"/>
+                        ToolTip="Create orthogonal leaders automatically" Click="BtnOrthogonalLeaders_Click"/>
             </StackPanel>
         </StackPanel>
 
-        <Rectangle Grid.Row="9" Fill="{StaticResource LineBrush}" Height="1"/>
+        <Rectangle Grid.Row="3" Grid.Column="2" Fill="{StaticResource LineBrush}" Height="1"/>
 
         <!-- Smart Stack Section -->
-        <StackPanel Grid.Row="10">
+        <StackPanel Grid.Row="4" Grid.Column="2">
             <TextBlock Style="{StaticResource HeaderStyle}" Margin="0,0,0,8">
-                <Run Text="SMART STACK " Foreground="{StaticResource GoldBrush}"/><Run Text="(Xếp chồng thông minh)"/>
+                <Run Text="SMART STACK " Foreground="{StaticResource GoldBrush}"/><Run Text="(Intelligent stacking)"/>
             </TextBlock>
             <Grid Margin="0,0,0,8">
                 <Grid.ColumnDefinitions>
@@ -257,22 +252,22 @@
                 <TextBox x:Name="TxtHorizontalOffset" Grid.Column="1" Text="200" Background="#F5F5F5"
                          Foreground="Black" BorderThickness="0" Padding="8,4" Height="28"
                          FontFamily="Segoe UI" FontSize="12"
-                         ToolTip="Khoảng cách từ Tag đến Elbow (mặc định 200mm)"/>
+                         ToolTip="Distance from the tag to the elbow (default 200 mm)"/>
             </Grid>
             <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" Margin="0,4,0,0">
                 <Button Style="{StaticResource OrangeBtn}" Content="STACK LEFT" Width="110" Height="30"
-                        ToolTip="Xếp chồng các tag và kéo leader sang bên trái" Click="BtnStackLeft_Click"/>
+                        ToolTip="Stack tags and route leaders to the left" Click="BtnStackLeft_Click"/>
                 <Button Style="{StaticResource OrangeBtn}" Content="STACK RIGHT" Width="110" Height="30"
-                        ToolTip="Xếp chồng các tag và kéo leader sang bên phải" Click="BtnStackRight_Click" Margin="12,0,0,0"/>
+                        ToolTip="Stack tags and route leaders to the right" Click="BtnStackRight_Click" Margin="12,0,0,0"/>
             </StackPanel>
         </StackPanel>
 
-        <Rectangle Grid.Row="11" Fill="{StaticResource LineBrush}" Height="1"/>
+        <Rectangle Grid.Row="5" Grid.Column="2" Fill="{StaticResource LineBrush}" Height="1"/>
 
         <!-- Merge Tags Section -->
-        <StackPanel Grid.Row="12">
+        <StackPanel Grid.Row="6" Grid.Column="2">
             <TextBlock Style="{StaticResource HeaderStyle}" Margin="0,0,0,8">
-                <Run Text="MERGE " Foreground="{StaticResource GoldBrush}"/><Run Text="(Gộp các Tag cùng loại)"/>
+                <Run Text="MERGE " Foreground="{StaticResource GoldBrush}"/><Run Text="(Combine tags of the same type)"/>
             </TextBlock>
             <StackPanel Orientation="Horizontal" Margin="0,0,0,8">
                 <RadioButton x:Name="RbMergeCenter" Content="Auto Center" IsChecked="True" Foreground="#000000" Margin="0,0,12,0"/>
@@ -287,30 +282,31 @@
                 </Grid.ColumnDefinitions>
                 <TextBlock Text="Scope:" Style="{StaticResource LabelStyle}" Margin="0,0,8,0"/>
                 <ComboBox x:Name="CmbMergeScope" Grid.Column="1" Height="26" SelectedIndex="0" Style="{StaticResource ComboStyle}">
-                    <ComboBoxItem Content="Selected Elements (Đang quét chọn)"/>
+                    <ComboBoxItem Content="Selected Elements"/>
                     <ComboBoxItem Content="Active View (Trong View này)"/>
                 </ComboBox>
             </Grid>
 
-            <Button Style="{StaticResource ActionBtn}" Content="MERGE TAGS" Background="#8A2BE2" Click="BtnMergeTags_Click" ToolTip="Gộp nhiều tag thành 1 tag có nhiều đường dẫn"/>
+            <Button Style="{StaticResource ActionBtn}" Content="MERGE TAGS" Background="#8A2BE2" Click="BtnMergeTags_Click" ToolTip="Combine multiple tags into one tag with multiple leaders"/>
         </StackPanel>
 
-        <Rectangle Grid.Row="13" Fill="{StaticResource LineBrush}" Height="1"/>
+        <Rectangle Grid.Row="7" Grid.Column="2" Fill="{StaticResource LineBrush}" Height="1"/>
 
         <!-- Options -->
-        <StackPanel Grid.Row="14">
+        <StackPanel Grid.Row="2" Grid.Column="4">
             <TextBlock Text="OPTIONS" Style="{StaticResource HeaderStyle}" Margin="0,0,0,6"/>
             <CheckBox x:Name="ChkMaintainLeader" Content="Maintain Leader Position" IsChecked="True"/>
             <CheckBox x:Name="ChkIncludeTags" Content="Include Tags" IsChecked="True"/>
             <CheckBox x:Name="ChkIncludeDimensions" Content="Include Dimensions" IsChecked="True"/>
         </StackPanel>
 
-        <Rectangle Grid.Row="15" Fill="{StaticResource LineBrush}" Height="1"/>
+        <Rectangle Grid.Row="3" Grid.Column="4" Fill="{StaticResource LineBrush}" Height="1"/>
 
         <!-- Auto Tag -->
-        <StackPanel Grid.Row="16">
+        <ScrollViewer Grid.Row="4" Grid.RowSpan="3" Grid.Column="4" VerticalScrollBarVisibility="Auto">
+        <StackPanel>
             <TextBlock Style="{StaticResource HeaderStyle}" Margin="0,0,0,8">
-                <Run Text="AUTO TAG " Foreground="{StaticResource GoldBrush}"/><Run Text="(Tự động ghi chú)"/>
+                <Run Text="AUTO TAG " Foreground="{StaticResource GoldBrush}"/><Run Text="(Automatic annotation)"/>
             </TextBlock>
             <Grid Margin="0,0,0,6">
                 <Grid.ColumnDefinitions>
@@ -321,7 +317,7 @@
                 <ComboBox x:Name="CmbAutoTagLeaderStyle" Grid.Column="1" Height="26" SelectedIndex="0" Style="{StaticResource ComboStyle}">
                     <ComboBoxItem Content="Orthogonal (Vuông góc)"/>
                     <ComboBoxItem Content="Angled (Góc nghiêng)"/>
-                    <ComboBoxItem Content="Revit Default (Mặc định)"/>
+                    <ComboBoxItem Content="Revit Default"/>
                 </ComboBox>
             </Grid>
             <Grid Margin="0,0,0,6">
@@ -345,8 +341,8 @@
                 <TextBlock Text="Scope:" Style="{StaticResource LabelStyle}" Margin="0,0,8,0"/>
                 <ComboBox x:Name="CmbAutoTagScope" Grid.Column="1" Height="26" SelectedIndex="0" Style="{StaticResource ComboStyle}">
                     <ComboBoxItem Content="Active View (Trong View này)"/>
-                    <ComboBoxItem Content="Selected Elements (Đang quét chọn)"/>
-                    <ComboBoxItem Content="Entire Project (Toàn dự án)"/>
+                    <ComboBoxItem Content="Selected Elements"/>
+                    <ComboBoxItem Content="Entire Project"/>
                 </ComboBox>
             </Grid>
             <Grid Margin="0,0,0,6">
@@ -371,46 +367,46 @@
                     <ColumnDefinition Width="60"/>
                     <ColumnDefinition Width="*"/>
                 </Grid.ColumnDefinitions>
-                
+
                 <TextBlock Text="Offset (mm):" Style="{StaticResource LabelStyle}" Margin="0,0,8,0"/>
                 <TextBox x:Name="TxtAutoTagOffset" Grid.Column="1" Text="900" Background="#F5F5F5"
                          Foreground="Black" BorderThickness="0" Padding="8,4" Height="26"
                          FontFamily="Segoe UI" FontSize="12"
-                         ToolTip="Khoảng cách chữ đẩy ra so với tường"/>
+                         ToolTip="Text offset from the wall"/>
 
-                <TextBlock Grid.Column="2" Text="Max Merge (m):" Style="{StaticResource LabelStyle}" Margin="12,0,8,0" ToolTip="Khoảng cách tối đa để gộp chung 1 Tag (nhập 0 để gộp vô hạn)"/>
+                <TextBlock Grid.Column="2" Text="Max Merge (m):" Style="{StaticResource LabelStyle}" Margin="12,0,8,0" ToolTip="Maximum merge distance; enter 0 for no limit"/>
                 <TextBox x:Name="TxtMaxMergeDistance" Grid.Column="3" Text="10" Background="#F5F5F5"
                          Foreground="Black" BorderThickness="0" Padding="8,4" Height="26"
                          FontFamily="Segoe UI" FontSize="12"
-                         ToolTip="Khoảng cách tối đa (mét) giữa các cấu kiện để gộp chung vào 1 Tag (ví dụ: 10m). Nếu để trống hoặc 0, gộp tất cả không giới hạn."/>
+                         ToolTip="Maximum distance in metres between elements to merge into one tag. Enter 0 for no limit."/>
             </Grid>
-            <CheckBox x:Name="ChkAutoUntangle" Content="Tự động né nhau (Anti-overlap) sau khi Tag" IsChecked="True" Margin="0,0,0,4"/>
-            <CheckBox x:Name="ChkAutoTagLeader" Content="Tạo đường dẫn (Leader) cho Tag" IsChecked="False"/>
-            <Button Style="{StaticResource ActionBtn}" Content="AUTO TAG" Background="#28A745" Click="BtnAutoTag_Click" Margin="0,8,0,0" ToolTip="Tự động tạo Tag cho các đối tượng chưa được tag trong View"/>
+            <CheckBox x:Name="ChkAutoUntangle" Content="Run anti-overlap after tagging" IsChecked="True" Margin="0,0,0,4"/>
+            <CheckBox x:Name="ChkAutoTagLeader" Content="Create leaders for tags" IsChecked="False"/>
+            <Button Style="{StaticResource ActionBtn}" Content="AUTO TAG" Background="#28A745" Click="BtnAutoTag_Click" Margin="0,8,0,0" ToolTip="Create tags automatically for untagged elements in the view"/>
         </StackPanel>
+        </ScrollViewer>
 
-        <Rectangle Grid.Row="17" Fill="{StaticResource LineBrush}" Height="1"/>
+        <Rectangle Grid.Row="7" Grid.Column="4" Fill="{StaticResource LineBrush}" Height="1"/>
 
         <!-- Status -->
-        <Border Grid.Row="18" Background="{StaticResource PanelBrush}" Padding="10" CornerRadius="3" MinHeight="40">
+        <Border Grid.Row="8" Grid.Column="0" Grid.ColumnSpan="3" Background="{StaticResource PanelBrush}" Padding="10" CornerRadius="3" MinHeight="40" Margin="0,8,0,0">
             <TextBlock x:Name="TxtStatus"
-                       Text="Ready. Chọn các Tag/Dimension rồi bấm nút tương ứng."
+                       Text="Ready. Select tags or dimensions, then choose an action."
                        Style="{StaticResource LabelStyle}"
                        TextWrapping="Wrap"
                        FontSize="11"/>
         </Border>
 
         <!-- Close -->
-        <Grid Grid.Row="19" Margin="0,8,0,0">
+        <Grid Grid.Row="8" Grid.Column="4" Margin="0,8,0,0">
             <Button Content="CLOSE" Height="30"
                     Background="{StaticResource SecondaryBrush}" Foreground="#000000"
                     BorderThickness="0" FontFamily="Segoe UI" FontSize="12"
                     FontWeight="Bold" Cursor="Hand"
                     Click="BtnClose_Click"/>
-            <controls:BrandSignature Margin="0,8,0,0"/>
+
         </Grid>
     </Grid>
-    </ScrollViewer>
 </Window>
 
 

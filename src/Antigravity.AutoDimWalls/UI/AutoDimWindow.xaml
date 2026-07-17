@@ -109,8 +109,8 @@
             <StackPanel Margin="0,0,0,12">
                 <TextBlock Text="View Type" Style="{StaticResource VvSectionTitleStyle}" Margin="0,0,0,6"/>
                 <StackPanel Orientation="Horizontal">
-                    <RadioButton x:Name="RadViewPlan" Content="Plan View (Mặt bằng)" IsChecked="True" Margin="0,0,24,0" Checked="RadView_Checked"/>
-                    <RadioButton x:Name="RadViewSection" Content="Section View (Mặt cắt)" Checked="RadView_Checked"/>
+                    <RadioButton x:Name="RadViewPlan" Content="Plan View" IsChecked="True" Margin="0,0,24,0" Checked="RadView_Checked"/>
+                    <RadioButton x:Name="RadViewSection" Content="Section View" Checked="RadView_Checked"/>
                 </StackPanel>
             </StackPanel>
 
@@ -152,7 +152,7 @@
                 <CheckBox x:Name="ChkGrids" Content="Grid references" IsChecked="False"/>
                 <CheckBox x:Name="ChkLinks" Content="Structural links" IsChecked="False"/>
                 <ComboBox x:Name="CboLinkInstances" Style="{StaticResource VvComboBoxStyle}" DisplayMemberPath="Name" Margin="20,2,0,6" IsEnabled="{Binding IsChecked, ElementName=ChkLinks}"/>
-                <CheckBox x:Name="ChkHostStructural" Content="Host structural columns (Bổ trụ/Vách)" IsChecked="True"/>
+                <CheckBox x:Name="ChkHostStructural" Content="Host structural columns and wall piers" IsChecked="True"/>
                 <CheckBox x:Name="ChkIntersections" Content="Intersecting walls (reserved)" IsChecked="False" IsEnabled="False"/>
             </StackPanel>
 
@@ -192,8 +192,8 @@
             <Button x:Name="BtnRefresh" Content="REFRESH" Style="{StaticResource SecondaryBtn}" Click="BtnRefresh_Click"/>
             <Button x:Name="BtnClose" Content="CLOSE" Style="{StaticResource SecondaryBtn}" Click="BtnClose_Click"/>
         </UniformGrid>
-        
-        <controls:BrandSignature Margin="0,8,0,0"/>
+
+
     </Grid>
 </Window>
 

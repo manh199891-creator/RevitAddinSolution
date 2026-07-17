@@ -12,6 +12,7 @@ $utf8NoBom = [Text.UTF8Encoding]::new($false)
 $sourceRoot = Join-Path $RepositoryRoot 'src'
 $headerPattern = '(?s)<Border(?<attrs>[^>]*)>(?:(?!</Border>).)*?M 30,10 L 70,10(?:(?!</Border>).)*?</Border>'
 $signaturePattern = '(?s)<TextBlock\b(?<attrs>[^>]*\bText="@manhns"[^>]*)/>'
+$sharedSignaturePattern = '(?s)<controls:BrandSignature\b[^>]*/>'
 $changed = [System.Collections.Generic.List[string]]::new()
 
 function Get-AttachedGridAttributes {
@@ -74,13 +75,9 @@ foreach ($file in $windowFiles) {
     }
 
     $isOverlay = $file.Name -eq 'PenOverlayWindow.xaml'
-    if (-not $isOverlay -and $updated -match $signaturePattern) {
-        $updated = [regex]::Replace($updated, $signaturePattern, {
-            param($match)
-            $gridAttributes = Get-AttachedGridAttributes -Attributes $match.Groups['attrs'].Value
-            if (-not [string]::IsNullOrWhiteSpace($gridAttributes)) { $gridAttributes = ' ' + $gridAttributes }
-            return '<controls:BrandSignature' + $gridAttributes + ' Margin="0,8,0,0"/>'
-        }, 1)
+    if (-not $isOverlay) {
+        $updated = [regex]::Replace($updated, $signaturePattern, '')
+        $updated = [regex]::Replace($updated, $sharedSignaturePattern, '')
     }
 
     if ($updated -ne $content) {

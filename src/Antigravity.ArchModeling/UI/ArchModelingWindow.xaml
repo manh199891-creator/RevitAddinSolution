@@ -166,7 +166,7 @@
             <Border Grid.Column="0" Background="#F9FAFB" BorderBrush="#E5E7EB" BorderThickness="1" CornerRadius="6" Padding="15">
                 <StackPanel>
                     <Button x:Name="BtnSetOrigin" Content="🎯  Set Origin" Style="{StaticResource SecondaryBtn}" Margin="0,0,0,15" Click="BtnSetOrigin_Click"/>
-                    
+
                     <TextBlock Text="Base Level" Style="{StaticResource LabelStyle}"/>
                     <ComboBox x:Name="CboBaseLevel" Height="30" Margin="0,0,0,10" DisplayMemberPath="Name"/>
 
@@ -179,9 +179,9 @@
                     <TextBlock x:Name="LblTopOffset" Text="Top Offset (mm)" Style="{StaticResource LabelStyle}"/>
                     <TextBox x:Name="TxtTopOffset" Style="{StaticResource ModernTextBox}" Text="0" Margin="0,0,0,10"/>
 
-                    <CheckBox x:Name="ChkMirrorHinge" Content="🔁 Mirror Hinge (Đảo bản lề)" 
+                    <CheckBox x:Name="ChkMirrorHinge" Content="🔁 Mirror Hinge"
                               Margin="0,5,0,0" FontSize="12" Foreground="#4B5563"
-                              ToolTip="Đảo chiều bản lề cho tất cả cửa 1 cánh"
+                              ToolTip="Flip the hinge side for all single-leaf doors"
                               Visibility="Collapsed"/>
                 </StackPanel>
             </Border>
@@ -204,7 +204,7 @@
                             <ColumnDefinition Width="10"/>
                             <ColumnDefinition Width="*"/>
                         </Grid.ColumnDefinitions>
-                        
+
                         <Grid Grid.Column="0" x:Name="GridPrimaryMapping" Grid.ColumnSpan="3">
                             <Grid.RowDefinitions>
                                 <RowDefinition Height="Auto"/>
@@ -250,8 +250,8 @@
                                     </DataGridTemplateColumn>
                                     <DataGridTextColumn x:Name="ColThickness" Header="Width (mm)" Binding="{Binding Thickness}" Width="80" IsReadOnly="True"/>
                                     <DataGridTextColumn Header="Count" Binding="{Binding Count}" Width="60" IsReadOnly="True"/>
-                                    
-                                    <DataGridTemplateColumn x:Name="ColGroup" Header="Group (Gộp nét)" Width="130">
+
+                                    <DataGridTemplateColumn x:Name="ColGroup" Header="Group lines" Width="130">
                                         <DataGridTemplateColumn.CellTemplate>
                                             <DataTemplate>
                                                 <ComboBox ItemsSource="{Binding RelativeSource={RelativeSource AncestorType=Window}, Path=AvailableGroups}"
@@ -260,7 +260,7 @@
                                             </DataTemplate>
                                         </DataGridTemplateColumn.CellTemplate>
                                     </DataGridTemplateColumn>
-                                    
+
                                     <DataGridTemplateColumn Header="Revit Family" Width="150">
                                         <DataGridTemplateColumn.CellTemplate>
                                             <DataTemplate>
@@ -270,7 +270,7 @@
                                             </DataTemplate>
                                         </DataGridTemplateColumn.CellTemplate>
                                     </DataGridTemplateColumn>
-                                    
+
                                     <DataGridTemplateColumn Header="Revit Type" Width="150">
                                         <DataGridTemplateColumn.CellTemplate>
                                             <DataTemplate>
@@ -284,7 +284,7 @@
                                             </DataTemplate>
                                         </DataGridTemplateColumn.CellTemplate>
                                     </DataGridTemplateColumn>
-        
+
                                     <DataGridTextColumn x:Name="ColTypeMark" Header="Type Mark" Binding="{Binding TypeMark, UpdateSourceTrigger=PropertyChanged}" Width="100"/>
                                 </DataGrid.Columns>
                             </DataGrid>
@@ -310,7 +310,7 @@
                                 <DataGrid.Columns>
                                     <DataGridTextColumn Header="CAD Name" Binding="{Binding CadName}" Width="*" IsReadOnly="True"/>
                                     <DataGridTextColumn Header="Count" Binding="{Binding Count}" Width="60" IsReadOnly="True"/>
-                                    
+
                                     <DataGridTemplateColumn Header="Revit Family" Width="120">
                                         <DataGridTemplateColumn.CellTemplate>
                                             <DataTemplate>
@@ -320,7 +320,7 @@
                                             </DataTemplate>
                                         </DataGridTemplateColumn.CellTemplate>
                                     </DataGridTemplateColumn>
-                                    
+
                                     <DataGridTemplateColumn Header="Revit Type" Width="120">
                                         <DataGridTemplateColumn.CellTemplate>
                                             <DataTemplate>
@@ -334,7 +334,7 @@
                                             </DataTemplate>
                                         </DataGridTemplateColumn.CellTemplate>
                                     </DataGridTemplateColumn>
-        
+
                                     <DataGridTextColumn Header="Type Mark" Binding="{Binding TypeMark, UpdateSourceTrigger=PropertyChanged}" Width="80"/>
                                 </DataGrid.Columns>
                             </DataGrid>
@@ -353,7 +353,7 @@
                 <Button x:Name="BtnCreate" Content="✅  Create Elements" Style="{StaticResource PrimaryBtn}" Margin="0,0,8,0" Click="BtnCreate_Click"/>
                 <Button Content="✖  Cancel" Style="{StaticResource SecondaryBtn}" Click="BtnCancel_Click"/>
             </StackPanel>
-            <controls:BrandSignature Grid.Column="1" Margin="16,0,0,0" VerticalAlignment="Center"/>
+
         </Grid>
     </Grid>
 </Window>

@@ -2,7 +2,7 @@
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:controls="clr-namespace:Antigravity.Core.UI.Controls;assembly=Antigravity.Core"
-        Title="Vilai Viet - Kiểm Soát Xung Đột Khoảng Mở Cửa"
+        Title="Vilai Viet - Door Clearance Clash Control"
         Width="850" Height="550"
         MinHeight="440" MinWidth="780"
         ResizeMode="CanResize"
@@ -82,7 +82,7 @@
         </Grid.RowDefinitions>
 
         <!-- HEADER -->
-        <controls:BrandHeader Grid.Row="0" TitleText="Kiểm Soát Xung Đột Khoảng Mở Cửa" SubtitleText="Phát hiện và quản lý các giao cắt hình học giữa Khoảng mở cửa (Clearance Box) và Cấu kiện kết cấu."/>
+        <controls:BrandHeader Grid.Row="0" TitleText="Door Clearance Clash Control" SubtitleText="Detect and manage geometric clashes between door clearance boxes and structural elements."/>
 
         <Rectangle Grid.Row="1" Fill="{StaticResource SeparatorBrush}" Height="1"/>
 
@@ -94,8 +94,8 @@
             </Grid.RowDefinitions>
 
             <!-- Clashes DataGrid -->
-            <DataGrid x:Name="GridClashes" Grid.Row="0" AutoGenerateColumns="False" 
-                      Background="{StaticResource BgSecondaryBrush}" Foreground="#000000" 
+            <DataGrid x:Name="GridClashes" Grid.Row="0" AutoGenerateColumns="False"
+                      Background="{StaticResource BgSecondaryBrush}" Foreground="#000000"
                       BorderThickness="0" GridLinesVisibility="Horizontal" HorizontalGridLinesBrush="{StaticResource SeparatorBrush}"
                       RowBackground="{StaticResource BgSecondaryBrush}" AlternatingRowBackground="#FFFFFF"
                       HeadersVisibility="Column" SelectionMode="Single" SelectionUnit="FullRow"
@@ -122,22 +122,22 @@
                         </Style.Triggers>
                     </Style>
                 </DataGrid.Resources>
-                
+
                 <DataGrid.Columns>
-                    <DataGridTextColumn Header="Mark Cửa" Binding="{Binding DoorMark}" Width="80"/>
-                    <DataGridTextColumn Header="Tên Cửa / Window" Binding="{Binding DoorName}" Width="*"/>
-                    <DataGridTextColumn Header="ID Cửa" Binding="{Binding DoorId.Value}" Width="90"/>
-                    
-                    <DataGridTextColumn Header="Cấu Kiện Xung Đột" Binding="{Binding ClashingCategory}" Width="150"/>
-                    <DataGridTextColumn Header="Tên Cấu Kiện" Binding="{Binding ClashingName}" Width="1.5*"/>
-                    <DataGridTextColumn Header="ID Cấu Kiện" Binding="{Binding ClashingElementId.Value}" Width="90"/>
-                    
-                    <DataGridTextColumn Header="Thể Tích Giao (m³)" Binding="{Binding ClashingVolumeM3}" Width="120"/>
+                    <DataGridTextColumn Header="Door Mark" Binding="{Binding DoorMark}" Width="80"/>
+                    <DataGridTextColumn Header="Door / Window Name" Binding="{Binding DoorName}" Width="*"/>
+                    <DataGridTextColumn Header="Door ID" Binding="{Binding DoorId.Value}" Width="90"/>
+
+                    <DataGridTextColumn Header="Clashing Element" Binding="{Binding ClashingCategory}" Width="150"/>
+                    <DataGridTextColumn Header="Element Name" Binding="{Binding ClashingName}" Width="1.5*"/>
+                    <DataGridTextColumn Header="Element ID" Binding="{Binding ClashingElementId.Value}" Width="90"/>
+
+                    <DataGridTextColumn Header="Clash Volume (m³)" Binding="{Binding ClashingVolumeM3}" Width="120"/>
                 </DataGrid.Columns>
             </DataGrid>
 
             <!-- Loading overlay / No-results prompt -->
-            <TextBlock x:Name="TxtNoClashes" Grid.Row="0" Text="Nhấn 'QUÉT XUNG ĐỘT' để bắt đầu phân tích mô hình..." 
+            <TextBlock x:Name="TxtNoClashes" Grid.Row="0" Text="Click 'SCAN CLASHES' to start model analysis..."
                        Style="{StaticResource NormalText}" Foreground="#AAAAAA"
                        HorizontalAlignment="Center" VerticalAlignment="Center" FontSize="14" IsHitTestVisible="False"/>
         </Grid>
@@ -155,18 +155,18 @@
 
             <!-- Stats Left -->
             <StackPanel Grid.Column="0" Orientation="Horizontal" VerticalAlignment="Center">
-                <TextBlock Text="Tổng số xung đột phát hiện: " Style="{StaticResource NormalText}"/>
+                <TextBlock Text="Total clashes detected: " Style="{StaticResource NormalText}"/>
                 <TextBlock x:Name="TxtTotalClashes" Text="0" Style="{StaticResource AccentText}"/>
             </StackPanel>
 
             <!-- Buttons Right -->
             <StackPanel Grid.Column="2" Orientation="Horizontal" HorizontalAlignment="Right">
-                <Button x:Name="BtnScan" Content="QUÉT XUNG ĐỘT" Style="{StaticResource PrimaryBtn}" Margin="0,0,8,0" Click="BtnScan_Click"/>
-                <Button x:Name="BtnShow" Content="ZOOM XEM CHỖ GIAO" Style="{StaticResource SecondaryBtn}" Margin="0,0,8,0" Click="BtnShow_Click" IsEnabled="False"/>
-                <Button x:Name="BtnExport" Content="XUẤT EXCEL (CSV)" Style="{StaticResource SecondaryBtn}" Margin="0,0,8,0" Click="BtnExport_Click" IsEnabled="False"/>
-                <Button x:Name="BtnClose" Content="ĐÓNG" Style="{StaticResource SecondaryBtn}" Click="BtnClose_Click"/>
+                <Button x:Name="BtnScan" Content="SCAN CLASHES" Style="{StaticResource PrimaryBtn}" Margin="0,0,8,0" Click="BtnScan_Click"/>
+                <Button x:Name="BtnShow" Content="ZOOM TO CLASH" Style="{StaticResource SecondaryBtn}" Margin="0,0,8,0" Click="BtnShow_Click" IsEnabled="False"/>
+                <Button x:Name="BtnExport" Content="EXPORT CSV" Style="{StaticResource SecondaryBtn}" Margin="0,0,8,0" Click="BtnExport_Click" IsEnabled="False"/>
+                <Button x:Name="BtnClose" Content="CLOSE" Style="{StaticResource SecondaryBtn}" Click="BtnClose_Click"/>
             </StackPanel>
-            <controls:BrandSignature Grid.Column="3" Margin="16,0,0,0" VerticalAlignment="Center"/>
+
         </Grid>
     </Grid>
 </Window>

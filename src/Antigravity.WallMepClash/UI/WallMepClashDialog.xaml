@@ -234,7 +234,7 @@
                 <Button x:Name="BtnExportHtml" Content="📄  Export HTML" Click="BtnExportHtml_Click" Style="{StaticResource SecondaryBtn}" Margin="6,0,0,0" IsEnabled="False"/>
                 <Button x:Name="BtnResetColor" Content="✖  Reset Color" Click="BtnResetColor_Click" Style="{StaticResource SecondaryBtn}" Margin="6,0,0,0" IsEnabled="False"/>
             </UniformGrid>
-            <controls:BrandSignature Margin="0,8,0,0"/>
+
         </Grid>
     </Grid>
 </Window>

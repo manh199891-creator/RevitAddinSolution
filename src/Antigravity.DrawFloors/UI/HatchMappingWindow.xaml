@@ -134,7 +134,7 @@
                 <Button x:Name="BtnApply" Content="✅  Create Floors" Style="{StaticResource PrimaryBtn}" Margin="0,0,8,0" Click="BtnApply_Click"/>
                 <Button  Content="✖  Cancel" Style="{StaticResource SecondaryBtn}" Click="BtnCancel_Click"/>
             </StackPanel>
-            <controls:BrandSignature Margin="0,8,0,0"/>
+
         </Grid>
     </Grid>
 </Window>

@@ -94,17 +94,17 @@
         <ToggleButton x:Name="BtnRect"      Content="⬜ Rect"      Checked="BtnRect_Checked"/>
         <ToggleButton x:Name="BtnArrow"     Content="➡️ Arrow"     Checked="BtnArrow_Checked"/>
         <ToggleButton x:Name="BtnText"      Content="🔤 Text"      Checked="BtnText_Checked"/>
-        
+
         <Border BorderBrush="#D1D5DB" BorderThickness="1,0,0,0" Margin="4,2,10,2"/>
 
         <ComboBox x:Name="CmbColor" Width="110" SelectionChanged="CmbColor_Changed" VerticalAlignment="Center" Margin="0,0,10,0" Height="28">
-          <ComboBoxItem Tag="#FF0000" Content="🔴 Đỏ"     IsSelected="True"/>
+          <ComboBoxItem Tag="#FF0000" Content="🔴 Red"     IsSelected="True"/>
           <ComboBoxItem Tag="#FFD700" Content="🟡 Vàng"/>
           <ComboBoxItem Tag="#00CC00" Content="🟢 Xanh lá"/>
-          <ComboBoxItem Tag="#00AAFF" Content="🔵 Xanh dương"/>
-          <ComboBoxItem Tag="#FFFFFF" Content="⬜ Trắng"/>
+          <ComboBoxItem Tag="#00AAFF" Content="🔵 Blue"/>
+          <ComboBoxItem Tag="#FFFFFF" Content="⬜ White"/>
         </ComboBox>
-        
+
         <Border BorderBrush="#D1D5DB" BorderThickness="1,0,0,0" Margin="4,2,10,2"/>
 
         <Button Content="↩️ Undo"  Click="BtnUndo_Click" Style="{StaticResource SecondaryBtn}" Margin="0,0,8,0"/>
@@ -128,10 +128,10 @@
     <!-- BOTTOM BUTTONS -->
     <Grid Grid.Row="6">
       <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
-        <Button Content="✖ Huỷ"         Click="BtnCancel_Click" Style="{StaticResource SecondaryBtn}" Margin="0,0,8,0"/>
-        <Button Content="💾 Lưu markup" Click="BtnSave_Click" Style="{StaticResource PrimaryBtn}"/>
+        <Button Content="✖ Cancel"         Click="BtnCancel_Click" Style="{StaticResource SecondaryBtn}" Margin="0,0,8,0"/>
+        <Button Content="💾 Save Markup" Click="BtnSave_Click" Style="{StaticResource PrimaryBtn}"/>
       </StackPanel>
-      <controls:BrandSignature Margin="0,8,0,0"/>
+
     </Grid>
   </Grid>
 </Window>

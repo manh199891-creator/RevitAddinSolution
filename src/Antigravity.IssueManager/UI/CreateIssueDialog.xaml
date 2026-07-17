@@ -115,7 +115,7 @@
         </Style>
     </ResourceDictionary>
     </Window.Resources>
-    
+
     <Grid Margin="16">
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto"/> <!-- Header -->
@@ -180,10 +180,10 @@
                         <RowDefinition Height="*"/>
                         <RowDefinition Height="Auto"/>
                     </Grid.RowDefinitions>
-                    <TextBlock Grid.Row="0" Text="Hình ảnh 3D (Revit Snapshot)" Foreground="#000000" FontWeight="SemiBold" FontSize="12" Margin="0,0,0,6"/>
+                    <TextBlock Grid.Row="0" Text="3D Image (Revit Snapshot)" Foreground="#000000" FontWeight="SemiBold" FontSize="12" Margin="0,0,0,6"/>
                     <Grid Grid.Row="1" Background="#FFFFFF">
                         <Image x:Name="ImgPreview3D" Stretch="Uniform" VerticalAlignment="Center" HorizontalAlignment="Center"/>
-                        <TextBlock x:Name="TxtHint3D" Text="(Chụp tự động từ Revit khi bấm Create Issue)" Foreground="#4B5563" FontStyle="Italic" TextAlignment="Center" VerticalAlignment="Center" TextWrapping="Wrap" Margin="10"/>
+                        <TextBlock x:Name="TxtHint3D" Text="(Captured automatically from Revit when Create Issue is clicked)" Foreground="#4B5563" FontStyle="Italic" TextAlignment="Center" VerticalAlignment="Center" TextWrapping="Wrap" Margin="10"/>
                     </Grid>
                     <WrapPanel Grid.Row="2" Orientation="Horizontal" HorizontalAlignment="Center" Margin="0,6,0,0">
                         <Button x:Name="BtnMarkup3D" Content="✏️ Markup 3D" Click="BtnMarkup3D_Click" Style="{StaticResource PrimaryBtn}" Margin="0"/>
@@ -200,17 +200,17 @@
                             <RowDefinition Height="*"/>
                             <RowDefinition Height="Auto"/>
                         </Grid.RowDefinitions>
-                        <TextBlock Grid.Row="0" Text="Hình ảnh 2D / Chú thích" Foreground="#000000" FontWeight="SemiBold" FontSize="12" Margin="0,0,0,6"/>
-                        
+                        <TextBlock Grid.Row="0" Text="2D Image / Annotation" Foreground="#000000" FontWeight="SemiBold" FontSize="12" Margin="0,0,0,6"/>
+
                         <Grid x:Name="GridImage2DAnnotate" Grid.Row="1" Margin="0,0,0,6" ClipToBounds="True" Background="#FFFFFF">
                             <Image x:Name="ImgPreview2D" Stretch="Uniform" VerticalAlignment="Center" HorizontalAlignment="Center"/>
-                            <TextBlock x:Name="TxtHint2D" Text="Ctrl+V để dán ảnh, hoặc bấm 📁 để chọn file. Bấm ✏️ Markup để chỉnh sửa." Foreground="#4B5563" FontStyle="Italic" TextAlignment="Center" VerticalAlignment="Center" TextWrapping="Wrap" Margin="10"/>
+                            <TextBlock x:Name="TxtHint2D" Text="Press Ctrl+V to paste an image, or click 📁 to choose a file. Click ✏️ Markup to edit." Foreground="#4B5563" FontStyle="Italic" TextAlignment="Center" VerticalAlignment="Center" TextWrapping="Wrap" Margin="10"/>
                         </Grid>
 
                         <WrapPanel Grid.Row="2" Orientation="Horizontal" HorizontalAlignment="Center">
-                            <Button x:Name="BtnPickImage2D" Content="📁 Chọn ảnh..." Click="BtnPickImage2D_Click" Style="{StaticResource SecondaryBtn}" Margin="0,0,8,0"/>
+                            <Button x:Name="BtnPickImage2D" Content="📁 Choose Image..." Click="BtnPickImage2D_Click" Style="{StaticResource SecondaryBtn}" Margin="0,0,8,0"/>
                             <Button x:Name="BtnMarkup2D" Content="✏️ Markup" Click="BtnMarkup2D_Click" IsEnabled="False" Style="{StaticResource PrimaryBtn}" Margin="0,0,8,0"/>
-                            <Button x:Name="BtnClearImage2D" Content="✖ Xóa ảnh" Click="BtnClearImage2D_Click" Style="{StaticResource DestructiveBtn}" Visibility="Collapsed"/>
+                            <Button x:Name="BtnClearImage2D" Content="✖ Remove Image" Click="BtnClearImage2D_Click" Style="{StaticResource DestructiveBtn}" Visibility="Collapsed"/>
                         </WrapPanel>
                     </Grid>
                 </Border>
@@ -223,7 +223,7 @@
                 <Button Content="✖ Cancel" Click="BtnCancel_Click" Style="{StaticResource SecondaryBtn}" Margin="0,0,8,0"/>
                 <Button x:Name="BtnOk" Content="➕ Create Issue" Click="BtnOk_Click" Style="{StaticResource PrimaryBtn}"/>
             </UniformGrid>
-            <controls:BrandSignature Margin="0,8,0,0"/>
+
         </Grid>
     </Grid>
 </Window>

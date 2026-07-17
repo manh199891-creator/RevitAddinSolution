@@ -101,7 +101,7 @@
                 <Button Content="OK" Click="BtnOk_Click" Style="{StaticResource PrimaryBtn}" Margin="0,0,8,0"/>
                 <Button Content="Cancel" Click="BtnCancel_Click" Style="{StaticResource SecondaryBtn}"/>
             </StackPanel>
-            <controls:BrandSignature Margin="0,8,0,0"/>
+
         </Grid>
     </Grid>
 </Window>

@@ -16,7 +16,7 @@ namespace Antigravity.IssueManager
         private static Assembly ResolveAssembly(object sender, ResolveEventArgs args)
         {
             string assemblyName = new AssemblyName(args.Name).Name;
-            if (!assemblyName.StartsWith("Antigravity.", StringComparison.OrdinalIgnoreCase) && 
+            if (!assemblyName.StartsWith("Antigravity.", StringComparison.OrdinalIgnoreCase) &&
                 !assemblyName.StartsWith("Serilog", StringComparison.OrdinalIgnoreCase))
                 return null;
 
@@ -45,7 +45,7 @@ namespace Antigravity.IssueManager
             RibbonPanel clashPanel = null;
             foreach (var panel in application.GetRibbonPanels(tabName))
             {
-                if (panel.Name == "KIỂM SOÁT XUNG ĐỘT")
+                if (panel.Name == "CLASH CONTROL")
                 {
                     clashPanel = panel;
                     break;
@@ -54,7 +54,7 @@ namespace Antigravity.IssueManager
 
             if (clashPanel == null)
             {
-                clashPanel = application.CreateRibbonPanel(tabName, "KIỂM SOÁT XUNG ĐỘT");
+                clashPanel = application.CreateRibbonPanel(tabName, "CLASH CONTROL");
             }
 
             // 3. Create Button
@@ -63,11 +63,11 @@ namespace Antigravity.IssueManager
 
             PushButtonData btnIssueManager = new PushButtonData(
                 "btnIssueManager",
-                "Quản Lý\nLỗi BIM",
+                "Issue\nManager",
                 assemblyPath,
                 "Antigravity.IssueManager.Commands.CmdOpenIssueManager");
 
-            btnIssueManager.ToolTip = "Đồng bộ lỗi từ Navisworks thông qua file XML hoặc BCFzip.";
+            btnIssueManager.ToolTip = "Synchronize Navisworks issues through XML or BCFZIP files.";
             if (logoImage != null)
             {
                 btnIssueManager.LargeImage = logoImage;
@@ -97,7 +97,7 @@ namespace Antigravity.IssueManager
             {
                 Assembly assembly = Assembly.GetExecutingAssembly();
                 string resourceName = $"Antigravity.IssueManager.Resources.{imageName}";
-                
+
                 using (Stream stream = assembly.GetManifestResourceStream(resourceName))
                 {
                     if (stream == null) return null;

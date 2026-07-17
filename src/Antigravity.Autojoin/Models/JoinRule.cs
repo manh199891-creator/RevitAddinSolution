@@ -26,12 +26,12 @@ namespace Antigravity.Autojoin.Models
         {
             switch (builtInCategory)
             {
-                case "OST_StructuralFraming":  return "Dầm";
-                case "OST_Floors":             return "Sàn";
-                case "OST_StructuralColumns":  return "Cột";
-                case "OST_Walls":              return "Vách kết cấu";
-                case "OST_Toposolid":          return "Địa hình";
-                case "OST_StructuralFoundation": return "Móng";
+                case "OST_StructuralFraming":  return "Structural Framing";
+                case "OST_Floors":             return "Floors";
+                case "OST_StructuralColumns":  return "Structural Columns";
+                case "OST_Walls":              return "Structural Walls";
+                case "OST_Toposolid":          return "Toposolid";
+                case "OST_StructuralFoundation": return "Structural Foundations";
                 default:                       return builtInCategory ?? "";
             }
         }

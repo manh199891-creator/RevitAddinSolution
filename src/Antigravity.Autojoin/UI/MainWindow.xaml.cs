@@ -49,7 +49,7 @@ namespace Antigravity.Autojoin.UI
 
             _rules = new ObservableCollection<JoinRule>(list);
             RulesListView.ItemsSource = _rules;
-            SetStatus($"Đã tải {_rules.Count} quy tắc join.", isSuccess: true);
+            SetStatus($"Loaded {_rules.Count} join rules.", isSuccess: true);
         }
 
         private void BtnReload_Click(object sender, RoutedEventArgs e) => LoadRules();
@@ -59,17 +59,17 @@ namespace Antigravity.Autojoin.UI
             if (HasDuplicateRule(out string duplicateMessage))
             {
                 SetStatus(duplicateMessage, isSuccess: false);
-                MessageBox.Show(duplicateMessage, "AutoJoin - Cảnh báo", MessageBoxButton.OK, MessageBoxImage.Warning);
+                MessageBox.Show(duplicateMessage, "AutoJoin - Warning", MessageBoxButton.OK, MessageBoxImage.Warning);
                 return;
             }
 
             var ruleList = new List<JoinRule>(_rules);
             JoinConfigService.Save(ruleList);
-            
+
             // Cập nhật rules cho DMU updater
             AutoJoinUpdater.RefreshRules(ruleList);
-            
-            SetStatus("✅  Đã lưu cấu hình thành công.", isSuccess: true);
+
+            SetStatus("✅  Configuration saved successfully.", isSuccess: true);
         }
 
         // ----------------------------------------------------------------
@@ -109,7 +109,7 @@ namespace Antigravity.Autojoin.UI
 
             _rules.Add(rule);
             RefreshOrders();
-            SetStatus($"Đã thêm rule: {rule.DisplayName}", isSuccess: true);
+            SetStatus($"Added rule: {rule.DisplayName}", isSuccess: true);
         }
 
         private void CategoryComboBox_SelectionChanged(object sender, SelectionChangedEventArgs e)
@@ -125,13 +125,13 @@ namespace Antigravity.Autojoin.UI
             var selected = RulesListView.SelectedItem as JoinRule;
             if (selected == null)
             {
-                SetStatus("Chọn một rule để xóa.", isSuccess: false);
+                SetStatus("Select a rule to remove.", isSuccess: false);
                 return;
             }
 
             _rules.Remove(selected);
             RefreshOrders();
-            SetStatus("Đã xóa rule.", isSuccess: true);
+            SetStatus("Rule removed.", isSuccess: true);
         }
 
         private void RefreshOrders()
@@ -150,15 +150,15 @@ namespace Antigravity.Autojoin.UI
         private void ChkDmu_Changed(object sender, RoutedEventArgs e)
         {
             bool enabled = ChkDmuEnabled.IsChecked == true;
-            
+
             // Chỉ cần gán flag static, Updater đã đăng ký ở App.OnStartup sẽ tự check flag này
             AutoJoinUpdater.IsEnabled = enabled;
-            
+
             // Lưu trạng thái vào config
             JoinConfigService.SaveDmuEnabled(enabled);
 
-            SetStatus(enabled ? "⚡ Auto Join Realtime đã BẬT." : "Auto Join Realtime đã TẮT.", isSuccess: enabled);
-            
+            SetStatus(enabled ? "⚡ Realtime Auto Join is ON." : "Realtime Auto Join is OFF.", isSuccess: enabled);
+
             // Nếu có thay đổi rules mà chưa lưu, cập nhật luôn cho updater
             AutoJoinUpdater.RefreshRules(new List<JoinRule>(_rules));
         }
@@ -172,7 +172,7 @@ namespace Antigravity.Autojoin.UI
             if (HasDuplicateRule(out string duplicateMessage))
             {
                 SetStatus(duplicateMessage, isSuccess: false);
-                MessageBox.Show(duplicateMessage, "AutoJoin - Cảnh báo", MessageBoxButton.OK, MessageBoxImage.Warning);
+                MessageBox.Show(duplicateMessage, "AutoJoin - Warning", MessageBoxButton.OK, MessageBoxImage.Warning);
                 return;
             }
 
@@ -180,7 +180,7 @@ namespace Antigravity.Autojoin.UI
             _handler.Rules  = new List<JoinRule>(_rules);
             _handler.Scope  = RbSelection.IsChecked == true ? JoinScope.Selection : JoinScope.ActiveView;
             SetBusy(true);
-            SetStatus("Đang thực hiện Join Geometry…");
+            SetStatus("Joining geometry…");
             ClearResults();
             _exEvent.Raise();
         }
@@ -190,13 +190,13 @@ namespace Antigravity.Autojoin.UI
             if (HasDuplicateRule(out string duplicateMessage))
             {
                 SetStatus(duplicateMessage, isSuccess: false);
-                MessageBox.Show(duplicateMessage, "AutoJoin - Cảnh báo", MessageBoxButton.OK, MessageBoxImage.Warning);
+                MessageBox.Show(duplicateMessage, "AutoJoin - Warning", MessageBoxButton.OK, MessageBoxImage.Warning);
                 return;
             }
 
             var confirm = MessageBox.Show(
-                "Xóa tất cả Join Geometry trong phạm vi hiện tại?",
-                "Xác nhận Unjoin",
+                "Remove all geometry joins in the current scope?",
+                "Confirm Unjoin",
                 MessageBoxButton.YesNo,
                 MessageBoxImage.Question);
             if (confirm != MessageBoxResult.Yes) return;
@@ -205,7 +205,7 @@ namespace Antigravity.Autojoin.UI
             _handler.Rules  = new List<JoinRule>(_rules);
             _handler.Scope  = RbSelection.IsChecked == true ? JoinScope.Selection : JoinScope.ActiveView;
             SetBusy(true);
-            SetStatus("Đang thực hiện Unjoin Geometry…");
+            SetStatus("Unjoining geometry…");
             ClearResults();
             _exEvent.Raise();
         }
@@ -218,8 +218,8 @@ namespace Antigravity.Autojoin.UI
 
                 if (error != null)
                 {
-                    SetStatus($"❌  Lỗi: {error.Message}", isSuccess: false);
-                    MessageBox.Show(error.ToString(), "AutoJoin - Lỗi", MessageBoxButton.OK, MessageBoxImage.Error);
+                    SetStatus($"❌  Error: {error.Message}", isSuccess: false);
+                    MessageBox.Show(error.ToString(), "AutoJoin - Error", MessageBoxButton.OK, MessageBoxImage.Error);
                     return;
                 }
 
@@ -281,7 +281,7 @@ namespace Antigravity.Autojoin.UI
 
                 if (seen.Add(pair)) continue;
 
-                message = $"Rule #{rule.Order}: cặp {JoinRule.FriendlyName(rule.CategoryA)} - {JoinRule.FriendlyName(rule.CategoryB)} đã tồn tại.";
+                message = $"Rule #{rule.Order}: the pair {JoinRule.FriendlyName(rule.CategoryA)} - {JoinRule.FriendlyName(rule.CategoryB)} already exists.";
                 return true;
             }
 
@@ -291,8 +291,8 @@ namespace Antigravity.Autojoin.UI
         private static void ShowErrors(List<string> errors)
         {
             var msg = string.Join("\n", errors.GetRange(0, Math.Min(errors.Count, 10)));
-            if (errors.Count > 10) msg += $"\n…và {errors.Count - 10} lỗi khác.";
-            MessageBox.Show(msg, "AutoJoin - Chi tiết lỗi", MessageBoxButton.OK, MessageBoxImage.Warning);
+            if (errors.Count > 10) msg += $"\n…and {errors.Count - 10} more errors.";
+            MessageBox.Show(msg, "AutoJoin - Error Details", MessageBoxButton.OK, MessageBoxImage.Warning);
         }
     }
 
