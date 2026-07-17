@@ -1,0 +1,9 @@
+{
+  "SectionMappings": {
+    "M_Concrete-Rectangular-Column::300 x 450mm": "C30X45",
+    "M_Concrete-Rectangular-Beam::300 x 600mm": "B30X60"
+  },
+  "MaterialMappings": {
+    "Concrete, Cast-in-Place gray": "4000Psi"
+  }
+}

@@ -1,0 +1,108 @@
+{
+  "meta": {
+    "schema_version": "1.1.0",
+    "awf_version": "3.3.0"
+  },
+  "project": {
+    "name": "Antigravity Monorepo",
+    "type": "Revit Add-ins (C# / WPF)",
+    "status": "Active & In Development (AutoDim, ZoneSplit, DoorClearance, AutoJoin, TagArranger, CheckFloorElevation)"
+  },
+  "tech_stack": {
+    "language": "C#",
+    "framework": ".NET Framework 4.8",
+    "revit_version": "Revit 2024+ (Standardized to 64-bit ElementId.Value)",
+    "ui_framework": "WPF (XAML)"
+  },
+  "database_schema": {
+    "summary": "Revit Document Elements - Chứa dữ liệu về Tường (Wall), Cột kết cấu (FamilyInstance/Structural Columns), Grids, Lỗ mở (Doors/Windows), Đường kích thước (Dimension), và mô hình Generic Model giao cắt (Zone).",
+    "key_elements": [
+      "Wall (Straight, Architectural)",
+      "FamilyInstance (Doors, Windows, Columns/Piers)",
+      "Grid (Intersections)",
+      "Dimension & DimensionSegment (Multi-segment)",
+      "Generic Model (Zones for volume splitting)"
+    ]
+  },
+  "api_endpoints": [],
+  "business_rules": [
+    "Tolerance loại bỏ trùng mặt phẳng (coplanar): 3mm (0.01 feet)",
+    "Ngưỡng xác định phân đoạn hẹp cần tự động nhảy chữ: <260mm (0.85 feet)",
+    "Khoảng cách dịch chuyển chữ hẹp ra ngoài: 1.3 feet (~400mm) dọc theo chiều dài tường",
+    "Tự động đảo chiều (so le) cho các phân đoạn hẹp liền kề liên tiếp để chống đè nét nhau",
+    "Dùng Mark của Generic Model làm ZoneId.",
+    "Bảo toàn hình học mô hình (không cắt vật lý). Mọi kết quả giao cắt được ghi vào Parameter.",
+    "Parameter khối lượng có tên là `Volume_BIM_[ZoneId]`, dạng Number (do Revit ép hiện 6 số 0).",
+    "Khối lượng được quy đổi ra m3 và làm tròn 3 chữ số (Math.Round).",
+    "Mỗi khi chạy Addin, toàn bộ parameter khối lượng cũ (`Volume_BIM_`, `Vol_`, `BIM_`) đều được reset tự động để xóa dữ liệu rác."
+  ],
+  "features": [
+    {
+      "name": "Auto Dim Walls (Plan Mode)",
+      "description": "Tự động vẽ chuỗi Dim liên hoàn dọc theo chiều dài tường, đo bổ trụ, lỗ mở (jambs/center) và lưới trục."
+    },
+    {
+      "name": "Auto Text Shift & Leader Auto-fit",
+      "description": "Tự động nhảy chữ và vẽ leader line thông minh cho các phân đoạn hẹp dưới 260mm, chống chồng lấn chữ số."
+    },
+    {
+      "name": "Exact Opening Scanner",
+      "description": "Trích xuất mặt phẳng cắt Solid thực tế của cửa để lấy kích thước mở thực tế thay vì kích thước phủ bì khuôn."
+    },
+    {
+      "name": "Host Structural Pier Scanner",
+      "description": "Tự động quét các cột kết cấu/bổ trụ nằm trong tài liệu chính và đo kích thước mép của chúng dọc theo tường."
+    },
+    {
+      "name": "Crash-proof View Filter",
+      "description": "Ngăn chặn và cảnh báo thân thiện khi người dùng cố tình chạy chế độ Mặt bằng trên View Mặt cắt, tránh lỗi Fatal Crash của Revit."
+    },
+    {
+      "name": "ZoneSplit (Hybrid Mode / Parameter Tracking)",
+      "description": "Quét các cấu kiện, tìm giao cắt với Zone (Generic Model), ghi giá trị khối lượng giao cắt vào Parameter động của từng Zone."
+    },
+    {
+      "name": "DoorClearanceBox (Auto Door Clearance)",
+      "description": "Tạo các clearance volumes Wx2WxH cho Doors, Windows, Curtain Panels, Curtain Walls. Hỗ trợ lọc chi tiết theo Category và Family Type."
+    },
+    {
+      "name": "AutoJoin (Realtime Pair-based Join)",
+      "description": "Tự động join kết cấu thời gian thực (Pair-based DMU) giúp hạn chế xung đột mô hình."
+    },
+    {
+      "name": "EUBIM Auto-Test Pipeline",
+      "description": "Kiến trúc tự động hóa kiểm thử không giao diện (headless test). Cho phép PowerShell gọi Add-in Revit ẩn, thực thi lệnh tự động thông qua file kích hoạt (trigger) và hệ thống bắt sự kiện Idling, sau đó ghi log kết quả và đóng Revit hoàn toàn độc lập."
+    },
+    {
+      "name": "CheckFloorElevation",
+      "description": "Add-in kiểm tra chênh lệch cao độ mặt trên (ZTop) giữa sàn kiến trúc (Host) và sàn kết cấu (Link) sử dụng ReferenceIntersector và UI Modeless."
+    }
+  ],
+  "knowledge_items": {
+    "architecture_graph": {
+      "has_graph": true,
+      "path": ".awf-pipeline/architecture_map.json",
+      "description": "Bản đồ liên kết các file và class, AI hãy luôn đọc file này trước khi phân tích lỗi hoặc lên kế hoạch /plan"
+    },
+    "patterns": [
+      "Regenerate Pattern: Phải gọi _doc.Regenerate() ngay sau khi NewDimension để Revit sinh hình học phân đoạn trước khi gán TextPosition.",
+      "Alternating Shift Pattern: Đảo chiều dịch chuyển (directionSign = -directionSign) cho các phân đoạn hẹp liền kề nhau để xếp so le.",
+      "Tạo Shared Parameter động vào file txt",
+      "Dùng BooleanOperationsUtils tính Solid giao cắt",
+      "Sử dụng FilteredElementCollector với .OfType<T>() thay vì .Cast<T>() để lọc ElementType an toàn",
+      "Headless Revit Trigger: Viết file .txt ra %temp%, dùng ViewActivated -> Idling event trong Revit để đọc nội dung file, mapping thành Command, và PostCommand(PostableCommand.ExitRevit) để đóng.",
+      "ExternalEvent Queue: Để sử dụng Revit API một cách an toàn từ UI Modeless (hoặc thread khác), sử dụng IExternalEventHandler kết hợp với Queue<Action> để tránh bị ghi đè action khi người dùng click nhanh."
+    ],
+    "gotchas": [
+      "Revit sẽ bị Fatal Crash văng app nếu cố tình NewDimension với một Line không nằm trên hoặc song song với mặt cắt của View hiện hành.",
+      "Revit bắt buộc hiển thị 6 chữ số thập phân cho parameter dạng Number. Dù có đổi thành SpecTypeId.Volume thì Parameter bị cache trong file .txt vẫn kẹt ở định dạng Number. Vì user muốn giữ số liệu m3 chính xác (và chấp nhận 6 số 0 hiển thị trên bảng Properties), hiện tại dùng Math.Round(..., 3) kết hợp SpecTypeId.Number.",
+      "OST_Walls không chỉ chứa WallType mà còn chứa FamilySymbol (In-Place Walls), do đó luôn phải dùng OfType<WallType> khi Get ElementType.",
+      "Kể từ Revit 2024+, ElementId.IntegerValue (int) chính thức lỗi thời và được thay thế hoàn toàn bằng ElementId.Value (long). Monorepo cần được nâng cấp đồng bộ lên Revit 2024 SDK để biên dịch thành công.",
+      "Idling Hook Constraint: Không được phép subscribe vào uiapp.Idling bên trong sự kiện OnStartup (sẽ gây crash hoặc InvalidOperationException). Phải mồi thông qua sự kiện ViewActivated.",
+      "Revit Automation File Lock: Khi gọi Start-Process Revit.exe mở 1 file .rte/.rvt nhiều lần, nếu có tiến trình lỗi ngầm, Revit sẽ ném bảng hội thoại 'File in use' chặn ngang. Cần copy file ra /temp và gọi bản sao để tránh bị khóa."
+    ],
+    "conventions": [
+      "Mọi parameter khối lượng phải bắt đầu bằng Volume_BIM_"
+    ]
+  }
+}

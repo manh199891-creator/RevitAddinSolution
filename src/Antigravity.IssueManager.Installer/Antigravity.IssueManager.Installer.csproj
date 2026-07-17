@@ -1,0 +1,32 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net48</TargetFramework>
+    <PlatformTarget>x64</PlatformTarget>
+    <GenerateAssemblyInfo>false</GenerateAssemblyInfo>
+    <AppendTargetFrameworkToOutputPath>false</AppendTargetFrameworkToOutputPath>
+    <OutputPath>bin\Release\</OutputPath>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <Reference Include="System" />
+    <Reference Include="System.Core" />
+    <Reference Include="System.IO.Compression" />
+    <Reference Include="System.IO.Compression.FileSystem" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <EmbeddedResource Include="..\Antigravity.IssueManager\bin\Debug\Antigravity.IssueManager.dll">
+      <Link>Resources\Antigravity.IssueManager.dll</Link>
+    </EmbeddedResource>
+    <EmbeddedResource Include="..\Antigravity.IssueManager\bin\Debug\Antigravity.Core.dll">
+      <Link>Resources\Antigravity.Core.dll</Link>
+    </EmbeddedResource>
+    <EmbeddedResource Include="..\Antigravity.IssueManager\bin\Debug\Serilog.dll">
+      <Link>Resources\Serilog.dll</Link>
+    </EmbeddedResource>
+    <EmbeddedResource Include="..\Antigravity.IssueManager\bin\Debug\Serilog.Sinks.File.dll">
+      <Link>Resources\Serilog.Sinks.File.dll</Link>
+    </EmbeddedResource>
+  </ItemGroup>
+</Project>

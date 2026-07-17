@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Markup>
+	<Topic Guid="a7133e0b-19a8-41ed-a52f-538a911b80a5" TopicType="Issue" TopicStatus="Active">
+		<Title>501-109 Chiều cao cửa chưa khớp va sàn kết cấu tầng trên</Title>
+		<Priority>Normal</Priority>
+		<Index>3</Index>
+		<CreationDate>2026-05-19T09:23:58+00:00</CreationDate>
+		<CreationAuthor>manhns@vilaiviet.com.vn</CreationAuthor>
+		<ModifiedDate>2026-05-19T09:26:16+00:00</ModifiedDate>
+		<ModifiedAuthor>manhns@vilaiviet.com.vn</ModifiedAuthor>
+		<AssignedTo>manhns@vilaiviet.com.vn</AssignedTo>
+	</Topic>
+	<Comment Guid="66cbab47-3c19-4eab-b62c-43e43482b4ea">
+		<Date>2026-05-19T09:23:58+00:00</Date>
+		<Author>manhns@vilaiviet.com.vn</Author>
+		<Comment></Comment>
+		<Topic Guid="a7133e0b-19a8-41ed-a52f-538a911b80a5" />
+		<Viewpoint Guid="374f8eed-cdea-423c-a088-d896aefe4801" />
+		<ModifiedDate>2026-05-19T09:23:58+00:00</ModifiedDate>
+		<ModifiedAuthor>manhns@vilaiviet.com.vn</ModifiedAuthor>
+	</Comment>
+	<Viewpoints Guid="374f8eed-cdea-423c-a088-d896aefe4801">
+		<Viewpoint>viewpoint.bcfv</Viewpoint>
+		<Snapshot>snapshot.png</Snapshot>
+	</Viewpoints>
+</Markup>

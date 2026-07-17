@@ -1,0 +1,263 @@
+<Window x:Class="Antigravity.IssueManager.UI.CreateIssueDialog"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:controls="clr-namespace:Antigravity.Core.UI.Controls;assembly=Antigravity.Core"
+        Title="Create New Issue"
+        Width="860"
+        Height="560"
+        MinWidth="720"
+        MinHeight="480"
+        WindowStartupLocation="CenterOwner"
+        ResizeMode="CanResize"
+        Background="#FFFFFF"
+        FontFamily="Segoe UI" UseLayoutRounding="True" SnapsToDevicePixels="True">
+        <Window.Resources>
+        <ResourceDictionary>
+            <ResourceDictionary.MergedDictionaries>
+                <ResourceDictionary Source="pack://application:,,,/Antigravity.Core;component/UI/Themes/DesignTokens.xaml"/>
+                <ResourceDictionary Source="pack://application:,,,/Antigravity.Core;component/UI/Themes/Typography.xaml"/>
+                <ResourceDictionary Source="pack://application:,,,/Antigravity.Core;component/UI/Themes/Controls.xaml"/>
+                <ResourceDictionary Source="pack://application:,,,/Antigravity.Core;component/UI/Themes/DataControls.xaml"/>
+            </ResourceDictionary.MergedDictionaries>
+        <Style x:Key="LabelStyle" TargetType="TextBlock">
+            <Setter Property="Foreground" Value="#4B5563"/>
+            <Setter Property="FontWeight" Value="SemiBold"/>
+            <Setter Property="Margin" Value="0,0,0,6"/>
+            <Setter Property="FontSize" Value="12"/>
+        </Style>
+        <Style x:Key="ModernTextBox" TargetType="TextBox">
+            <Setter Property="Height" Value="28"/>
+            <Setter Property="Background" Value="#FFFFFF"/>
+            <Setter Property="Foreground" Value="#000000"/>
+            <Setter Property="BorderBrush" Value="#D1D5DB"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="Padding" Value="6,2"/>
+            <Setter Property="VerticalContentAlignment" Value="Center"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="TextBox">
+                        <Border Name="Border" CornerRadius="4" Background="{TemplateBinding Background}" BorderBrush="{TemplateBinding BorderBrush}" BorderThickness="{TemplateBinding BorderThickness}">
+                            <ScrollViewer x:Name="PART_ContentHost"/>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsFocused" Value="True">
+                                <Setter TargetName="Border" Property="BorderBrush" Value="#007ACC"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+        <Style x:Key="PrimaryBtn" TargetType="Button">
+            <Setter Property="Height" Value="32"/>
+            <Setter Property="Background" Value="#007ACC"/>
+            <Setter Property="Foreground" Value="White"/>
+            <Setter Property="FontFamily" Value="Segoe UI"/>
+            <Setter Property="FontSize" Value="12"/>
+            <Setter Property="FontWeight" Value="SemiBold"/>
+            <Setter Property="BorderThickness" Value="0"/>
+            <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border CornerRadius="4" Background="{TemplateBinding Background}" Padding="12,0">
+                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                        </Border>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+        <Style x:Key="SecondaryBtn" TargetType="Button">
+            <Setter Property="Height" Value="32"/>
+            <Setter Property="Background" Value="#E5E7EB"/>
+            <Setter Property="Foreground" Value="#000000"/>
+            <Setter Property="FontFamily" Value="Segoe UI"/>
+            <Setter Property="FontSize" Value="12"/>
+            <Setter Property="FontWeight" Value="SemiBold"/>
+            <Setter Property="BorderThickness" Value="0"/>
+            <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border CornerRadius="4" Background="{TemplateBinding Background}" Padding="12,0">
+                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                        </Border>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+        <Style x:Key="DestructiveBtn" TargetType="Button">
+            <Setter Property="Height" Value="32"/>
+            <Setter Property="Background" Value="#D8262C"/>
+            <Setter Property="Foreground" Value="White"/>
+            <Setter Property="FontFamily" Value="Segoe UI"/>
+            <Setter Property="FontSize" Value="12"/>
+            <Setter Property="FontWeight" Value="SemiBold"/>
+            <Setter Property="BorderThickness" Value="0"/>
+            <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border CornerRadius="4" Background="{TemplateBinding Background}" Padding="12,0">
+                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                        </Border>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+        <Style x:Key="BorderFocusStyle" TargetType="Border">
+            <Setter Property="BorderBrush" Value="#2F333A"/>
+            <Style.Triggers>
+                <Trigger Property="IsFocused" Value="True">
+                    <Setter Property="BorderBrush" Value="#007ACC"/>
+                </Trigger>
+            </Style.Triggers>
+        </Style>
+    </ResourceDictionary>
+    </Window.Resources>
+    
+    <Grid Margin="16">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/> <!-- Header -->
+            <RowDefinition Height="16"/>   <!-- Separator -->
+            <RowDefinition Height="Auto"/> <!-- Input Title -->
+            <RowDefinition Height="16"/>   <!-- Separator -->
+            <RowDefinition Height="Auto"/> <!-- Input Level -->
+            <RowDefinition Height="16"/>   <!-- Separator -->
+            <RowDefinition Height="Auto"/> <!-- Input Desc -->
+            <RowDefinition Height="16"/>   <!-- Separator -->
+            <RowDefinition Height="*"/>    <!-- Images Row (Side-by-side) -->
+            <RowDefinition Height="16"/>   <!-- Separator -->
+            <RowDefinition Height="Auto"/> <!-- Action Buttons -->
+        </Grid.RowDefinitions>
+
+        <!-- Brand Header -->
+        <Border Grid.Row="0" Background="#FFFFFF" BorderBrush="#D1D5DB" BorderThickness="0,0,0,1" Margin="-16,-16,-16,0" Padding="16,12">
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="Auto"/> <!-- Cột chứa Logo -->
+                    <ColumnDefinition Width="*"/>    <!-- Cột chứa Text -->
+                </Grid.ColumnDefinitions>
+                
+                <Viewbox Grid.Column="0" Width="28" Height="28" Margin="0,0,12,0" VerticalAlignment="Center">
+                    <Canvas Width="100" Height="80">
+                        <Path Fill="#1B3679" Data="M 30,10 L 70,10 L 50,45 Z"/>
+                        <Path Fill="#D8262C" Data="M 10,10 L 32,10 L 50,55 L 68,10 L 90,10 L 50,80 Z"/>
+                    </Canvas>
+                </Viewbox>
+                
+                <StackPanel Grid.Column="1" VerticalAlignment="Center">
+                    <TextBlock FontSize="14" FontWeight="Bold">
+                        <Run Text="VILA" Foreground="#1B3679"/>
+                        <Run Text="I">
+                            <Run.Foreground>
+                                <LinearGradientBrush StartPoint="0,0" EndPoint="1,0">
+                                    <GradientStop Color="#1B3679" Offset="0.7"/>
+                                    <GradientStop Color="#D8262C" Offset="0.7"/>
+                                </LinearGradientBrush>
+                            </Run.Foreground>
+                        </Run>
+                        <Run Text="VIET" Foreground="#D8262C"/>
+                        <Run Text=" · Issue Manager" Foreground="#000000" FontWeight="SemiBold"/>
+                    </TextBlock>
+                    <TextBlock Text="Create new BCF issue" FontSize="11" Foreground="#6B7280" Margin="0,2,0,0"/>
+                </StackPanel>
+            </Grid>
+        </Border>
+
+        <!-- Input Title -->
+        <StackPanel Grid.Row="2">
+            <TextBlock Text="Title *" Style="{StaticResource LabelStyle}"/>
+            <TextBox x:Name="TxtIssueTitle" Style="{StaticResource ModernTextBox}"/>
+        </StackPanel>
+
+        <!-- Input Level and Assigned To -->
+        <Grid Grid.Row="4">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*"/>
+                <ColumnDefinition Width="16"/>
+                <ColumnDefinition Width="*"/>
+            </Grid.ColumnDefinitions>
+            <StackPanel Grid.Column="0">
+                <TextBlock Text="Level" Style="{StaticResource LabelStyle}"/>
+                <TextBox x:Name="TxtIssueLevel" Style="{StaticResource ModernTextBox}"/>
+            </StackPanel>
+            <StackPanel Grid.Column="2">
+                <TextBlock Text="Assigned To" Style="{StaticResource LabelStyle}"/>
+                <TextBox x:Name="TxtIssueAssignedTo" Style="{StaticResource ModernTextBox}"/>
+            </StackPanel>
+        </Grid>
+
+        <!-- Input Description -->
+        <StackPanel Grid.Row="6">
+            <TextBlock Text="Description" Style="{StaticResource LabelStyle}"/>
+            <!-- Note: Height is increased for multiline -->
+            <TextBox x:Name="TxtIssueDesc" Height="80" AcceptsReturn="True" TextWrapping="Wrap" VerticalScrollBarVisibility="Auto" Style="{StaticResource ModernTextBox}" Padding="6"/>
+        </StackPanel>
+
+        <!-- Images Row (Side-by-side) -->
+        <Grid Grid.Row="8">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*"/>
+                <ColumnDefinition Width="16"/>
+                <ColumnDefinition Width="*"/>
+            </Grid.ColumnDefinitions>
+
+            <!-- Column 0: 3D Image (Left) -->
+            <Border Grid.Column="0" BorderBrush="#D1D5DB" BorderThickness="1" CornerRadius="4" Background="#F5F6F8" Padding="8">
+                <Grid>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="*"/>
+                        <RowDefinition Height="Auto"/>
+                    </Grid.RowDefinitions>
+                    <TextBlock Grid.Row="0" Text="Hình ảnh 3D (Revit Snapshot)" Foreground="#000000" FontWeight="SemiBold" FontSize="12" Margin="0,0,0,6"/>
+                    <Grid Grid.Row="1" Background="#FFFFFF">
+                        <Image x:Name="ImgPreview3D" Stretch="Uniform" VerticalAlignment="Center" HorizontalAlignment="Center"/>
+                        <TextBlock x:Name="TxtHint3D" Text="(Chụp tự động từ Revit khi bấm Create Issue)" Foreground="#4B5563" FontStyle="Italic" TextAlignment="Center" VerticalAlignment="Center" TextWrapping="Wrap" Margin="10"/>
+                    </Grid>
+                    <WrapPanel Grid.Row="2" Orientation="Horizontal" HorizontalAlignment="Center" Margin="0,6,0,0">
+                        <Button x:Name="BtnMarkup3D" Content="✏️ Markup 3D" Click="BtnMarkup3D_Click" Style="{StaticResource PrimaryBtn}" Margin="0"/>
+                    </WrapPanel>
+                </Grid>
+            </Border>
+
+            <!-- Column 2: 2D Image (Right) -->
+            <Grid Grid.Column="2">
+                <Border x:Name="BorderImage2D" Style="{StaticResource BorderFocusStyle}" BorderThickness="1" CornerRadius="4" Background="#F5F6F8" Padding="8" Focusable="True" MouseLeftButtonDown="BorderImage2D_MouseLeftButtonDown">
+                    <Grid>
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto"/>
+                            <RowDefinition Height="*"/>
+                            <RowDefinition Height="Auto"/>
+                        </Grid.RowDefinitions>
+                        <TextBlock Grid.Row="0" Text="Hình ảnh 2D / Chú thích" Foreground="#000000" FontWeight="SemiBold" FontSize="12" Margin="0,0,0,6"/>
+                        
+                        <Grid x:Name="GridImage2DAnnotate" Grid.Row="1" Margin="0,0,0,6" ClipToBounds="True" Background="#FFFFFF">
+                            <Image x:Name="ImgPreview2D" Stretch="Uniform" VerticalAlignment="Center" HorizontalAlignment="Center"/>
+                            <TextBlock x:Name="TxtHint2D" Text="Ctrl+V để dán ảnh, hoặc bấm 📁 để chọn file. Bấm ✏️ Markup để chỉnh sửa." Foreground="#4B5563" FontStyle="Italic" TextAlignment="Center" VerticalAlignment="Center" TextWrapping="Wrap" Margin="10"/>
+                        </Grid>
+
+                        <WrapPanel Grid.Row="2" Orientation="Horizontal" HorizontalAlignment="Center">
+                            <Button x:Name="BtnPickImage2D" Content="📁 Chọn ảnh..." Click="BtnPickImage2D_Click" Style="{StaticResource SecondaryBtn}" Margin="0,0,8,0"/>
+                            <Button x:Name="BtnMarkup2D" Content="✏️ Markup" Click="BtnMarkup2D_Click" IsEnabled="False" Style="{StaticResource PrimaryBtn}" Margin="0,0,8,0"/>
+                            <Button x:Name="BtnClearImage2D" Content="✖ Xóa ảnh" Click="BtnClearImage2D_Click" Style="{StaticResource DestructiveBtn}" Visibility="Collapsed"/>
+                        </WrapPanel>
+                    </Grid>
+                </Border>
+            </Grid>
+        </Grid>
+
+        <!-- Buttons -->
+        <Grid Grid.Row="10">
+            <UniformGrid Rows="1" HorizontalAlignment="Right">
+                <Button Content="✖ Cancel" Click="BtnCancel_Click" Style="{StaticResource SecondaryBtn}" Margin="0,0,8,0"/>
+                <Button x:Name="BtnOk" Content="➕ Create Issue" Click="BtnOk_Click" Style="{StaticResource PrimaryBtn}"/>
+            </UniformGrid>
+            <TextBlock Text="@manhns" FontSize="12" FontWeight="SemiBold" Foreground="#6B7280" Opacity="1" HorizontalAlignment="Right" VerticalAlignment="Bottom" IsHitTestVisible="False" Focusable="False"/>
+        </Grid>
+    </Grid>
+</Window>
+
+
+

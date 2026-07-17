@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<RevitAddIns>
+  <AddIn Type="Application">
+    <Name>VILAI VIET</Name>
+    <Assembly>Antigravity\Antigravity.Main.dll</Assembly>
+    <FullClassName>Antigravity.Main.App</FullClassName>
+    <AddInId>88888888-9999-0000-AAAA-BBBBCCCCDDDD</AddInId>
+    <VendorId>VILAIVIET</VendorId>
+    <VendorDescription>Vilai Viet Structural Tools</VendorDescription>
+  </AddIn>
+</RevitAddIns>

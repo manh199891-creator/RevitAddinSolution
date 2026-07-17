@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Markup>
+	<Topic Guid="a2509eda-db17-476c-b511-d8edcdf90873" TopicType="Issue" TopicStatus="Active">
+		<Title>501-49-Chiều cao cửa kính cao hơn dầm kết cấu</Title>
+		<Priority>Normal</Priority>
+		<Index>1</Index>
+		<CreationDate>2026-05-19T09:04:42+00:00</CreationDate>
+		<CreationAuthor>manhns@vilaiviet.com.vn</CreationAuthor>
+		<ModifiedDate>2026-05-19T09:06:47+00:00</ModifiedDate>
+		<ModifiedAuthor>manhns@vilaiviet.com.vn</ModifiedAuthor>
+		<AssignedTo>manhns@vilaiviet.com.vn</AssignedTo>
+	</Topic>
+	<Comment Guid="69ac9b34-918d-44d7-b02c-7d627e74cd0c">
+		<Date>2026-05-19T09:04:42+00:00</Date>
+		<Author>manhns@vilaiviet.com.vn</Author>
+		<Comment></Comment>
+		<Topic Guid="a2509eda-db17-476c-b511-d8edcdf90873" />
+		<Viewpoint Guid="8e431438-b8f7-43d4-92c1-ba5c6eafe4e0" />
+		<ModifiedDate>2026-05-19T09:04:42+00:00</ModifiedDate>
+		<ModifiedAuthor>manhns@vilaiviet.com.vn</ModifiedAuthor>
+	</Comment>
+	<Viewpoints Guid="8e431438-b8f7-43d4-92c1-ba5c6eafe4e0">
+		<Viewpoint>viewpoint.bcfv</Viewpoint>
+		<Snapshot>snapshot.png</Snapshot>
+	</Viewpoints>
+</Markup>

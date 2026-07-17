@@ -1,0 +1,100 @@
+<ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+    <Style x:Key="VvFocusVisualStyle" TargetType="Control">
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate>
+                    <Border Margin="2" BorderBrush="{DynamicResource VvFocusBrush}"
+                            BorderThickness="2" CornerRadius="3"/>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+
+    <Style x:Key="VvButtonStyle" TargetType="Button">
+        <Setter Property="MinHeight" Value="32"/>
+        <Setter Property="MinWidth" Value="88"/>
+        <Setter Property="Padding" Value="12,5"/>
+        <Setter Property="FontFamily" Value="Segoe UI"/>
+        <Setter Property="FontSize" Value="12"/>
+        <Setter Property="FontWeight" Value="SemiBold"/>
+        <Setter Property="Cursor" Value="Hand"/>
+        <Setter Property="FocusVisualStyle" Value="{StaticResource VvFocusVisualStyle}"/>
+        <Setter Property="BorderThickness" Value="1"/>
+        <Setter Property="VerticalContentAlignment" Value="Center"/>
+        <Setter Property="HorizontalContentAlignment" Value="Center"/>
+        <Style.Triggers>
+            <Trigger Property="IsEnabled" Value="False">
+                <Setter Property="Background" Value="{DynamicResource VvDisabledSurfaceBrush}"/>
+                <Setter Property="Foreground" Value="{DynamicResource VvDisabledTextBrush}"/>
+                <Setter Property="Cursor" Value="Arrow"/>
+            </Trigger>
+        </Style.Triggers>
+    </Style>
+
+    <Style x:Key="VvPrimaryButtonStyle" TargetType="Button" BasedOn="{StaticResource VvButtonStyle}">
+        <Setter Property="Background" Value="{DynamicResource VvAccentBrush}"/>
+        <Setter Property="Foreground" Value="{DynamicResource VvTextOnAccentBrush}"/>
+        <Setter Property="BorderBrush" Value="{DynamicResource VvAccentBrush}"/>
+    </Style>
+
+    <Style x:Key="VvSecondaryButtonStyle" TargetType="Button" BasedOn="{StaticResource VvButtonStyle}">
+        <Setter Property="Background" Value="{DynamicResource VvSurfaceSubtleBrush}"/>
+        <Setter Property="Foreground" Value="{DynamicResource VvTextPrimaryBrush}"/>
+        <Setter Property="BorderBrush" Value="{DynamicResource VvBorderBrush}"/>
+    </Style>
+
+    <Style x:Key="VvDangerButtonStyle" TargetType="Button" BasedOn="{StaticResource VvButtonStyle}">
+        <Setter Property="Background" Value="{DynamicResource VvDangerBrush}"/>
+        <Setter Property="Foreground" Value="{DynamicResource VvTextOnAccentBrush}"/>
+        <Setter Property="BorderBrush" Value="{DynamicResource VvDangerBrush}"/>
+    </Style>
+
+    <Style x:Key="VvIconButtonStyle" TargetType="Button" BasedOn="{StaticResource VvSecondaryButtonStyle}">
+        <Setter Property="MinWidth" Value="32"/>
+        <Setter Property="Width" Value="32"/>
+        <Setter Property="Height" Value="32"/>
+        <Setter Property="Padding" Value="4"/>
+    </Style>
+
+    <Style x:Key="VvTextBoxStyle" TargetType="TextBox">
+        <Setter Property="MinHeight" Value="30"/>
+        <Setter Property="Padding" Value="8,4"/>
+        <Setter Property="FontFamily" Value="Segoe UI"/>
+        <Setter Property="FontSize" Value="12"/>
+        <Setter Property="Foreground" Value="{DynamicResource VvTextPrimaryBrush}"/>
+        <Setter Property="Background" Value="{DynamicResource VvSurfaceBrush}"/>
+        <Setter Property="BorderBrush" Value="{DynamicResource VvBorderBrush}"/>
+        <Setter Property="VerticalContentAlignment" Value="Center"/>
+        <Setter Property="FocusVisualStyle" Value="{StaticResource VvFocusVisualStyle}"/>
+    </Style>
+
+    <Style x:Key="VvComboBoxStyle" TargetType="ComboBox">
+        <Setter Property="MinHeight" Value="30"/>
+        <Setter Property="Padding" Value="8,3"/>
+        <Setter Property="FontFamily" Value="Segoe UI"/>
+        <Setter Property="FontSize" Value="12"/>
+        <Setter Property="Foreground" Value="{DynamicResource VvTextPrimaryBrush}"/>
+        <Setter Property="Background" Value="{DynamicResource VvSurfaceBrush}"/>
+        <Setter Property="BorderBrush" Value="{DynamicResource VvBorderBrush}"/>
+        <Setter Property="FocusVisualStyle" Value="{StaticResource VvFocusVisualStyle}"/>
+    </Style>
+
+    <Style x:Key="VvCheckBoxStyle" TargetType="CheckBox">
+        <Setter Property="MinHeight" Value="24"/>
+        <Setter Property="FontFamily" Value="Segoe UI"/>
+        <Setter Property="FontSize" Value="12"/>
+        <Setter Property="Foreground" Value="{DynamicResource VvTextPrimaryBrush}"/>
+        <Setter Property="VerticalContentAlignment" Value="Center"/>
+        <Setter Property="FocusVisualStyle" Value="{StaticResource VvFocusVisualStyle}"/>
+    </Style>
+
+    <Style x:Key="VvRadioButtonStyle" TargetType="RadioButton">
+        <Setter Property="MinHeight" Value="24"/>
+        <Setter Property="FontFamily" Value="Segoe UI"/>
+        <Setter Property="FontSize" Value="12"/>
+        <Setter Property="Foreground" Value="{DynamicResource VvTextPrimaryBrush}"/>
+        <Setter Property="VerticalContentAlignment" Value="Center"/>
+        <Setter Property="FocusVisualStyle" Value="{StaticResource VvFocusVisualStyle}"/>
+    </Style>
+</ResourceDictionary>

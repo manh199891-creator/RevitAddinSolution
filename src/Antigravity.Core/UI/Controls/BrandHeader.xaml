@@ -1,0 +1,40 @@
+<UserControl x:Class="Antigravity.Core.UI.Controls.BrandHeader"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             x:Name="Root"
+             FontFamily="Segoe UI"
+             Focusable="False"
+             IsTabStop="False">
+    <Border Background="#FFFFFF"
+            BorderBrush="#D1D5DB"
+            BorderThickness="0,0,0,1"
+            Padding="16,12">
+        <Grid>
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="Auto"/>
+                <ColumnDefinition Width="*"/>
+            </Grid.ColumnDefinitions>
+
+            <Viewbox Grid.Column="0" Width="28" Height="28"
+                     Margin="0,0,12,0" VerticalAlignment="Center"
+                     IsHitTestVisible="False">
+                <Canvas Width="100" Height="80">
+                    <Path Fill="#1B3679" Data="M 30,10 L 70,10 L 50,45 Z"/>
+                    <Path Fill="#D8262C" Data="M 10,10 L 32,10 L 50,55 L 68,10 L 90,10 L 50,80 Z"/>
+                </Canvas>
+            </Viewbox>
+
+            <StackPanel Grid.Column="1" VerticalAlignment="Center">
+                <TextBlock TextWrapping="Wrap" Foreground="#111827">
+                    <Run Text="VILAI " Foreground="#1B3679" FontWeight="Bold" FontSize="16"/>
+                    <Run Text="VIET" Foreground="#D8262C" FontWeight="Bold" FontSize="16"/>
+                    <Run Text=" · " FontWeight="SemiBold" FontSize="16"/>
+                    <Run Text="{Binding TitleText, ElementName=Root}" FontWeight="SemiBold" FontSize="16"/>
+                </TextBlock>
+                <TextBlock Text="{Binding SubtitleText, ElementName=Root}"
+                           FontSize="11" Foreground="#4B5563"
+                           TextWrapping="Wrap" Margin="0,2,0,0"/>
+            </StackPanel>
+        </Grid>
+    </Border>
+</UserControl>

@@ -1,0 +1,19 @@
+[14:06] START TagArranger_SmartStack_MVP
+[14:06] DONE task: Phase 1 WPF UI Updates
+[14:06] DONE task: Phase 2 Services & Event Handler Extensions
+[14:06] DONE task: Phase 3 Core Implementation of SmartStackService
+[14:07] DONE task: Phase 4 Compilation & Verification
+[14:27] END phase-01-foundation ?
+[14:27] DONE task: Add Pen UI, Transparent Window, and Resize Logic
+[15:28] START phase-02-3D-Projection
+[15:29] END phase-02 and phase-03 ?
+[15:29] DONE task: 3D Projection & DirectShape Grouping
+[16:10] START WallMepClash_Enterprise
+[16:15] DONE task: Phase 1 Project Setup & Models
+[16:20] DONE task: Phase 2 Core Services & BoundingBoxHelper
+[16:30] DONE task: Phase 3 Helper Services
+[16:40] DONE task: Phase 4 WPF UI & Commands & Ribbon Registration
+[16:43] DONE task: Phase 5 Unit Testing & Solution Compilation
+[16:43] END WallMepClash_Enterprise ✅
+[16:54] DONE task: Add Level Selection filter option to UI and WallCollectorService
+[17:08] DONE task: Fix multi-select ComboBoxes text visibility in WPF UI

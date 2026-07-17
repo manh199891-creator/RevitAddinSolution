@@ -1,0 +1,69 @@
+<Project>
+  <PropertyGroup>
+    <AssemblyName>Antigravity.IssueManager</AssemblyName>
+    <IntermediateOutputPath>obj\Debug\</IntermediateOutputPath>
+    <BaseIntermediateOutputPath>obj\</BaseIntermediateOutputPath>
+    <MSBuildProjectExtensionsPath>E:\Antigravity\RevitAddinSolution\src\Antigravity.IssueManager\obj\</MSBuildProjectExtensionsPath>
+    <_TargetAssemblyProjectName>Antigravity.IssueManager</_TargetAssemblyProjectName>
+    <RootNamespace>Antigravity.IssueManager</RootNamespace>
+  </PropertyGroup>
+  <Import Project="Sdk.props" Sdk="Microsoft.NET.Sdk" />
+  <PropertyGroup>
+    <TargetFramework>net48</TargetFramework>
+    <UseWPF>true</UseWPF>
+    <PlatformTarget>x64</PlatformTarget>
+    <GenerateAssemblyInfo>false</GenerateAssemblyInfo>
+    <AppendTargetFrameworkToOutputPath>false</AppendTargetFrameworkToOutputPath>
+    <OutputPath>bin\Debug\</OutputPath>
+  </PropertyGroup>
+  <ItemGroup>
+  </ItemGroup>
+  <ItemGroup>
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\Antigravity.Core\Antigravity.Core.csproj" />
+  </ItemGroup>
+  <ItemGroup>
+    <EmbeddedResource Include="Resources\icon_logo_32.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <ReferencePath Include="E:\Antigravity\RevitAddinSolution\src\Antigravity.Core\bin\Debug\Antigravity.Core.dll" />
+    <ReferencePath Include="C:\Users\Admin\.nuget\packages\jetbrains.annotations\2022.3.1\lib\net20\JetBrains.Annotations.dll" />
+    <ReferencePath Include="C:\Program Files (x86)\Reference Assemblies\Microsoft\Framework\.NETFramework\v4.8\Microsoft.CSharp.dll" />
+    <ReferencePath Include="C:\Program Files (x86)\Reference Assemblies\Microsoft\Framework\.NETFramework\v4.8\mscorlib.dll" />
+    <ReferencePath Include="C:\Users\Admin\.nuget\packages\nice3point.revit.extensions\2024.0.0\lib\net48\Nice3point.Revit.Extensions.dll" />
+    <ReferencePath Include="C:\Program Files (x86)\Reference Assemblies\Microsoft\Framework\.NETFramework\v4.8\PresentationCore.dll" />
+    <ReferencePath Include="C:\Program Files (x86)\Reference Assemblies\Microsoft\Framework\.NETFramework\v4.8\PresentationFramework.dll" />
+    <ReferencePath Include="C:\Program Files\Autodesk\Revit 2024\RevitAPI.dll" />
+    <ReferencePath Include="C:\Program Files\Autodesk\Revit 2024\RevitAPIIFC.dll" />
+    <ReferencePath Include="C:\Program Files\Autodesk\Revit 2024\RevitAPIUI.dll" />
+    <ReferencePath Include="C:\Users\Admin\.nuget\packages\serilog\2.12.0\lib\net47\Serilog.dll" />
+    <ReferencePath Include="C:\Users\Admin\.nuget\packages\serilog.sinks.file\5.0.0\lib\net45\Serilog.Sinks.File.dll" />
+    <ReferencePath Include="C:\Program Files (x86)\Reference Assemblies\Microsoft\Framework\.NETFramework\v4.8\System.Core.dll" />
+    <ReferencePath Include="C:\Program Files (x86)\Reference Assemblies\Microsoft\Framework\.NETFramework\v4.8\System.Data.dll" />
+    <ReferencePath Include="C:\Program Files (x86)\Reference Assemblies\Microsoft\Framework\.NETFramework\v4.8\System.dll" />
+    <ReferencePath Include="C:\Program Files (x86)\Reference Assemblies\Microsoft\Framework\.NETFramework\v4.8\System.Drawing.dll" />
+    <ReferencePath Include="C:\Program Files (x86)\Reference Assemblies\Microsoft\Framework\.NETFramework\v4.8\System.IO.Compression.dll" />
+    <ReferencePath Include="C:\Program Files (x86)\Reference Assemblies\Microsoft\Framework\.NETFramework\v4.8\System.IO.Compression.FileSystem.dll" />
+    <ReferencePath Include="C:\Program Files (x86)\Reference Assemblies\Microsoft\Framework\.NETFramework\v4.8\System.Numerics.dll" />
+    <ReferencePath Include="C:\Program Files (x86)\Reference Assemblies\Microsoft\Framework\.NETFramework\v4.8\System.Runtime.Serialization.dll" />
+    <ReferencePath Include="C:\Program Files (x86)\Reference Assemblies\Microsoft\Framework\.NETFramework\v4.8\System.Windows.Controls.Ribbon.dll" />
+    <ReferencePath Include="C:\Program Files (x86)\Reference Assemblies\Microsoft\Framework\.NETFramework\v4.8\System.Xaml.dll" />
+    <ReferencePath Include="C:\Program Files (x86)\Reference Assemblies\Microsoft\Framework\.NETFramework\v4.8\System.Xml.dll" />
+    <ReferencePath Include="C:\Program Files (x86)\Reference Assemblies\Microsoft\Framework\.NETFramework\v4.8\System.Xml.Linq.dll" />
+    <ReferencePath Include="C:\Program Files (x86)\Reference Assemblies\Microsoft\Framework\.NETFramework\v4.8\UIAutomationClient.dll" />
+    <ReferencePath Include="C:\Program Files (x86)\Reference Assemblies\Microsoft\Framework\.NETFramework\v4.8\UIAutomationClientsideProviders.dll" />
+    <ReferencePath Include="C:\Program Files (x86)\Reference Assemblies\Microsoft\Framework\.NETFramework\v4.8\UIAutomationProvider.dll" />
+    <ReferencePath Include="C:\Program Files (x86)\Reference Assemblies\Microsoft\Framework\.NETFramework\v4.8\UIAutomationTypes.dll" />
+    <ReferencePath Include="C:\Program Files (x86)\Reference Assemblies\Microsoft\Framework\.NETFramework\v4.8\WindowsBase.dll" />
+  </ItemGroup>
+  <ItemGroup>
+    <Compile Include="E:\Antigravity\RevitAddinSolution\src\Antigravity.IssueManager\obj\Debug\UI\CreateIssueDialog.g.cs" />
+    <Compile Include="E:\Antigravity\RevitAddinSolution\src\Antigravity.IssueManager\obj\Debug\UI\ExportIssueSelectionDialog.g.cs" />
+    <Compile Include="E:\Antigravity\RevitAddinSolution\src\Antigravity.IssueManager\obj\Debug\UI\FolderNameDialog.g.cs" />
+    <Compile Include="E:\Antigravity\RevitAddinSolution\src\Antigravity.IssueManager\obj\Debug\UI\IssueManagerWindow.g.cs" />
+    <Compile Include="E:\Antigravity\RevitAddinSolution\src\Antigravity.IssueManager\obj\Debug\UI\MarkupEditorWindow.g.cs" />
+    <Compile Include="E:\Antigravity\RevitAddinSolution\src\Antigravity.IssueManager\obj\Debug\GeneratedInternalTypeHelper.g.cs" />
+  </ItemGroup>
+  <Import Project="Sdk.targets" Sdk="Microsoft.NET.Sdk" />
+</Project>

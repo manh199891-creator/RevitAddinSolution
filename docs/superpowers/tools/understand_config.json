@@ -1,0 +1,14 @@
+{
+  "target_directories": [
+    "src",
+    "../knowledge"
+  ],
+  "exclude": [
+    "bin",
+    "obj",
+    "*.dll",
+    "*.exe"
+  ],
+  "output_file": "architecture_map.json",
+  "project_name": "RevitAddinSolution"
+}

@@ -1,0 +1,49 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net48</TargetFramework>
+    <AssemblyName>Antigravity.ZoneSplit</AssemblyName>
+    <RootNamespace>Antigravity.ZoneSplit</RootNamespace>
+    <Nullable>disable</Nullable>
+    <LangVersion>9.0</LangVersion>
+    <PlatformTarget>x64</PlatformTarget>
+    <OutputPath>bin\$(Configuration)\</OutputPath>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <Compile Remove="tests\**" />
+    <EmbeddedResource Remove="tests\**" />
+    <None Remove="tests\**" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Antigravity.Core\Antigravity.Core.csproj" />
+  </ItemGroup>
+
+  <!-- Revit API references — do NOT copy local -->
+  <ItemGroup>
+    <Reference Include="RevitAPI">
+      <HintPath>$(RevitInstallDir)\RevitAPI.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="RevitAPIUI">
+      <HintPath>$(RevitInstallDir)\RevitAPIUI.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+  </ItemGroup>
+
+  <!-- WPF support -->
+  <PropertyGroup>
+    <UseWPF>true</UseWPF>
+  </PropertyGroup>
+
+  <!-- Post-build: copy to Revit Addins folder when deployment is enabled. -->
+  <Target Name="PostBuild" AfterTargets="PostBuildEvent" Condition="'$(DeployToRevitAddins)' == 'true'">
+    <MakeDir Directories="$(AntigravityDeployDir)" />
+    <Message Text="Copying output to Revit Addins folder: $(AntigravityDeployDir)" Importance="high" />
+    <Copy SourceFiles="$(OutputPath)$(AssemblyName).dll"
+          DestinationFolder="$(AntigravityDeployDir)"
+          SkipUnchangedFiles="true" />
+  </Target>
+
+</Project>

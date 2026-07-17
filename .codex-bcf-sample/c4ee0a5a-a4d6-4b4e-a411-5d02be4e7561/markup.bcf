@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Markup>
+	<Topic Guid="c4ee0a5a-a4d6-4b4e-a411-5d02be4e7561" TopicType="Issue" TopicStatus="Active">
+		<Title>501-3 Bồn rửa vướng thông thủy cửa</Title>
+		<Priority>Normal</Priority>
+		<Index>7</Index>
+		<CreationDate>2026-05-19T09:30:09+00:00</CreationDate>
+		<CreationAuthor>manhns@vilaiviet.com.vn</CreationAuthor>
+		<ModifiedDate>2026-05-19T09:30:09+00:00</ModifiedDate>
+		<ModifiedAuthor>manhns@vilaiviet.com.vn</ModifiedAuthor>
+		<AssignedTo>manhns@vilaiviet.com.vn</AssignedTo>
+	</Topic>
+	<Comment Guid="abae8ace-95e3-4994-8150-c8d1c4944cad">
+		<Date>2026-05-19T09:30:09+00:00</Date>
+		<Author>manhns@vilaiviet.com.vn</Author>
+		<Comment></Comment>
+		<Topic Guid="c4ee0a5a-a4d6-4b4e-a411-5d02be4e7561" />
+		<Viewpoint Guid="89936d14-99f2-49a4-8213-58becdbde235" />
+		<ModifiedDate>2026-05-19T09:30:09+00:00</ModifiedDate>
+		<ModifiedAuthor>manhns@vilaiviet.com.vn</ModifiedAuthor>
+	</Comment>
+	<Viewpoints Guid="89936d14-99f2-49a4-8213-58becdbde235">
+		<Viewpoint>viewpoint.bcfv</Viewpoint>
+		<Snapshot>snapshot.png</Snapshot>
+	</Viewpoints>
+</Markup>

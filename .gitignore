@@ -1,0 +1,47 @@
+# Generated architecture map (regenerate via docs/superpowers/tools/Generate-ArchitectureGraph.ps1)
+docs/superpowers/tools/architecture_map.json
+
+# Visual Studio / IDE state
+.vs/
+.idea/
+*.suo
+*.user
+*.userosscache
+*.sln.docstates
+
+# .NET build and test outputs
+**/bin/
+**/obj/
+packages/
+TestResults/
+*.pdb
+*.cache
+
+# Local deployment artifacts
+_Deploy/
+_packages/
+_addin_manager/
+_Installer/
+TestFiles/
+scratch/bcf_inspect_*/
+*.nupkg
+*.snupkg
+
+# Root-level compiled archives and one-off binaries
+/*.dll
+/*.exe
+/*.zip
+/*.7z
+/*.rar
+
+# Runtime logs and temporary files
+logs/
+*.log
+*.tmp
+*.bak
+~$*
+
+# OS metadata
+.DS_Store
+Thumbs.db
+Desktop.ini

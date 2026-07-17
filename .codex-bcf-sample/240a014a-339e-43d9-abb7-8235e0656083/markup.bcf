@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Markup>
+	<Topic Guid="240a014a-339e-43d9-abb7-8235e0656083" TopicType="Issue" TopicStatus="Active">
+		<Title>502-65 Kiểm tra mặt louver EAD không nằm trên kính</Title>
+		<Priority>Normal</Priority>
+		<Index>15</Index>
+		<CreationDate>2026-05-19T09:37:56+00:00</CreationDate>
+		<CreationAuthor>manhns@vilaiviet.com.vn</CreationAuthor>
+		<ModifiedDate>2026-05-19T09:37:56+00:00</ModifiedDate>
+		<ModifiedAuthor>manhns@vilaiviet.com.vn</ModifiedAuthor>
+		<AssignedTo>manhns@vilaiviet.com.vn</AssignedTo>
+	</Topic>
+	<Comment Guid="2f001e9a-f1c2-4711-9f41-692de7667d5c">
+		<Date>2026-05-19T09:37:56+00:00</Date>
+		<Author>manhns@vilaiviet.com.vn</Author>
+		<Comment></Comment>
+		<Topic Guid="240a014a-339e-43d9-abb7-8235e0656083" />
+		<Viewpoint Guid="3dae83a1-5378-42ca-ad15-01a46e261b74" />
+		<ModifiedDate>2026-05-19T09:37:56+00:00</ModifiedDate>
+		<ModifiedAuthor>manhns@vilaiviet.com.vn</ModifiedAuthor>
+	</Comment>
+	<Viewpoints Guid="3dae83a1-5378-42ca-ad15-01a46e261b74">
+		<Viewpoint>viewpoint.bcfv</Viewpoint>
+		<Snapshot>snapshot.png</Snapshot>
+	</Viewpoints>
+</Markup>

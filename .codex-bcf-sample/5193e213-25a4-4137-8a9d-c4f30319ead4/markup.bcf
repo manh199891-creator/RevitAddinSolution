@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Markup>
+	<Topic Guid="5193e213-25a4-4137-8a9d-c4f30319ead4" TopicType="Issue" TopicStatus="Active">
+		<Title>502-59 Di chuyển vị trí tủ chắn lối đi</Title>
+		<Priority>Normal</Priority>
+		<Index>8</Index>
+		<CreationDate>2026-05-19T09:31:09+00:00</CreationDate>
+		<CreationAuthor>manhns@vilaiviet.com.vn</CreationAuthor>
+		<ModifiedDate>2026-05-19T09:31:09+00:00</ModifiedDate>
+		<ModifiedAuthor>manhns@vilaiviet.com.vn</ModifiedAuthor>
+		<AssignedTo>manhns@vilaiviet.com.vn</AssignedTo>
+	</Topic>
+	<Comment Guid="6a77fcb0-1a1d-4f3e-b86f-a90ea5831e8c">
+		<Date>2026-05-19T09:31:09+00:00</Date>
+		<Author>manhns@vilaiviet.com.vn</Author>
+		<Comment></Comment>
+		<Topic Guid="5193e213-25a4-4137-8a9d-c4f30319ead4" />
+		<Viewpoint Guid="504c962c-f3d5-4b55-93a0-ed17def35f74" />
+		<ModifiedDate>2026-05-19T09:31:09+00:00</ModifiedDate>
+		<ModifiedAuthor>manhns@vilaiviet.com.vn</ModifiedAuthor>
+	</Comment>
+	<Viewpoints Guid="504c962c-f3d5-4b55-93a0-ed17def35f74">
+		<Viewpoint>viewpoint.bcfv</Viewpoint>
+		<Snapshot>snapshot.png</Snapshot>
+	</Viewpoints>
+</Markup>

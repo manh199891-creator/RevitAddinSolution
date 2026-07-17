@@ -1,0 +1,272 @@
+<Window x:Class="Antigravity.WallMepClash.UI.WallMepClashDialog"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:controls="clr-namespace:Antigravity.Core.UI.Controls;assembly=Antigravity.Core"
+        Title="Vilai Viet Wall - MEP Clash Checker" Height="640" Width="980" MinWidth="860" MinHeight="520"
+        WindowStartupLocation="CenterOwner" ResizeMode="CanResize"
+        Background="#FFFFFF" FontFamily="Segoe UI" UseLayoutRounding="True" SnapsToDevicePixels="True">
+
+        <Window.Resources>
+        <ResourceDictionary>
+            <ResourceDictionary.MergedDictionaries>
+                <ResourceDictionary Source="pack://application:,,,/Antigravity.Core;component/UI/Themes/DesignTokens.xaml"/>
+                <ResourceDictionary Source="pack://application:,,,/Antigravity.Core;component/UI/Themes/Typography.xaml"/>
+                <ResourceDictionary Source="pack://application:,,,/Antigravity.Core;component/UI/Themes/Controls.xaml"/>
+                <ResourceDictionary Source="pack://application:,,,/Antigravity.Core;component/UI/Themes/DataControls.xaml"/>
+            </ResourceDictionary.MergedDictionaries>
+        <Style x:Key="PrimaryBtn" TargetType="Button">
+            <Setter Property="Height" Value="32"/>
+            <Setter Property="Background" Value="#007ACC"/>
+            <Setter Property="Foreground" Value="White"/>
+            <Setter Property="FontFamily" Value="Segoe UI"/>
+            <Setter Property="FontSize" Value="12"/>
+            <Setter Property="FontWeight" Value="SemiBold"/>
+            <Setter Property="BorderThickness" Value="0"/>
+            <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border CornerRadius="4" Background="{TemplateBinding Background}" Padding="12,0">
+                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                        </Border>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <Style x:Key="SecondaryBtn" TargetType="Button" BasedOn="{StaticResource PrimaryBtn}">
+            <Setter Property="Background" Value="#E5E7EB"/>
+            <Setter Property="Foreground" Value="#000000"/>
+        </Style>
+
+        <Style x:Key="ModernTextBox" TargetType="TextBox">
+            <Setter Property="Height" Value="28"/>
+            <Setter Property="Background" Value="#FFFFFF"/>
+            <Setter Property="Foreground" Value="#000000"/>
+            <Setter Property="BorderBrush" Value="#D1D5DB"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="Padding" Value="6,2"/>
+            <Setter Property="VerticalContentAlignment" Value="Center"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="TextBox">
+                        <Border Name="Border" CornerRadius="4" Background="{TemplateBinding Background}" BorderBrush="{TemplateBinding BorderBrush}" BorderThickness="{TemplateBinding BorderThickness}">
+                            <ScrollViewer x:Name="PART_ContentHost"/>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsFocused" Value="True">
+                                <Setter TargetName="Border" Property="BorderBrush" Value="#007ACC"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <Style TargetType="ComboBoxItem">
+            <Setter Property="Background" Value="#FFFFFF"/>
+            <Setter Property="Foreground" Value="#000000"/>
+            <Setter Property="Padding" Value="6,4"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="ComboBoxItem">
+                        <Border Name="Border" Background="{TemplateBinding Background}" Padding="{TemplateBinding Padding}">
+                            <ContentPresenter/>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsHighlighted" Value="True">
+                                <Setter TargetName="Border" Property="Background" Value="#E5E7EB"/>
+                                <Setter Property="Foreground" Value="#000000"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+    </ResourceDictionary>
+    </Window.Resources>
+
+    <Grid Margin="16">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/> <!-- Header -->
+            <RowDefinition Height="10"/>   <!-- Sep -->
+            <RowDefinition Height="Auto"/> <!-- Inputs -->
+            <RowDefinition Height="10"/>   <!-- Sep -->
+            <RowDefinition Height="Auto"/> <!-- Progress -->
+            <RowDefinition Height="10"/>   <!-- Sep -->
+            <RowDefinition Height="*"/>    <!-- DataGrid -->
+            <RowDefinition Height="10"/>   <!-- Sep -->
+            <RowDefinition Height="Auto"/> <!-- Action Buttons / Status -->
+        </Grid.RowDefinitions>
+
+        <!-- ── TIÊU ĐỀ ── -->
+        <Border Grid.Row="0" Background="#FFFFFF" BorderBrush="#D1D5DB" BorderThickness="0,0,0,1" Margin="-16,-16,-16,0" Padding="16,12">
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="Auto"/>
+                    <ColumnDefinition Width="*"/>
+                </Grid.ColumnDefinitions>
+                <Viewbox Grid.Column="0" Width="28" Height="28" Margin="0,0,12,0" VerticalAlignment="Center">
+                    <Canvas Width="100" Height="80">
+                        <Path Fill="#1B3679" Data="M 30,10 L 70,10 L 50,45 Z"/>
+                        <Path Fill="#D8262C" Data="M 10,10 L 32,10 L 50,55 L 68,10 L 90,10 L 50,80 Z"/>
+                    </Canvas>
+                </Viewbox>
+                <StackPanel Grid.Column="1" VerticalAlignment="Center">
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*"/>
+                            <ColumnDefinition Width="Auto"/>
+                        </Grid.ColumnDefinitions>
+                        <StackPanel Grid.Column="0">
+                            <TextBlock FontSize="14" FontWeight="Bold" Foreground="#111827">
+                                <Run Text="VILA" Foreground="#1B3679"/><Run Text="I"><Run.Foreground><LinearGradientBrush StartPoint="0,0" EndPoint="1,0"><GradientStop Color="#1B3679" Offset="0.7"/><GradientStop Color="#D8262C" Offset="0.7"/></LinearGradientBrush></Run.Foreground></Run><Run Text="VIET" Foreground="#D8262C"/><Run Text=" · WALL - MEP PARALLEL CLASH CHECKER" Foreground="#111827" FontWeight="SemiBold"/>
+                            </TextBlock>
+                            <TextBlock Text="Check parallel clash between host walls and linked MEP elements" 
+                                       FontSize="11" Foreground="#6B7280" Margin="0,2,0,0"/>
+                        </StackPanel>
+                        <TextBlock x:Name="TxtSummary" Grid.Column="1" HorizontalAlignment="Right" Foreground="#111827" VerticalAlignment="Center" FontFamily="Segoe UI" FontSize="12" FontWeight="SemiBold"/>
+                    </Grid>
+                </StackPanel>
+            </Grid>
+        </Border>
+
+        <Rectangle Grid.Row="1" Height="1" Fill="#D1D5DB" Margin="0,4"/>
+
+        <!-- ── INPUTS ── -->
+        <Grid Grid.Row="2">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*"/>
+                <ColumnDefinition Width="12"/>
+                <ColumnDefinition Width="180"/>
+                <ColumnDefinition Width="12"/>
+                <ColumnDefinition Width="180"/>
+                <ColumnDefinition Width="12"/>
+                <ColumnDefinition Width="80"/>
+                <ColumnDefinition Width="12"/>
+                <ColumnDefinition Width="130"/>
+            </Grid.ColumnDefinitions>
+
+            <!-- Chọn File Link -->
+            <StackPanel Grid.Column="0">
+                <TextBlock Text="🔗  Linked MEP Model" Style="{StaticResource LabelStyle}"/>
+                <ComboBox x:Name="CmbLinks" Style="{StaticResource ComboStyle}" DisplayMemberPath="Name" SelectionChanged="CmbLinks_SelectionChanged"/>
+            </StackPanel>
+
+            <!-- Chọn MEP Categories -->
+            <StackPanel Grid.Column="2">
+                <TextBlock Text="Categories to Check" Style="{StaticResource LabelStyle}"/>
+                <ComboBox x:Name="CmbCategories" Style="{StaticResource MultiSelectComboStyle}">
+                    <ComboBox.ItemTemplate>
+                        <DataTemplate>
+                            <CheckBox Content="{Binding Name}"
+                                      IsChecked="{Binding IsChecked, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                                      Click="CategoryCheckBox_Click"
+                                      Foreground="#000000"
+                                      FontFamily="Segoe UI"
+                                      FontSize="12"/>
+                        </DataTemplate>
+                    </ComboBox.ItemTemplate>
+                </ComboBox>
+            </StackPanel>
+
+            <!-- Lọc theo Level -->
+            <StackPanel Grid.Column="4">
+                <TextBlock Text="Host level" Style="{StaticResource LabelStyle}"/>
+                <ComboBox x:Name="CmbHostLevels" Style="{StaticResource MultiSelectComboStyle}">
+                    <ComboBox.ItemTemplate>
+                        <DataTemplate>
+                            <CheckBox Content="{Binding Name}"
+                                      IsChecked="{Binding IsChecked, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                                      Click="LevelCheckBox_Click"
+                                      Foreground="#000000"
+                                      FontFamily="Segoe UI"
+                                      FontSize="12"/>
+                        </DataTemplate>
+                    </ComboBox.ItemTemplate>
+                </ComboBox>
+            </StackPanel>
+
+            <!-- Góc ngưỡng song song -->
+            <StackPanel Grid.Column="6">
+                <TextBlock Text="Parallel ≤ (°)" Style="{StaticResource LabelStyle}"/>
+                <TextBox x:Name="TxtThreshold" Style="{StaticResource ModernTextBox}" Text="10"/>
+            </StackPanel>
+
+            <!-- Lọc theo Active View -->
+            <StackPanel Grid.Column="8" VerticalAlignment="Bottom" Margin="0,0,0,4">
+                <CheckBox x:Name="ChkActiveViewOnly" Content="Active view only" Foreground="#000000" FontFamily="Segoe UI" FontSize="12"/>
+            </StackPanel>
+        </Grid>
+
+        <Rectangle Grid.Row="3" Height="1" Fill="#D1D5DB" Margin="0,4"/>
+
+        <!-- ── PROGRESS ── -->
+        <Grid x:Name="PanelProgress" Grid.Row="4" Visibility="Collapsed">
+            <StackPanel>
+                <TextBlock x:Name="TxtProgress" Foreground="#000000" FontFamily="Segoe UI" FontSize="12" Margin="0,0,0,6"/>
+                <ProgressBar x:Name="PbProgress" Height="8" Minimum="0"/>
+            </StackPanel>
+        </Grid>
+
+        <Rectangle Grid.Row="5" Height="1" Fill="#D1D5DB" Margin="0,4" x:Name="SepProgress" Visibility="Collapsed"/>
+
+        <!-- ── DATAGRID ── -->
+        <DataGrid x:Name="GridResults" Grid.Row="6" Style="{StaticResource DataGridStyle}" SelectionChanged="GridResults_SelectionChanged">
+            <DataGrid.Columns>
+                <DataGridTextColumn Header="Wall Id (Host)" Binding="{Binding HostWallId}" Width="100"/>
+                <DataGridTextColumn Header="MEP Id (Link)" Binding="{Binding LinkMepId}" Width="100"/>
+                <DataGridTextColumn Header="Wall Type Name" Binding="{Binding WallTypeName}" Width="200"/>
+                <DataGridTextColumn Header="MEP Name" Binding="{Binding MepName}" Width="200"/>
+                <DataGridTextColumn Header="Angle" Binding="{Binding AngleDeg, StringFormat={}{0}°}" Width="90"/>
+                <DataGridTextColumn Header="Level" Binding="{Binding LevelName}" Width="*"/>
+                <DataGridTextColumn Header="Status" Binding="{Binding IsClash}" Width="100">
+                    <!-- Custom Cell Template for status display -->
+                    <DataGridTextColumn.ElementStyle>
+                        <Style TargetType="TextBlock">
+                            <Setter Property="Text" Value="● Clash"/>
+                            <Setter Property="Foreground" Value="#F87171"/>
+                            <Setter Property="FontWeight" Value="Bold"/>
+                            <Setter Property="HorizontalAlignment" Value="Center"/>
+                        </Style>
+                    </DataGridTextColumn.ElementStyle>
+                </DataGridTextColumn>
+            </DataGrid.Columns>
+            <DataGrid.RowStyle>
+                <Style TargetType="DataGridRow">
+                    <Setter Property="Foreground" Value="#FFFFFF"/>
+                    <Setter Property="FontWeight" Value="SemiBold"/>
+                    <Style.Triggers>
+                        <Trigger Property="IsSelected" Value="False">
+                            <Setter Property="Background" Value="#6F1616"/>
+                        </Trigger>
+                    </Style.Triggers>
+                </Style>
+            </DataGrid.RowStyle>
+        </DataGrid>
+
+        <Rectangle Grid.Row="7" Height="1" Fill="#D1D5DB" Margin="0,4"/>
+
+        <!-- ── ACTION BUTTONS ── -->
+        <Grid Grid.Row="8" Margin="0,0,0,10">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*"/>
+                <ColumnDefinition Width="Auto"/>
+            </Grid.ColumnDefinitions>
+
+            <TextBlock x:Name="TxtStatusBar" Grid.Column="0" Foreground="#FFFFFF" VerticalAlignment="Center" FontFamily="Segoe UI" FontSize="12" FontWeight="SemiBold"/>
+
+            <UniformGrid Grid.Column="1" Rows="1" HorizontalAlignment="Right">
+                <Button x:Name="BtnRun" Content="▶  Run Check" Click="BtnRun_Click" Style="{StaticResource PrimaryBtn}" Background="#007ACC" Margin="6,0,0,0"/>
+                <Button x:Name="BtnShow3D" Content="👁  Show 3D" Click="BtnShow3D_Click" Style="{StaticResource SecondaryBtn}" Margin="6,0,0,0" IsEnabled="False"/>
+                <Button x:Name="BtnApplyColor" Content="🎨  Apply Color" Click="BtnApplyColor_Click" Style="{StaticResource SecondaryBtn}" Margin="6,0,0,0" IsEnabled="False"/>
+                <Button x:Name="BtnExportHtml" Content="📄  Export HTML" Click="BtnExportHtml_Click" Style="{StaticResource SecondaryBtn}" Margin="6,0,0,0" IsEnabled="False"/>
+                <Button x:Name="BtnResetColor" Content="✖  Reset Color" Click="BtnResetColor_Click" Style="{StaticResource SecondaryBtn}" Margin="6,0,0,0" IsEnabled="False"/>
+            </UniformGrid>
+            <TextBlock Text="@manhns" Margin="0,0,0,0" FontSize="12" FontWeight="SemiBold" Foreground="#6B7280" Opacity="1" HorizontalAlignment="Right" VerticalAlignment="Bottom" IsHitTestVisible="False" Focusable="False"/>
+        </Grid>
+    </Grid>
+</Window>
+
+
+

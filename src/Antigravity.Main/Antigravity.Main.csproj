@@ -1,0 +1,144 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="15.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <Import Project="$(MSBuildExtensionsPath)\$(MSBuildToolsVersion)\Microsoft.Common.props" Condition="Exists('$(MSBuildExtensionsPath)\$(MSBuildToolsVersion)\Microsoft.Common.props')" />
+  <PropertyGroup>
+    <Configuration Condition=" '$(Configuration)' == '' ">Debug</Configuration>
+    <Platform Condition=" '$(Platform)' == '' ">AnyCPU</Platform>
+    <ProjectGuid>{88888888-9999-0000-AAAA-BBBBCCCCDDDD}</ProjectGuid>
+    <OutputType>Library</OutputType>
+    <AppDesignerFolder>Properties</AppDesignerFolder>
+    <RootNamespace>Antigravity.Main</RootNamespace>
+    <AssemblyName>Antigravity.Main</AssemblyName>
+    <TargetFrameworkVersion>v4.8</TargetFrameworkVersion>
+    <PlatformTarget>x64</PlatformTarget>
+    <RuntimeIdentifier>win-x64</RuntimeIdentifier>
+    <RuntimeIdentifiers>win-x64</RuntimeIdentifiers>
+    <FileAlignment>512</FileAlignment>
+    <Deterministic>true</Deterministic>
+    <LangVersion>8.0</LangVersion>
+  </PropertyGroup>
+  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|AnyCPU' ">
+    <DebugSymbols>true</DebugSymbols>
+    <DebugType>full</DebugType>
+    <Optimize>false</Optimize>
+    <OutputPath>bin\Debug\</OutputPath>
+    <DefineConstants>DEBUG;TRACE</DefineConstants>
+    <ErrorReport>prompt</ErrorReport>
+    <WarningLevel>4</WarningLevel>
+    <StartAction>Program</StartAction>
+    <StartProgram>C:\Program Files\Autodesk\Revit 2023\Revit.exe</StartProgram>
+  </PropertyGroup>
+  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Release|AnyCPU' ">
+    <DebugType>pdbonly</DebugType>
+    <Optimize>true</Optimize>
+    <OutputPath>bin\Release\</OutputPath>
+    <DefineConstants>TRACE</DefineConstants>
+    <ErrorReport>prompt</ErrorReport>
+    <WarningLevel>4</WarningLevel>
+  </PropertyGroup>
+  <ItemGroup>
+    <Reference Include="PresentationCore" />
+    <Reference Include="PresentationFramework" />
+    <Reference Include="System" />
+    <Reference Include="System.Core" />
+    <Reference Include="System.Xaml" />
+    <Reference Include="Microsoft.CSharp" />
+    <Reference Include="WindowsBase" />
+    <Reference Include="RevitAPI">
+      <HintPath>$(RevitInstallDir)\RevitAPI.dll</HintPath>
+      <SpecificVersion>False</SpecificVersion>
+      <Private>False</Private>
+    </Reference>
+    <Reference Include="RevitAPIUI">
+      <HintPath>$(RevitInstallDir)\RevitAPIUI.dll</HintPath>
+      <SpecificVersion>False</SpecificVersion>
+      <Private>False</Private>
+    </Reference>
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\Antigravity.Core\Antigravity.Core.csproj">
+      <Project>{11111111-2222-3333-4444-555566667777}</Project>
+      <Name>Antigravity.Core</Name>
+    </ProjectReference>
+    <ProjectReference Include="..\Antigravity.DrawColumns\Antigravity.DrawColumns.csproj">
+      <Project>{22222222-3333-4444-5555-666677778888}</Project>
+      <Name>Antigravity.DrawColumns</Name>
+    </ProjectReference>
+    <ProjectReference Include="..\Antigravity.DrawBeams\Antigravity.DrawBeams.csproj">
+      <Project>{33333333-4444-5555-6666-777788889999}</Project>
+      <Name>Antigravity.DrawBeams</Name>
+    </ProjectReference>
+    <ProjectReference Include="..\Antigravity.DrawWalls\Antigravity.DrawWalls.csproj">
+      <Project>{44444444-5555-6666-7777-888899990000}</Project>
+      <Name>Antigravity.DrawWalls</Name>
+    </ProjectReference>
+    <ProjectReference Include="..\Antigravity.DrawFloors\Antigravity.DrawFloors.csproj">
+      <Project>{55555555-6666-7777-8888-999900001111}</Project>
+      <Name>Antigravity.DrawFloors</Name>
+    </ProjectReference>
+    <ProjectReference Include="..\Antigravity.Autojoin\Antigravity.Autojoin.csproj">
+      <Project>{66666666-7777-8888-9999-000011112222}</Project>
+      <Name>Antigravity.Autojoin</Name>
+    </ProjectReference>
+    <ProjectReference Include="..\Antigravity.AutoDimWalls\Antigravity.AutoDimWalls.csproj">
+      <Project>{99999999-AAAA-BBBB-CCCC-DDDDDDDDDDDD}</Project>
+      <Name>Antigravity.AutoDimWalls</Name>
+    </ProjectReference>
+    <ProjectReference Include="..\Antigravity.CadVoidPlacer\Antigravity.CadVoidPlacer.csproj">
+      <Project>{1A2B3C4D-5E6F-7A8B-9C0D-1E2F3A4B5C6D}</Project>
+      <Name>Antigravity.CadVoidPlacer</Name>
+    </ProjectReference>
+    <ProjectReference Include="..\Antigravity.TagArranger\Antigravity.TagArranger.csproj">
+      <Project>{AABBCCDD-1234-5678-9012-AABBCCDDEEFF}</Project>
+      <Name>Antigravity.TagArranger</Name>
+    </ProjectReference>
+    <ProjectReference Include="..\Antigravity.DoorClearance\Antigravity.DoorClearance.csproj">
+      <Project>{D41113C9-9A8C-4D24-8115-385CCBB396CA}</Project>
+      <Name>Antigravity.DoorClearance</Name>
+    </ProjectReference>
+    <ProjectReference Include="..\Antigravity.ZoneSplit\Antigravity.ZoneSplit.csproj">
+      <Project>{E52224D0-AB9D-5E35-9226-496DDCC407DB}</Project>
+      <Name>Antigravity.ZoneSplit</Name>
+    </ProjectReference>
+    <ProjectReference Include="..\Antigravity.CadSleevePlacer\Antigravity.CadSleevePlacer.csproj">
+      <Name>Antigravity.CadSleevePlacer</Name>
+    </ProjectReference>
+    <ProjectReference Include="..\Antigravity.CheckFloorElevation\Antigravity.CheckFloorElevation.csproj">
+      <Name>Antigravity.CheckFloorElevation</Name>
+    </ProjectReference>
+    <ProjectReference Include="..\Antigravity.IssueManager\Antigravity.IssueManager.csproj">
+      <Name>Antigravity.IssueManager</Name>
+    </ProjectReference>
+    <ProjectReference Include="..\Antigravity.WallMepClash\Antigravity.WallMepClash.csproj">
+      <Name>Antigravity.WallMepClash</Name>
+    </ProjectReference>
+  </ItemGroup>
+  <ItemGroup>
+    <Compile Include="App.cs" />
+    <Compile Include="Commands\AutonomousTestCommand.cs" />
+    <Compile Include="Commands\TagArrangerTestCommand.cs" />
+    <Compile Include="Properties\AssemblyInfo.cs" />
+  </ItemGroup>
+  <ItemGroup>
+    <EmbeddedResource Include="Resources\icon_logo_32.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <Content Include="Antigravity.addin">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+  </ItemGroup>
+  <Target Name="DeployToRevitAddinsFolder" AfterTargets="Build" Condition="'$(DeployToRevitAddins)' == 'true'">
+    <MakeDir Directories="$(AntigravityDeployDir)" />
+    <Copy SourceFiles="$(ProjectDir)Antigravity.addin"
+          DestinationFiles="$(RevitAddinsDir)\Antigravity.addin"
+          OverwriteReadOnlyFiles="true" />
+    <ItemGroup>
+      <AntigravityDeployFiles Include="$(TargetDir)*.dll" />
+    </ItemGroup>
+    <Copy SourceFiles="@(AntigravityDeployFiles)"
+          DestinationFolder="$(AntigravityDeployDir)"
+          OverwriteReadOnlyFiles="true"
+          Retries="0" />
+  </Target>
+  <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
+</Project>

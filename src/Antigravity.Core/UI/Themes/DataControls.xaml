@@ -1,0 +1,31 @@
+<ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+    <Style x:Key="VvDataGridStyle" TargetType="DataGrid">
+        <Setter Property="Background" Value="{DynamicResource VvSurfaceBrush}"/>
+        <Setter Property="Foreground" Value="{DynamicResource VvTextPrimaryBrush}"/>
+        <Setter Property="BorderBrush" Value="{DynamicResource VvBorderBrush}"/>
+        <Setter Property="RowBackground" Value="{DynamicResource VvSurfaceBrush}"/>
+        <Setter Property="AlternatingRowBackground" Value="{DynamicResource VvSurfaceSubtleBrush}"/>
+        <Setter Property="HorizontalGridLinesBrush" Value="{DynamicResource VvBorderBrush}"/>
+        <Setter Property="VerticalGridLinesBrush" Value="{DynamicResource VvBorderBrush}"/>
+        <Setter Property="RowHeight" Value="28"/>
+        <Setter Property="ColumnHeaderHeight" Value="32"/>
+        <Setter Property="CanUserAddRows" Value="False"/>
+        <Setter Property="HeadersVisibility" Value="Column"/>
+        <Setter Property="GridLinesVisibility" Value="Horizontal"/>
+    </Style>
+
+    <Style x:Key="VvListViewStyle" TargetType="ListView">
+        <Setter Property="Background" Value="{DynamicResource VvSurfaceBrush}"/>
+        <Setter Property="Foreground" Value="{DynamicResource VvTextPrimaryBrush}"/>
+        <Setter Property="BorderBrush" Value="{DynamicResource VvBorderBrush}"/>
+        <Setter Property="BorderThickness" Value="1"/>
+    </Style>
+
+    <Style x:Key="VvTreeViewStyle" TargetType="TreeView">
+        <Setter Property="Background" Value="{DynamicResource VvSurfaceBrush}"/>
+        <Setter Property="Foreground" Value="{DynamicResource VvTextPrimaryBrush}"/>
+        <Setter Property="BorderBrush" Value="{DynamicResource VvBorderBrush}"/>
+        <Setter Property="BorderThickness" Value="1"/>
+    </Style>
+</ResourceDictionary>

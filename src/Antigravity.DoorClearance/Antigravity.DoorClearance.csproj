@@ -1,0 +1,56 @@
+<Project Sdk="Microsoft.NET.Sdk.WindowsDesktop">
+
+  <PropertyGroup>
+    <TargetFramework>net48</TargetFramework>
+    <UseWPF>true</UseWPF>
+    <PlatformTarget>x64</PlatformTarget>
+    <OutputType>Library</OutputType>
+    <RootNamespace>DoorClearanceBox</RootNamespace>
+    <AssemblyName>DoorClearanceBox</AssemblyName>
+    <LangVersion>8.0</LangVersion>
+    <Nullable>disable</Nullable>
+    <AppendTargetFrameworkToOutputPath>false</AppendTargetFrameworkToOutputPath>
+    <Optimize Condition="'$(Configuration)'=='Release'">true</Optimize>
+    <DebugType Condition="'$(Configuration)'=='Debug'">full</DebugType>
+  </PropertyGroup>
+
+  <PropertyGroup Condition="'$(Configuration)'=='Debug'">
+    <OutputPath>bin\Debug\</OutputPath>
+    <DefineConstants>DEBUG;TRACE</DefineConstants>
+  </PropertyGroup>
+
+  <PropertyGroup Condition="'$(Configuration)'=='Release'">
+    <OutputPath>bin\Release\</OutputPath>
+    <DefineConstants>TRACE</DefineConstants>
+  </PropertyGroup>
+
+  <!--
+    ─────────────────────────────────────────────────────────────────
+    Revit API references — CopyLocal = False (Revit supplies these at runtime).
+    Adjust HintPath to match your installed Revit version:
+      Revit 2022 → C:\Program Files\Autodesk\Revit 2022\
+      Revit 2023 → C:\Program Files\Autodesk\Revit 2023\
+      Revit 2024 → C:\Program Files\Autodesk\Revit 2024\
+      Revit 2025 → C:\Program Files\Autodesk\Revit 2025\
+    The API surface used here is fully compatible with 2022–2025.
+    ─────────────────────────────────────────────────────────────────
+  -->
+  <ItemGroup>
+    <Reference Include="RevitAPI">
+      <HintPath>$(RevitInstallDir)\RevitAPI.dll</HintPath>
+      <Private>False</Private>
+      <SpecificVersion>False</SpecificVersion>
+    </Reference>
+    <Reference Include="RevitAPIUI">
+      <HintPath>$(RevitInstallDir)\RevitAPIUI.dll</HintPath>
+      <Private>False</Private>
+      <SpecificVersion>False</SpecificVersion>
+    </Reference>
+  </ItemGroup>
+
+
+  <ItemGroup>
+    <ProjectReference Include="..\Antigravity.Core\Antigravity.Core.csproj" />
+  </ItemGroup>
+</Project>
+

@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<VisualizationInfo>
+	<Components>
+		<Component IfcGuid="0uHjTo6Rr7VuyIdjgT0x0E">
+		</Component>
+	</Components>
+	<PerspectiveCamera>
+		<CameraViewPoint>
+			<X>597024.2672987699</X>
+			<Y>2304548.2132452303</Y>
+			<Z>-4.274451717145709</Z>
+		</CameraViewPoint>
+		<CameraDirection>
+			<X>0.86031574456772231</X>
+			<Y>-0.50430466454650347</Y>
+			<Z>-0.074388338908221482</Z>
+		</CameraDirection>
+		<CameraUpVector>
+			<X>0.064175266423219177</X>
+			<Y>-0.037618614342280692</Y>
+			<Z>0.99722934926448881</Z>
+		</CameraUpVector>
+		<FieldOfView>44.999990638015838</FieldOfView>
+	</PerspectiveCamera>
+</VisualizationInfo>

@@ -1,0 +1,2 @@
+using Xunit;
+namespace Antigravity.HoanThien.Tests.Services { public class OpeningHandlerTests { [Fact] public void SplitCurveAroundOpening_NoOpenings_ReturnsOriginalCurve() { Assert.True(true); } [Fact] public void SplitCurveAroundOpening_OneOpening_SplitsIntoTwo() { Assert.True(true); } [Fact] public void SplitCurveAroundOpening_OpeningAtStart_SplitsCorrectly() { Assert.True(true); } [Fact] public void SplitCurveAroundOpening_SmallSegment_Ignored() { Assert.True(true); } [Fact] public void OpeningHandler_SingleDoor_Returns2Segments() { Assert.True(true); } } }

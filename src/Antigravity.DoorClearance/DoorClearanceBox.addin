@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Door Clearance Box — Revit Add-in Manifest
+  ============================================
+  Supports:  Revit 2022 / 2023 / 2024 / 2025
+  Deploy to: %APPDATA%\Autodesk\Revit\Addins\<year>\
+
+  The manifest registers ONE Application which bootstraps the ribbon and
+  the DoorChangeUpdater (DMU).  Commands are wired via the ribbon buttons
+  in App.cs — no separate <AddIn Type="Command"> entries required.
+-->
+<RevitAddIns>
+  <AddIn Type="Application">
+    <Name>Door Clearance Box</Name>
+
+    <!--
+      Copy DoorClearanceBox.dll next to this .addin file,
+      or provide the full absolute path.
+    -->
+    <Assembly>DoorClearanceBox.dll</Assembly>
+
+    <!-- Must match Constants.AppGuid — DO NOT CHANGE after first deployment -->
+    <AddInId>8F2A1E86-5B4D-4F71-B53E-C9A1A2B3C4D5</AddInId>
+
+    <FullClassName>DoorClearanceBox.App</FullClassName>
+
+    <VendorId>AGRAV</VendorId>
+    <VendorDescription>Antigravity BIM Tools — https://antigravity.vn</VendorDescription>
+  </AddIn>
+</RevitAddIns>
