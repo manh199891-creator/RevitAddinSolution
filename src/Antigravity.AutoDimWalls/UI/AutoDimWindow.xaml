@@ -136,7 +136,7 @@
         <StackPanel Grid.Row="2">
             <!-- View Type Selection -->
             <StackPanel Margin="0,0,0,12">
-                <TextBlock Text="View Type" Style="{StaticResource HeaderStyle}" Margin="0,0,0,6"/>
+                <TextBlock Text="View Type" Style="{StaticResource VvSectionTitleStyle}" Margin="0,0,0,6"/>
                 <StackPanel Orientation="Horizontal">
                     <RadioButton x:Name="RadViewPlan" Content="Plan View (Mặt bằng)" IsChecked="True" Margin="0,0,24,0" Checked="RadView_Checked"/>
                     <RadioButton x:Name="RadViewSection" Content="Section View (Mặt cắt)" Checked="RadView_Checked"/>
@@ -154,14 +154,14 @@
                 </Grid.ColumnDefinitions>
 
                 <StackPanel>
-                    <TextBlock Text="Scope" Style="{StaticResource HeaderStyle}" Margin="0,0,0,6"/>
+                    <TextBlock Text="Scope" Style="{StaticResource VvSectionTitleStyle}" Margin="0,0,0,6"/>
                     <RadioButton x:Name="RadSelection" Content="Selected walls" IsChecked="True"/>
                     <RadioButton x:Name="RadActiveView" Content="All visible walls in active view"/>
                 </StackPanel>
 
                 <StackPanel Grid.Column="2">
-                    <TextBlock Text="Dimension Style" Style="{StaticResource HeaderStyle}" Margin="0,0,0,6"/>
-                    <ComboBox x:Name="CboDimensionTypes" Style="{StaticResource ComboStyle}" DisplayMemberPath="Name"/>
+                    <TextBlock Text="Dimension Style" Style="{StaticResource VvSectionTitleStyle}" Margin="0,0,0,6"/>
+                    <ComboBox x:Name="CboDimensionTypes" Style="{StaticResource VvComboBoxStyle}" DisplayMemberPath="Name"/>
                 </StackPanel>
             </Grid>
         </StackPanel>
@@ -176,17 +176,17 @@
             </Grid.ColumnDefinitions>
 
             <StackPanel>
-                <TextBlock Text="Include References" Style="{StaticResource HeaderStyle}" Margin="0,0,0,6"/>
+                <TextBlock Text="Include References" Style="{StaticResource VvSectionTitleStyle}" Margin="0,0,0,6"/>
                 <CheckBox x:Name="ChkOpenings" Content="Door/window references" IsChecked="True"/>
                 <CheckBox x:Name="ChkGrids" Content="Grid references" IsChecked="False"/>
                 <CheckBox x:Name="ChkLinks" Content="Structural links" IsChecked="False"/>
-                <ComboBox x:Name="CboLinkInstances" Style="{StaticResource ComboStyle}" DisplayMemberPath="Name" Margin="20,2,0,6" IsEnabled="{Binding IsChecked, ElementName=ChkLinks}"/>
+                <ComboBox x:Name="CboLinkInstances" Style="{StaticResource VvComboBoxStyle}" DisplayMemberPath="Name" Margin="20,2,0,6" IsEnabled="{Binding IsChecked, ElementName=ChkLinks}"/>
                 <CheckBox x:Name="ChkHostStructural" Content="Host structural columns (Bổ trụ/Vách)" IsChecked="True"/>
                 <CheckBox x:Name="ChkIntersections" Content="Intersecting walls (reserved)" IsChecked="False" IsEnabled="False"/>
             </StackPanel>
 
             <StackPanel Grid.Column="2">
-                <TextBlock Text="Opening Mode" Style="{StaticResource HeaderStyle}" Margin="0,0,0,6"/>
+                <TextBlock Text="Opening Mode" Style="{StaticResource VvSectionTitleStyle}" Margin="0,0,0,6"/>
                 <RadioButton x:Name="RadOpeningCenter" Content="Center reference"/>
                 <RadioButton x:Name="RadOpeningJambs" Content="Left and right jambs" IsChecked="True"/>
             </StackPanel>
@@ -203,7 +203,7 @@
                 <ColumnDefinition Width="*"/>
             </Grid.ColumnDefinitions>
 
-            <TextBlock Text="Offset (mm)" Style="{StaticResource LabelStyle}" Margin="0,0,8,0"/>
+            <TextBlock Text="Offset (mm)" Style="{StaticResource VvBodyTextStyle}" Margin="0,0,8,0"/>
             <TextBox x:Name="TxtOffset" Grid.Column="1" Style="{StaticResource ModernTextBox}" Text="1000"/>
             <Button x:Name="BtnPickPoint" Grid.Column="3" Content="Pick Point" Style="{StaticResource SecondaryBtn}" Click="BtnPickPoint_Click"/>
             <TextBlock x:Name="TxtPickStatus" Grid.Column="4" Text="No point picked" Foreground="#4B5563" Margin="10,0,0,0" VerticalAlignment="Center"/>
@@ -211,13 +211,13 @@
 
         <Separator Grid.Row="7" Background="#D1D5DB" Margin="0,12"/>
 
-        <Border Grid.Row="8" Background="{StaticResource PanelBrush}" CornerRadius="4" Padding="10">
-            <TextBlock x:Name="TxtStatus" Text="Ready." Style="{StaticResource LabelStyle}" Foreground="#4B5563" TextWrapping="Wrap" VerticalAlignment="Top"/>
+        <Border Grid.Row="8" Background="{DynamicResource VvSurfaceSubtleBrush}" CornerRadius="4" Padding="10">
+            <TextBlock x:Name="TxtStatus" Text="Ready." Style="{StaticResource VvBodyTextStyle}" Foreground="#4B5563" TextWrapping="Wrap" VerticalAlignment="Top"/>
         </Border>
 
         <UniformGrid Grid.Row="9" Rows="1" Columns="4" Margin="0,16,0,8">
             <Button x:Name="BtnRun" Content="RUN AUTO DIM" Style="{StaticResource PrimaryBtn}" Click="BtnRun_Click"/>
-            <Button x:Name="BtnDelete" Content="DELETE AUTO DIM" Style="{StaticResource DestructiveBtn}" Click="BtnDelete_Click"/>
+            <Button x:Name="BtnDelete" Content="DELETE AUTO DIM" Style="{StaticResource VvDangerButtonStyle}" Click="BtnDelete_Click"/>
             <Button x:Name="BtnRefresh" Content="REFRESH" Style="{StaticResource SecondaryBtn}" Click="BtnRefresh_Click"/>
             <Button x:Name="BtnClose" Content="CLOSE" Style="{StaticResource SecondaryBtn}" Click="BtnClose_Click"/>
         </UniformGrid>

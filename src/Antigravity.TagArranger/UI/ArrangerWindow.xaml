@@ -18,6 +18,18 @@
                 <ResourceDictionary Source="pack://application:,,,/Antigravity.Core;component/UI/Themes/Controls.xaml"/>
                 <ResourceDictionary Source="pack://application:,,,/Antigravity.Core;component/UI/Themes/DataControls.xaml"/>
             </ResourceDictionary.MergedDictionaries>
+        <!-- Compatibility aliases retained only for the P0 recovery pass.
+             The strict-v3 layout pass replaces these with module-prefixed keys. -->
+        <SolidColorBrush x:Key="GoldBrush" Color="#007ACC"/>
+        <SolidColorBrush x:Key="LineBrush" Color="#D1D5DB"/>
+        <SolidColorBrush x:Key="PanelBrush" Color="#F5F6F8"/>
+        <SolidColorBrush x:Key="SecondaryBrush" Color="#E5E7EB"/>
+        <Style x:Key="HeaderStyle" TargetType="TextBlock" BasedOn="{StaticResource VvSectionTitleStyle}"/>
+        <Style x:Key="LabelStyle" TargetType="TextBlock" BasedOn="{StaticResource VvBodyTextStyle}"/>
+        <Style x:Key="ComboStyle" TargetType="ComboBox" BasedOn="{StaticResource VvComboBoxStyle}"/>
+        <Style x:Key="IconBtn" TargetType="Button" BasedOn="{StaticResource VvIconButtonStyle}"/>
+        <Style x:Key="ActionBtn" TargetType="Button" BasedOn="{StaticResource VvPrimaryButtonStyle}"/>
+        <Style x:Key="OrangeBtn" TargetType="Button" BasedOn="{StaticResource VvPrimaryButtonStyle}"/>
         <Style x:Key="PrimaryBtn" TargetType="Button">
             <Setter Property="Height" Value="32"/>
             <Setter Property="Background" Value="#007ACC"/>

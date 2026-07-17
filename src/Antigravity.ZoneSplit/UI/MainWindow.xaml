@@ -128,7 +128,7 @@
         <Rectangle Grid.Row="1" Fill="#D1D5DB" Height="1" Margin="0,4"/>
 
         <!-- CATEGORIES -->
-        <TextBlock Grid.Row="2" Style="{StaticResource HeaderStyle}" FontSize="12" Text="Chọn cấu kiện tính toán khối lượng:" Margin="0,10,0,5"/>
+        <TextBlock Grid.Row="2" Style="{StaticResource VvSectionTitleStyle}" FontSize="12" Text="Chọn cấu kiện tính toán khối lượng:" Margin="0,10,0,5"/>
         
         <Border Grid.Row="3" Background="#F5F6F8" CornerRadius="4" Padding="15">
             <StackPanel>
@@ -143,7 +143,7 @@
         </Border>
 
         <!-- OPTIONS -->
-        <TextBlock Grid.Row="5" Style="{StaticResource HeaderStyle}" FontSize="12" Text="Phương thức xử lý:" Margin="0,10,0,5"/>
+        <TextBlock Grid.Row="5" Style="{StaticResource VvSectionTitleStyle}" FontSize="12" Text="Phương thức xử lý:" Margin="0,10,0,5"/>
         <Border Grid.Row="6" Background="#F5F6F8" CornerRadius="4" Padding="15">
             <StackPanel>
                 <RadioButton Name="optDataOnly" Content="Chỉ tính Volume và gán BIM_Volume (Không cắt)" IsChecked="True"/>

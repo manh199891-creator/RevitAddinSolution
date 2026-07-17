@@ -149,14 +149,14 @@
 
             <!-- Chọn File Link -->
             <StackPanel Grid.Column="0">
-                <TextBlock Text="🔗  Linked MEP Model" Style="{StaticResource LabelStyle}"/>
-                <ComboBox x:Name="CmbLinks" Style="{StaticResource ComboStyle}" DisplayMemberPath="Name" SelectionChanged="CmbLinks_SelectionChanged"/>
+                <TextBlock Text="🔗  Linked MEP Model" Style="{StaticResource VvBodyTextStyle}"/>
+                <ComboBox x:Name="CmbLinks" Style="{StaticResource VvComboBoxStyle}" DisplayMemberPath="Name" SelectionChanged="CmbLinks_SelectionChanged"/>
             </StackPanel>
 
             <!-- Chọn MEP Categories -->
             <StackPanel Grid.Column="2">
-                <TextBlock Text="Categories to Check" Style="{StaticResource LabelStyle}"/>
-                <ComboBox x:Name="CmbCategories" Style="{StaticResource MultiSelectComboStyle}">
+                <TextBlock Text="Categories to Check" Style="{StaticResource VvBodyTextStyle}"/>
+                <ComboBox x:Name="CmbCategories" Style="{StaticResource VvComboBoxStyle}">
                     <ComboBox.ItemTemplate>
                         <DataTemplate>
                             <CheckBox Content="{Binding Name}"
@@ -172,8 +172,8 @@
 
             <!-- Lọc theo Level -->
             <StackPanel Grid.Column="4">
-                <TextBlock Text="Host level" Style="{StaticResource LabelStyle}"/>
-                <ComboBox x:Name="CmbHostLevels" Style="{StaticResource MultiSelectComboStyle}">
+                <TextBlock Text="Host level" Style="{StaticResource VvBodyTextStyle}"/>
+                <ComboBox x:Name="CmbHostLevels" Style="{StaticResource VvComboBoxStyle}">
                     <ComboBox.ItemTemplate>
                         <DataTemplate>
                             <CheckBox Content="{Binding Name}"
@@ -189,7 +189,7 @@
 
             <!-- Góc ngưỡng song song -->
             <StackPanel Grid.Column="6">
-                <TextBlock Text="Parallel ≤ (°)" Style="{StaticResource LabelStyle}"/>
+                <TextBlock Text="Parallel ≤ (°)" Style="{StaticResource VvBodyTextStyle}"/>
                 <TextBox x:Name="TxtThreshold" Style="{StaticResource ModernTextBox}" Text="10"/>
             </StackPanel>
 
@@ -212,7 +212,7 @@
         <Rectangle Grid.Row="5" Height="1" Fill="#D1D5DB" Margin="0,4" x:Name="SepProgress" Visibility="Collapsed"/>
 
         <!-- ── DATAGRID ── -->
-        <DataGrid x:Name="GridResults" Grid.Row="6" Style="{StaticResource DataGridStyle}" SelectionChanged="GridResults_SelectionChanged">
+        <DataGrid x:Name="GridResults" Grid.Row="6" Style="{StaticResource VvDataGridStyle}" SelectionChanged="GridResults_SelectionChanged">
             <DataGrid.Columns>
                 <DataGridTextColumn Header="Wall Id (Host)" Binding="{Binding HostWallId}" Width="100"/>
                 <DataGridTextColumn Header="MEP Id (Link)" Binding="{Binding LinkMepId}" Width="100"/>
