@@ -11,6 +11,27 @@ if ([string]::IsNullOrWhiteSpace($RepositoryRoot)) {
 $failures = [System.Collections.Generic.List[string]]::new()
 $buttonCount = 0
 
+function Get-DeclaredResourceKeys {
+    param([string]$Content)
+
+    $keys = [System.Collections.Generic.HashSet[string]]::new([StringComparer]::Ordinal)
+    [regex]::Matches($Content, 'x:Key\s*=\s*["''](?<key>[^"'']+)["'']') |
+        ForEach-Object { [void]$keys.Add($_.Groups['key'].Value) }
+    return $keys
+}
+
+function Get-StaticResourceUsages {
+    param([string]$Content)
+
+    return [regex]::Matches($Content, '\{StaticResource\s+(?<key>[^\},\s]+)') |
+        ForEach-Object {
+            [pscustomobject]@{
+                Key = $_.Groups['key'].Value
+                Index = $_.Index
+            }
+        }
+}
+
 function Get-HandlerBody {
     param(
         [string]$Source,
@@ -42,6 +63,14 @@ function Get-HandlerBody {
 
 $xamlFiles = Get-ChildItem (Join-Path $RepositoryRoot "src") -Recurse -File -Filter *.xaml |
     Where-Object { $_.FullName -notmatch '[\\/](obj|bin)[\\/]' }
+
+$themeRoot = Join-Path $RepositoryRoot 'src\Antigravity.Core\UI\Themes'
+$sharedResourceKeys = [System.Collections.Generic.HashSet[string]]::new([StringComparer]::Ordinal)
+Get-ChildItem $themeRoot -File -Filter *.xaml | ForEach-Object {
+    $themeContent = Get-Content -Raw -LiteralPath $_.FullName
+    (Get-DeclaredResourceKeys -Content $themeContent) |
+        ForEach-Object { [void]$sharedResourceKeys.Add($_) }
+}
 
 foreach ($file in $xamlFiles) {
     $relativePath = $file.FullName.Substring($RepositoryRoot.Length + 1)
@@ -85,6 +114,16 @@ foreach ($file in $xamlFiles) {
         $isOverlay = $relativePath -like '*PenOverlayWindow.xaml'
         $rootTag = [regex]::Match($content, '<Window\b[^>]*>', 'Singleline').Value
 
+        $localResourceKeys = Get-DeclaredResourceKeys -Content $content
+        $staticResourceUsages = Get-StaticResourceUsages -Content $content |
+            Sort-Object Key -Unique
+        foreach ($usage in $staticResourceUsages) {
+            if (-not $localResourceKeys.Contains($usage.Key) -and
+                -not $sharedResourceKeys.Contains($usage.Key)) {
+                $failures.Add("$relativePath references unresolved StaticResource '$($usage.Key)'.")
+            }
+        }
+
         if (-not $isOverlay) {
             if ($rootTag -notmatch 'Background="#FFFFFF"') {
                 $failures.Add("$relativePath must use a white Window background.")
@@ -112,19 +151,40 @@ foreach ($file in $xamlFiles) {
             if ($content -match 'Background="#1A1D21"') {
                 $failures.Add("$relativePath still contains the retired dark header background #1A1D21.")
             }
+            $retiredLightShellStyles = [regex]::Matches(
+                $content,
+                '<Style\b[^>]*x:Key="(?<key>DarkCheck|DarkRadio|LabelStyle|HeaderStyle)"[^>]*>(?<body>[\s\S]*?)</Style>')
+            foreach ($styleMatch in $retiredLightShellStyles) {
+                if ($styleMatch.Groups['body'].Value -match '<Setter\s+Property="Foreground"\s+Value="White"') {
+                    $failures.Add("$relativePath contains retired white-foreground style '$($styleMatch.Groups['key'].Value)' on the light shell.")
+                }
+            }
+            if ($content -notmatch '<controls:BrandHeader\b') {
+                $failures.Add("$relativePath must use the shared BrandHeader control.")
+            }
+            if ($content -notmatch '<controls:BrandSignature\b') {
+                $failures.Add("$relativePath must use the shared BrandSignature control.")
+            }
+            if ($content -match '<TextBlock\b[^>]*Text="@manhns"') {
+                $failures.Add("$relativePath must not implement @manhns as a raw TextBlock.")
+            }
+            if ($content -match '<(?:TextBlock|controls:BrandSignature)\b[^>]*(?:Margin|Padding)="[^"]*-\d') {
+                $failures.Add("$relativePath uses negative positioning for the signature.")
+            }
         }
 
-        $signatureMatches = [regex]::Matches($content, '<TextBlock\b[^>]*Text="@manhns"[^>]*/>', 'Singleline')
+        $signatureMatches = [regex]::Matches($content, '<(?:TextBlock\b[^>]*Text="@manhns"|controls:BrandSignature\b)[^>]*/>', 'Singleline')
         if ($signatureMatches.Count -ne 1) {
             $failures.Add("$relativePath must contain exactly one @manhns signature.")
         }
         elseif (-not $isOverlay) {
             $signatureTag = $signatureMatches[0].Value
-            if ($signatureTag -notmatch 'FontSize="12"' -or
-                $signatureTag -notmatch 'FontWeight="SemiBold"' -or
-                $signatureTag -notmatch 'Foreground="#6B7280"' -or
-                $signatureTag -notmatch 'HorizontalAlignment="Right"' -or
-                $signatureTag -notmatch 'IsHitTestVisible="False"') {
+            if ($signatureTag -match '^<TextBlock' -and
+                ($signatureTag -notmatch 'FontSize="12"' -or
+                 $signatureTag -notmatch 'FontWeight="SemiBold"' -or
+                 $signatureTag -notmatch 'Foreground="#6B7280"' -or
+                 $signatureTag -notmatch 'HorizontalAlignment="Right"' -or
+                 $signatureTag -notmatch 'IsHitTestVisible="False"')) {
                 $failures.Add("$relativePath has a non-standard @manhns signature.")
             }
         }
