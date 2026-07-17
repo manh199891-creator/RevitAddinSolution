@@ -18,6 +18,7 @@ TestResults/
 *.cache
 
 # Local deployment artifacts
+artifacts/
 _Deploy/
 _packages/
 _addin_manager/
