@@ -60,7 +60,7 @@ namespace DoorClearanceBox.UI
         {
             try
             {
-                TxtVersion.Text = $"v{Constants.Version}  \u00B7  Revit 2022-2025";
+                WindowHeader.SubtitleText = $"v{Constants.Version}  \u00B7  Revit 2022-2025";
                 
                 // Populate Levels
                 var levels = new FilteredElementCollector(_doc)

@@ -62,13 +62,17 @@
     <Grid Margin="16">
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto"/>
-            <RowDefinition Height="16"/>
+            <RowDefinition Height="12"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="12"/>
             <RowDefinition Height="*"/>
-            <RowDefinition Height="16"/>
+            <RowDefinition Height="12"/>
             <RowDefinition Height="Auto"/>
         </Grid.RowDefinitions>
 
-        <DockPanel Grid.Row="0">
+        <controls:BrandHeader Grid.Row="0" TitleText="EXPORT ISSUES" SubtitleText="Select issues and export the required set."/>
+
+        <DockPanel Grid.Row="2">
             <TextBlock Text="Select issues to export" Foreground="#000000" FontWeight="SemiBold" FontSize="14" DockPanel.Dock="Left" VerticalAlignment="Center"/>
             <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
                 <Button Content="Select All" Click="BtnSelectAll_Click" Style="{StaticResource SecondaryBtn}" Margin="0,0,8,0"/>
@@ -76,7 +80,7 @@
             </StackPanel>
         </DockPanel>
 
-        <ListView Grid.Row="2" x:Name="LvExportIssues" Background="#FFFFFF" BorderBrush="#D1D5DB" Foreground="#000000">
+        <ListView Grid.Row="4" x:Name="LvExportIssues" Background="#FFFFFF" BorderBrush="#D1D5DB" Foreground="#000000">
             <ListView.ItemTemplate>
                 <DataTemplate>
                     <Grid Margin="4">
@@ -94,7 +98,7 @@
             </ListView.ItemTemplate>
         </ListView>
 
-        <Grid Grid.Row="4">
+        <Grid Grid.Row="6">
             <DockPanel>
                 <TextBlock x:Name="TxtSelectionCount" Foreground="#4B5563" VerticalAlignment="Center"/>
                 <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
@@ -102,7 +106,7 @@
                     <Button Content="Cancel" Click="BtnCancel_Click" Style="{StaticResource SecondaryBtn}"/>
                 </StackPanel>
             </DockPanel>
-            <TextBlock Text="@manhns" FontSize="12" FontWeight="SemiBold" Foreground="#6B7280" Opacity="1" HorizontalAlignment="Right" VerticalAlignment="Bottom" IsHitTestVisible="False" Focusable="False"/>
+            <controls:BrandSignature Margin="0,8,0,0"/>
         </Grid>
     </Grid>
 </Window>

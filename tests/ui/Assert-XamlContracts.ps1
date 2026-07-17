@@ -153,7 +153,7 @@ foreach ($file in $xamlFiles) {
             }
             $retiredLightShellStyles = [regex]::Matches(
                 $content,
-                '<Style\b[^>]*x:Key="(?<key>DarkCheck|DarkRadio|LabelStyle|HeaderStyle)"[^>]*>(?<body>[\s\S]*?)</Style>')
+                '<Style\b(?![^>]*\/>)\s*[^>]*x:Key="(?<key>DarkCheck|DarkRadio|LabelStyle|HeaderStyle)"[^>]*>(?<body>[\s\S]*?)</Style>')
             foreach ($styleMatch in $retiredLightShellStyles) {
                 if ($styleMatch.Groups['body'].Value -match '<Setter\s+Property="Foreground"\s+Value="White"') {
                     $failures.Add("$relativePath contains retired white-foreground style '$($styleMatch.Groups['key'].Value)' on the light shell.")
@@ -170,6 +170,27 @@ foreach ($file in $xamlFiles) {
             }
             if ($content -match '<(?:TextBlock|controls:BrandSignature)\b[^>]*(?:Margin|Padding)="[^"]*-\d') {
                 $failures.Add("$relativePath uses negative positioning for the signature.")
+            }
+
+            if ($relativePath -like '*Antigravity.DoorClearance\UI\ClearanceBoxWindow.xaml') {
+                $widthMatch = [regex]::Match($rootTag, '\bWidth="(?<value>\d+)"')
+                $heightMatch = [regex]::Match($rootTag, '\bHeight="(?<value>\d+)"')
+                if (-not $widthMatch.Success -or [int]$widthMatch.Groups['value'].Value -lt 720 -or
+                    -not $heightMatch.Success -or [int]$heightMatch.Groups['value'].Value -gt 650) {
+                    $failures.Add("$relativePath must use the Standard Landscape profile (width >= 720, height <= 650).")
+                }
+            }
+            if ($relativePath -like '*Antigravity.HoanThien\UI\HoanThienWindow.xaml') {
+                if ($content -notmatch '<Border\s+Grid.Row="2"[^>]*>\s*<TabControl') {
+                    $failures.Add("$relativePath must place its TabControl body in the star-sized row 2.")
+                }
+                if ($content -notmatch '<Grid\s+Grid.Row="4"[^>]*>') {
+                    $failures.Add("$relativePath must place actions and signature in footer row 4.")
+                }
+            }
+            if ($relativePath -like '*Antigravity.ArchModeling\UI\ArchModelingWindow.xaml' -and
+                $content -notmatch '<Grid\s+Grid.Column="0"\s+x:Name="GridPrimaryMapping"\s+Grid.ColumnSpan="3"') {
+                $failures.Add("$relativePath must let the primary mapping grid span the full result pane outside Combined mode.")
             }
         }
 

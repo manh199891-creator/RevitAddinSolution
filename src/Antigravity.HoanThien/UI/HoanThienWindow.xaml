@@ -2,9 +2,9 @@
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:controls="clr-namespace:Antigravity.Core.UI.Controls;assembly=Antigravity.Core"
-        Title="Vilai Viet Lớp Hoàn Thiện - build 2026-07-09" Height="650" MinHeight="450" Width="550"
+        Title="Vilai Viet Lớp Hoàn Thiện - build 2026-07-09" Height="600" MinHeight="480" Width="760"
         WindowStartupLocation="CenterScreen"
-        Background="#FFFFFF" Topmost="True" FontFamily="Segoe UI" UseLayoutRounding="True" SnapsToDevicePixels="True" ResizeMode="CanResize" MinWidth="500">
+        Background="#FFFFFF" Topmost="True" FontFamily="Segoe UI" UseLayoutRounding="True" SnapsToDevicePixels="True" ResizeMode="CanResize" MinWidth="680">
 
         <Window.Resources>
         <ResourceDictionary>
@@ -89,51 +89,28 @@
     <Grid Margin="16">
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto"/>
-            <RowDefinition Height="Auto"/>
-            <RowDefinition Height="16"/>
+            <RowDefinition Height="12"/>
             <RowDefinition Height="*"/>
+            <RowDefinition Height="12"/>
             <RowDefinition Height="Auto"/>
         </Grid.RowDefinitions>
 
         <!-- Brand Header -->
-        <Border Grid.Row="0" Background="#FFFFFF" BorderBrush="#D1D5DB" BorderThickness="0,0,0,1" Margin="-16,-16,-16,16" Padding="16,12">
-            <Grid>
-                <Grid.ColumnDefinitions>
-                    <ColumnDefinition Width="Auto"/>
-                    <ColumnDefinition Width="*"/>
-                </Grid.ColumnDefinitions>
-                
-                <!-- Logo Vector -->
-                <Viewbox Grid.Column="0" Width="28" Height="28" Margin="0,0,12,0" VerticalAlignment="Center">
-                    <Canvas Width="100" Height="80">
-                        <Path Fill="#1B3679" Data="M 30,10 L 70,10 L 50,45 Z"/>
-                        <Path Fill="#D8262C" Data="M 10,10 L 32,10 L 50,55 L 68,10 L 90,10 L 50,80 Z"/>
-                    </Canvas>
-                </Viewbox>
-                
-                <StackPanel Grid.Column="1" VerticalAlignment="Center">
-                    <TextBlock FontSize="14" FontWeight="Bold" Foreground="#111827">
-                        <Run Text="VILA" Foreground="#1B3679"/><Run Text="I"><Run.Foreground><LinearGradientBrush StartPoint="0,0" EndPoint="1,0"><GradientStop Color="#1B3679" Offset="0.7"/><GradientStop Color="#D8262C" Offset="0.7"/></LinearGradientBrush></Run.Foreground></Run><Run Text="VIET" Foreground="#D8262C"/><Run Text=" · LỚP HOÀN THIỆN" Foreground="#111827" FontWeight="SemiBold"/>
-                    </TextBlock>
-                    <TextBlock Text="Tạo lớp trát, ốp, sơn, sàn tự động theo Room" 
-                               FontSize="11" Foreground="#6B7280" Margin="0,2,0,0"/>
-                </StackPanel>
-            </Grid>
-        </Border>
+        <controls:BrandHeader Grid.Row="0" TitleText="Lớp Hoàn Thiện - build 2026-07-09" SubtitleText="Tạo lớp trát, ốp, sơn, sàn tự động theo Room"/>
 
         <!-- Content Area -->
-        <Border Grid.Row="1" Background="#F5F6F8" Padding="20">
+        <Border Grid.Row="2" Background="#F5F6F8" Padding="20">
             <TabControl Background="Transparent" BorderThickness="0">
                 <TabControl.Resources>
                     <Style TargetType="TabItem">
                         <Setter Property="Background" Value="Transparent"/>
-                        <Setter Property="Foreground" Value="#9BA3AF"/>
+                        <Setter Property="Foreground" Value="#4B5563"/>
                         <Setter Property="BorderThickness" Value="0"/>
                         <Setter Property="Margin" Value="0,0,10,0"/>
                         <Setter Property="Padding" Value="10,5"/>
                         <Style.Triggers>
                             <Trigger Property="IsSelected" Value="True">
-                                <Setter Property="Foreground" Value="#F5F6F8"/>
+                                <Setter Property="Foreground" Value="#007ACC"/>
                                 <Setter Property="FontWeight" Value="SemiBold"/>
                             </Trigger>
                         </Style.Triggers>
@@ -241,14 +218,18 @@
         </Border>
 
         <!-- Bottom Action Buttons -->
-        <Grid Grid.Row="2" Margin="0,10,0,0">
-            <StackPanel Orientation="Horizontal" HorizontalAlignment="Left">
+        <Grid Grid.Row="4">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*"/>
+                <ColumnDefinition Width="Auto"/>
+            </Grid.ColumnDefinitions>
+            <StackPanel Grid.Column="0" Orientation="Horizontal" HorizontalAlignment="Left">
                 <Button Content="Check Phòng Trống" Style="{StaticResource SecondaryBtn}" Margin="0,0,8,0" Click="BtnCheckRooms_Click"/>
                 <Button Content="Tạo Hoàn Thiện" Style="{StaticResource PrimaryBtn}" Click="BtnOk_Click"/>
                 <Button Content="Hủy" Style="{StaticResource SecondaryBtn}" Margin="8,0,0,0" Click="BtnCancel_Click"/>
             </StackPanel>
             
-            <TextBlock Text="@manhns" Margin="0,0,0,0" FontSize="12" FontWeight="SemiBold" Foreground="#6B7280" Opacity="1" HorizontalAlignment="Right" VerticalAlignment="Bottom" IsHitTestVisible="False" Focusable="False"/>
+            <controls:BrandSignature Grid.Column="1" Margin="16,0,0,0" VerticalAlignment="Center"/>
         </Grid>
     </Grid>
 </Window>

@@ -3,10 +3,10 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:controls="clr-namespace:Antigravity.Core.UI.Controls;assembly=Antigravity.Core"
         xmlns:local="clr-namespace:Antigravity.ArchModeling.UI"
-        Title="Vilai Viet - Arch Modeling" Height="550" Width="750"
+        Title="Vilai Viet - Arch Modeling" Height="620" Width="960"
         WindowStartupLocation="CenterScreen" ResizeMode="CanResize"
         Background="#FFFFFF" MouseLeftButtonDown="Window_MouseLeftButtonDown"
-        FontFamily="Segoe UI" UseLayoutRounding="True" SnapsToDevicePixels="True" MinWidth="600" MinHeight="420">
+        FontFamily="Segoe UI" UseLayoutRounding="True" SnapsToDevicePixels="True" MinWidth="760" MinHeight="480">
 
         <Window.Resources>
         <ResourceDictionary>
@@ -154,37 +154,7 @@
             <RowDefinition Height="Auto"/>
         </Grid.RowDefinitions>
 
-        <Border Grid.Row="0" Background="#FFFFFF" BorderBrush="#D1D5DB" BorderThickness="0,0,0,1" Margin="-16,-16,-16,16" Padding="16,12">
-            <Grid>
-                <Grid.ColumnDefinitions>
-                    <ColumnDefinition Width="Auto"/> <!-- Cột chứa Logo -->
-                    <ColumnDefinition Width="*"/>    <!-- Cột chứa Text -->
-                </Grid.ColumnDefinitions>
-                
-                <!-- 1. Logo Vector chữ V chuẩn xác của Vilai Viet -->
-                <Viewbox Grid.Column="0" Width="28" Height="28" Margin="0,0,12,0" VerticalAlignment="Center">
-                    <Canvas Width="100" Height="80">
-                        <!-- Tam giác xanh tím than ở trên -->
-                        <Path Fill="#1B3679" Data="M 30,10 L 70,10 L 50,45 Z"/>
-                        <!-- Cánh chữ V màu đỏ ôm bên ngoài -->
-                        <Path Fill="#D8262C" Data="M 10,10 L 32,10 L 50,55 L 68,10 L 90,10 L 50,80 Z"/>
-                    </Canvas>
-                </Viewbox>
-                
-                <!-- 2. Tên Add-in -->
-                <StackPanel Grid.Column="1" VerticalAlignment="Center">
-                    <TextBlock FontSize="14" FontWeight="Bold" Foreground="#111827">
-                        <Run Text="VILA" Foreground="#1B3679"/><Run Text="I"><Run.Foreground><LinearGradientBrush StartPoint="0,0" EndPoint="1,0"><GradientStop Color="#1B3679" Offset="0.7"/><GradientStop Color="#D8262C" Offset="0.7"/></LinearGradientBrush></Run.Foreground></Run><Run Text="VIET" Foreground="#D8262C"/><Run x:Name="TxtModeTitle" Text=" · ARCH MODELING" Foreground="#111827" FontWeight="SemiBold"/>
-                    </TextBlock>
-                    
-                    <!-- Dòng chú thích chức năng (Subtitle) -->
-                    <TextBlock Text="Create elements automatically from AutoCAD entities" 
-                               FontSize="11" 
-                               Foreground="#6B7280" 
-                               Margin="0,2,0,0"/>
-                </StackPanel>
-            </Grid>
-        </Border>
+        <controls:BrandHeader x:Name="WindowHeader" Grid.Row="0" TitleText="Arch Modeling" SubtitleText="Create elements automatically from AutoCAD entities"/>
 
         <Grid Grid.Row="2">
             <Grid.ColumnDefinitions>
@@ -235,7 +205,7 @@
                             <ColumnDefinition Width="*"/>
                         </Grid.ColumnDefinitions>
                         
-                        <Grid Grid.Column="0">
+                        <Grid Grid.Column="0" x:Name="GridPrimaryMapping" Grid.ColumnSpan="3">
                             <Grid.RowDefinitions>
                                 <RowDefinition Height="Auto"/>
                                 <RowDefinition Height="*"/>
@@ -375,11 +345,15 @@
         </Grid>
 
         <Grid Grid.Row="3" Margin="0,15,0,0">
-            <StackPanel Orientation="Horizontal" HorizontalAlignment="Left">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*"/>
+                <ColumnDefinition Width="Auto"/>
+            </Grid.ColumnDefinitions>
+            <StackPanel Grid.Column="0" Orientation="Horizontal" HorizontalAlignment="Left">
                 <Button x:Name="BtnCreate" Content="✅  Create Elements" Style="{StaticResource PrimaryBtn}" Margin="0,0,8,0" Click="BtnCreate_Click"/>
                 <Button Content="✖  Cancel" Style="{StaticResource SecondaryBtn}" Click="BtnCancel_Click"/>
             </StackPanel>
-            <TextBlock Text="@manhns" FontSize="12" FontWeight="SemiBold" Foreground="#6B7280" Opacity="1" HorizontalAlignment="Right" VerticalAlignment="Bottom" IsHitTestVisible="False" Focusable="False"/>
+            <controls:BrandSignature Grid.Column="1" Margin="16,0,0,0" VerticalAlignment="Center"/>
         </Grid>
     </Grid>
 </Window>

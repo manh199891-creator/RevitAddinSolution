@@ -162,7 +162,7 @@ namespace Antigravity.CheckFloorElevation.UI
             SetRunningState(true);
             _viewModels.Clear();
             _lastResults = new List<FloorCheckResult>();
-            TxtSummary.Text = string.Empty;
+            WindowHeader.SubtitleText = string.Empty;
 
             bool activeViewOnly = ChkActiveViewOnly.IsChecked == true;
             IList<ElementId> selectedLevelIds = GetSelectedLevelIds();
@@ -209,7 +209,7 @@ namespace Antigravity.CheckFloorElevation.UI
                         int noMatchCount = _lastResults.Count(result => result.IsNoMatch);
                         int okCount = _lastResults.Count - errorCount - noMatchCount;
 
-                        TxtSummary.Text = okCount + " OK | " + errorCount + " Error | " + noMatchCount + " No Match";
+                        WindowHeader.SubtitleText = okCount + " OK | " + errorCount + " Error | " + noMatchCount + " No Match";
                         TxtStatusBar.Text = "Completed. Checked " + _lastResults.Count + " host floor(s). Level: " + selectedLevelNames + ". 3D view: " + view3D.Name;
                         BtnShow3D.IsEnabled = _lastResults.Count > 0;
                         BtnApplyColor.IsEnabled = _lastResults.Count > 0;

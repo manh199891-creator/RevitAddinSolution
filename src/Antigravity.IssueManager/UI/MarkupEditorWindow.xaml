@@ -76,15 +76,19 @@
   </Window.Resources>
   <Grid Margin="16">
     <Grid.RowDefinitions>
+      <RowDefinition Height="Auto"/>   <!-- Header -->
+      <RowDefinition Height="12"/>
       <RowDefinition Height="Auto"/>   <!-- Toolbar -->
-      <RowDefinition Height="16"/>     <!-- Separator -->
+      <RowDefinition Height="12"/>
       <RowDefinition Height="*"/>      <!-- Canvas area -->
-      <RowDefinition Height="16"/>     <!-- Separator -->
+      <RowDefinition Height="12"/>
       <RowDefinition Height="Auto"/>   <!-- Bottom buttons -->
     </Grid.RowDefinitions>
 
+    <controls:BrandHeader Grid.Row="0" TitleText="MARKUP EDITOR" SubtitleText="Annotate the captured issue view."/>
+
     <!-- TOOLBAR -->
-    <Border Grid.Row="0" Background="#F5F6F8" BorderBrush="#D1D5DB" BorderThickness="1" CornerRadius="4" Padding="6">
+    <Border Grid.Row="2" Background="#F5F6F8" BorderBrush="#D1D5DB" BorderThickness="1" CornerRadius="4" Padding="6">
       <WrapPanel Orientation="Horizontal" VerticalAlignment="Center">
         <ToggleButton x:Name="BtnPen"       Content="🖊️ Pen"       IsChecked="True" Checked="BtnPen_Checked"/>
         <ToggleButton x:Name="BtnRect"      Content="⬜ Rect"      Checked="BtnRect_Checked"/>
@@ -109,7 +113,7 @@
     </Border>
 
     <!-- CANVAS AREA -->
-    <Border Grid.Row="2" Background="#FFFFFF" BorderBrush="#D1D5DB" BorderThickness="1" CornerRadius="4">
+    <Border Grid.Row="4" Background="#FFFFFF" BorderBrush="#D1D5DB" BorderThickness="1" CornerRadius="4">
       <Grid x:Name="MarkupPanel" Background="Transparent" ClipToBounds="True">
         <Image x:Name="ImgBase" Stretch="Uniform" HorizontalAlignment="Center" VerticalAlignment="Center"/>
         <InkCanvas x:Name="InkLayer"
@@ -122,12 +126,12 @@
     </Border>
 
     <!-- BOTTOM BUTTONS -->
-    <Grid Grid.Row="4">
+    <Grid Grid.Row="6">
       <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
         <Button Content="✖ Huỷ"         Click="BtnCancel_Click" Style="{StaticResource SecondaryBtn}" Margin="0,0,8,0"/>
         <Button Content="💾 Lưu markup" Click="BtnSave_Click" Style="{StaticResource PrimaryBtn}"/>
       </StackPanel>
-      <TextBlock Text="@manhns" FontSize="12" FontWeight="SemiBold" Foreground="#6B7280" Opacity="1" HorizontalAlignment="Right" VerticalAlignment="Bottom" IsHitTestVisible="False" Focusable="False"/>
+      <controls:BrandSignature Margin="0,8,0,0"/>
     </Grid>
   </Grid>
 </Window>
