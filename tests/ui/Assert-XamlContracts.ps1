@@ -171,6 +171,9 @@ foreach ($file in $xamlFiles) {
             if ($content -match '<(?:TextBlock|controls:BrandSignature)\b[^>]*(?:Margin|Padding)="[^"]*-\d') {
                 $failures.Add("$relativePath uses negative positioning for the signature.")
             }
+            if ($content -match '(?:Margin|Padding)="[^"]*-\d') {
+                $failures.Add("$relativePath uses a negative layout offset; strict-v3 requires grid ownership instead.")
+            }
 
             if ($relativePath -like '*Antigravity.DoorClearance\UI\ClearanceBoxWindow.xaml') {
                 $widthMatch = [regex]::Match($rootTag, '\bWidth="(?<value>\d+)"')
@@ -263,6 +266,19 @@ if ($windowFiles.Count -ne 24) {
 }
 if ($buttonCount -ne 131) {
     $failures.Add("Expected 131 Window buttons but found $buttonCount; review the interaction inventory.")
+}
+
+$guidelineV3Path = Join-Path $RepositoryRoot 'docs\ui\VilaiViet_UI_Guidelines_v3.md'
+if (-not (Test-Path -LiteralPath $guidelineV3Path)) {
+    $failures.Add('Strict UI guideline v3 is missing.')
+}
+
+$guidelineV2Path = Join-Path $RepositoryRoot 'docs\ui\VilaiViet_UI_Guidelines_v2.md'
+if (Test-Path -LiteralPath $guidelineV2Path) {
+    $guidelineV2 = Get-Content -Raw -LiteralPath $guidelineV2Path
+    if ($guidelineV2 -notmatch 'VilaiViet_UI_Guidelines_v3\.md') {
+        $failures.Add('UI guideline v2 must point to v3 as the canonical standard.')
+    }
 }
 
 if ($failures.Count -gt 0) {

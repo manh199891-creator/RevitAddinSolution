@@ -8,6 +8,9 @@ Ngày tạo: 2026-07-17
 |---|---|
 | Parse XAML | PASS — 24 window, 30 total XAML |
 | Shared theme/resources | PASS |
+| StaticResource graph | PASS — 0 unresolved keys |
+| Canonical BrandHeader/BrandSignature | PASS — normal windows migrated; overlay exception retained |
+| Captured layout regressions | PASS — Clearance landscape, HoanThien star body/footer, ArchModeling full-width mapping |
 | Root background/font/min-size contract | PASS |
 | `@manhns` contract | PASS |
 | Button wiring | PASS — 131/131 button có action, handler tồn tại và không rỗng |
@@ -30,6 +33,15 @@ tra ở default size và minimum size.
 | Issue Manager + dialogs | Pending | Pending | Pending | Pending | Pending | Pending | Pending |
 | Tag Arranger/HoanThien | Pending | Pending | Pending | Pending | Pending | Pending | Pending |
 | Password/Markup/Overlay | Pending | Pending | Pending | Pending | Pending | Pending | Pending |
+
+## Mandatory regression scenarios from Revit 2024 capture
+
+- Open every command that previously failed around XAML lines 139, 141 or 152; no `StaticResourceExtension` dialog.
+- ClearanceBox: all Scope/Categories/Geometry/Options labels remain readable on white at default and minimum size.
+- Clearance clash table: columns fill the workbench; footer actions and `@manhns` do not overlap.
+- HoanThien: TabControl fills the body; selected tab remains visible; no unused lower white region.
+- ArchModeling Door/Window mode: when the secondary pane is collapsed, the primary mapping DataGrid spans the full result pane.
+- At 200% scaling, header subtitle wraps, body scrolls internally and footer remains reachable.
 
 ## Pass criteria
 
