@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using Autodesk.Revit.DB;
+using Antigravity.Core.Geometry;
 using Antigravity.Core.Models;
 
 namespace Antigravity.Core.Services
@@ -13,79 +14,62 @@ namespace Antigravity.Core.Services
             var results = new List<FoundationData>();
             var doc = cadLink.Document;
             var geomElem = cadLink.get_Geometry(new Options());
-
             if (geomElem == null) return results;
 
             var looseLines = new List<Line>();
-            ProcessGeometry(geomElem, doc, layerName, Transform.Identity, results, looseLines);
+            var candidateLoops = new List<IList<XYZ>>();
 
-            // Process loose lines into polygons
-            var loops = BuildLoops(looseLines);
-            foreach (var loop in loops)
+            ProcessGeometry(geomElem, doc, layerName, Transform.Identity, candidateLoops, looseLines);
+
+            // Polygonize loose CAD lines by elevation. A shared undirected edge is
+            // represented by two directed half-edges and can therefore bound two
+            // adjacent foundation faces without being consumed globally.
+            BuildLoops(looseLines, candidateLoops);
+
+            foreach (var loop in candidateLoops)
             {
-                var pts = loop.Select(l => l.GetEndPoint(0)).ToList();
-                pts.Add(loop.Last().GetEndPoint(1)); // Add the closing point
-                ProcessPoints(pts, Transform.Identity, results);
+                ProcessPoints(loop, Transform.Identity, results);
             }
 
             return results;
         }
 
-        private List<List<Line>> BuildLoops(List<Line> lines)
+        private void BuildLoops(IList<Line> lines, ICollection<IList<XYZ>> candidateLoops)
         {
-            var loops = new List<List<Line>>();
-            var remaining = new List<Line>(lines);
+            const double elevationTolerance = 0.01;
+            var extractor = new PlanarFaceExtractor(tolerance: 0.001, areaTolerance: 1e-8, maxInputSegments: 5000);
 
-            while (remaining.Count > 0)
+            var elevationGroups = lines.GroupBy(line =>
+                (long)Math.Round(
+                    ((line.GetEndPoint(0).Z + line.GetEndPoint(1).Z) / 2.0) / elevationTolerance,
+                    MidpointRounding.AwayFromZero));
+
+            foreach (var group in elevationGroups)
             {
-                var currentLoop = new List<Line>();
-                var currentLine = remaining[0];
-                currentLoop.Add(currentLine);
-                remaining.RemoveAt(0);
-
-                XYZ currentEnd = currentLine.GetEndPoint(1);
-
-                bool added = true;
-                while (added)
+                var sourceLines = group.ToList();
+                if (sourceLines.Any(line => Math.Abs(line.GetEndPoint(0).Z - line.GetEndPoint(1).Z) > elevationTolerance))
                 {
-                    added = false;
-                    for (int i = 0; i < remaining.Count; i++)
-                    {
-                        var nextLine = remaining[i];
-                        var p0 = nextLine.GetEndPoint(0);
-                        var p1 = nextLine.GetEndPoint(1);
-
-                        if (p0.DistanceTo(currentEnd) < 0.01)
-                        {
-                            currentLoop.Add(nextLine);
-                            currentEnd = p1;
-                            remaining.RemoveAt(i);
-                            added = true;
-                            break;
-                        }
-                        else if (p1.DistanceTo(currentEnd) < 0.01)
-                        {
-                            // Reverse the line
-                            var reversed = Line.CreateBound(p1, p0);
-                            currentLoop.Add(reversed);
-                            currentEnd = p0;
-                            remaining.RemoveAt(i);
-                            added = true;
-                            break;
-                        }
-                    }
+                    continue;
                 }
 
-                if (currentLoop.Count >= 4 && currentLoop[0].GetEndPoint(0).DistanceTo(currentEnd) < 0.01)
+                var elevation = sourceLines
+                    .SelectMany(line => new[] { line.GetEndPoint(0).Z, line.GetEndPoint(1).Z })
+                    .Average();
+                var segments = sourceLines.Select(line => new Segment2(
+                    new Point2(line.GetEndPoint(0).X, line.GetEndPoint(0).Y),
+                    new Point2(line.GetEndPoint(1).X, line.GetEndPoint(1).Y)));
+
+                var extraction = extractor.Extract(segments);
+                foreach (var face in extraction.Faces)
                 {
-                    loops.Add(currentLoop);
+                    var points = face.Vertices.Select(point => new XYZ(point.X, point.Y, elevation)).ToList();
+                    points.Add(points[0]);
+                    candidateLoops.Add(points);
                 }
             }
-
-            return loops;
         }
 
-        private void ProcessGeometry(GeometryElement geomElem, Document doc, string layerName, Transform currentTransform, List<FoundationData> results, List<Line> looseLines)
+        private void ProcessGeometry(GeometryElement geomElem, Document doc, string layerName, Transform currentTransform, List<IList<XYZ>> loops, List<Line> looseLines)
         {
             foreach (var geom in geomElem)
             {
@@ -93,7 +77,7 @@ namespace Antigravity.Core.Services
                 {
                     var instanceGeom = geomInst.GetSymbolGeometry();
                     var newTransform = currentTransform.Multiply(geomInst.Transform);
-                    ProcessGeometry(instanceGeom, doc, layerName, newTransform, results, looseLines);
+                    ProcessGeometry(instanceGeom, doc, layerName, newTransform, loops, looseLines);
                 }
                 else
                 {
@@ -107,7 +91,22 @@ namespace Antigravity.Core.Services
                             {
                                 var pts = polyLine.GetCoordinates();
                                 var transformedPts = pts.Select(p => currentTransform.OfPoint(p)).ToList();
-                                ProcessPoints(transformedPts, Transform.Identity, results);
+
+                                if (transformedPts.Count > 2 && transformedPts.First().DistanceTo(transformedPts.Last()) < 0.01)
+                                {
+                                    // It's a closed loop, add it directly. Do not explode into looseLines to preserve original outline.
+                                    loops.Add(transformedPts);
+                                }
+                                else
+                                {
+                                    for (int i = 0; i < transformedPts.Count - 1; i++)
+                                    {
+                                        if (transformedPts[i].DistanceTo(transformedPts[i + 1]) > 0.01)
+                                        {
+                                            looseLines.Add(Line.CreateBound(transformedPts[i], transformedPts[i + 1]));
+                                        }
+                                    }
+                                }
                             }
                             else if (geom is Line line)
                             {
@@ -124,7 +123,7 @@ namespace Antigravity.Core.Services
             }
         }
 
-        private void ProcessPoints(IList<XYZ> pts, Transform currentTransform, List<FoundationData> results)
+        private bool ProcessPoints(IList<XYZ> pts, Transform currentTransform, List<FoundationData> results)
         {
             if (pts.Count >= 4 && pts[0].DistanceTo(pts[pts.Count - 1]) < 0.01)
             {
@@ -179,7 +178,7 @@ namespace Antigravity.Core.Services
 
                 if (!orthogonal || corners != 4)
                 {
-                    return;
+                    return false;
                 }
 
                 double minZ = double.MaxValue;
@@ -198,9 +197,14 @@ namespace Antigravity.Core.Services
                     if (len > maxLen) { maxLen = len; longestEdge = (p2 - p1).Normalize(); }
                 }
 
+                if (maxZ - minZ > 0.01)
+                {
+                    return false;
+                }
+
                 if (Math.Abs(longestEdge.Z) > 0.01)
                 {
-                    return;
+                    return false;
                 }
 
                 var angle = longestEdge.AngleTo(XYZ.BasisX);
@@ -234,9 +238,13 @@ namespace Antigravity.Core.Services
 
                 if (length > 0.1 && width > 0.1)
                 {
+                    if (results.Any(r => r.Center.DistanceTo(center) < 0.1)) return false;
+
                     results.Add(new FoundationData { Center = center, RotationAngle = angle, Length = length, Width = width });
+                    return true;
                 }
             }
+            return false;
         }
     }
 }
