@@ -84,7 +84,7 @@ namespace Antigravity.CheckFloorElevation.UI
             CmbHostLevels.SelectedIndex = 0;
         }
 
-        private void LevelCheckBox_Click(object sender, RoutedEventArgs e)
+        public void LevelCheckBox_Click(object sender, RoutedEventArgs e)
         {
             CheckBox checkBox = sender as CheckBox;
             LevelItem clicked = checkBox?.DataContext as LevelItem;
@@ -145,7 +145,7 @@ namespace Antigravity.CheckFloorElevation.UI
             return names.Count == 0 ? "All host levels" : string.Join(", ", names);
         }
 
-        private void BtnRun_Click(object sender, RoutedEventArgs e)
+        public void BtnRun_Click(object sender, RoutedEventArgs e)
         {
             if (!(CmbLinks.SelectedItem is LinkItem selectedLink))
             {
@@ -229,7 +229,7 @@ namespace Antigravity.CheckFloorElevation.UI
             });
         }
 
-        private void BtnShow3D_Click(object sender, RoutedEventArgs e)
+        public void BtnShow3D_Click(object sender, RoutedEventArgs e)
         {
             if (!(GridResults.SelectedItem is FloorResultViewModel selectedResult))
             {
@@ -254,7 +254,7 @@ namespace Antigravity.CheckFloorElevation.UI
             });
         }
 
-        private void Btn3DPen_Click(object sender, RoutedEventArgs e)
+        public void Btn3DPen_Click(object sender, RoutedEventArgs e)
         {
             var penWindow = new PenOverlayWindow(_uiDoc);
             
@@ -295,7 +295,7 @@ namespace Antigravity.CheckFloorElevation.UI
             }
         }
 
-        private void BtnApplyColor_Click(object sender, RoutedEventArgs e)
+        public void BtnApplyColor_Click(object sender, RoutedEventArgs e)
         {
             if (_lastResults == null || _lastResults.Count == 0)
                 return;
@@ -315,7 +315,7 @@ namespace Antigravity.CheckFloorElevation.UI
             });
         }
 
-        private void BtnExportHtml_Click(object sender, RoutedEventArgs e)
+        public void BtnExportHtml_Click(object sender, RoutedEventArgs e)
         {
             if (_lastResults == null || _lastResults.Count == 0)
                 return;
@@ -372,7 +372,7 @@ namespace Antigravity.CheckFloorElevation.UI
             });
         }
 
-        private void BtnResetColor_Click(object sender, RoutedEventArgs e)
+        public void BtnResetColor_Click(object sender, RoutedEventArgs e)
         {
             if (_lastResults == null || _lastResults.Count == 0)
                 return;

@@ -22,12 +22,12 @@ namespace Antigravity.CheckFloorElevation.UI
             Loaded += PenOverlayWindow_Loaded;
         }
 
-        private void PenOverlayWindow_Loaded(object sender, RoutedEventArgs e)
+        public void PenOverlayWindow_Loaded(object sender, RoutedEventArgs e)
         {
             UpdateDrawingAttributes((SolidColorBrush)new BrushConverter().ConvertFrom("#FF0000"));
         }
 
-        private void CmbColors_SelectionChanged(object sender, SelectionChangedEventArgs e)
+        public void CmbColors_SelectionChanged(object sender, SelectionChangedEventArgs e)
         {
             if (CmbColors.SelectedItem is ComboBoxItem item && item.Tag != null)
             {
@@ -51,7 +51,7 @@ namespace Antigravity.CheckFloorElevation.UI
             }
         }
 
-        private void Undo_Click(object sender, RoutedEventArgs e)
+        public void Undo_Click(object sender, RoutedEventArgs e)
         {
             if (PenCanvas.Strokes.Count > 0)
             {
@@ -59,19 +59,19 @@ namespace Antigravity.CheckFloorElevation.UI
             }
         }
 
-        private void Clear_Click(object sender, RoutedEventArgs e)
+        public void Clear_Click(object sender, RoutedEventArgs e)
         {
             PenCanvas.Strokes.Clear();
         }
 
-        private void Done_Click(object sender, RoutedEventArgs e)
+        public void Done_Click(object sender, RoutedEventArgs e)
         {
             Strokes = PenCanvas.Strokes;
             IsDone = true;
             this.Close();
         }
 
-        private void Cancel_Click(object sender, RoutedEventArgs e)
+        public void Cancel_Click(object sender, RoutedEventArgs e)
         {
             IsDone = false;
             this.Close();

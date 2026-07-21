@@ -3,8 +3,8 @@ using System.Linq;
 using Autodesk.Revit.Attributes;
 using Autodesk.Revit.DB;
 using Autodesk.Revit.UI;
-using Autodesk.Revit.UI.Selection;
 using Antigravity.Core.Services;
+using Antigravity.Core.UI;
 
 namespace Antigravity.Core.Commands
 {
@@ -14,61 +14,50 @@ namespace Antigravity.Core.Commands
         public Result Execute(ExternalCommandData commandData, ref string message, ElementSet elements)
         {
             var uiapp = commandData.Application;
-            var doc = uiapp.ActiveUIDocument.Document;
             var uidoc = uiapp.ActiveUIDocument;
+            if (uidoc == null)
+            {
+                message = "No active Revit document.";
+                return Result.Failed;
+            }
+
+            var doc = uidoc.Document;
 
             try
             {
-                var reference = uidoc.Selection.PickObject(ObjectType.Element, "Select CAD Import/Link");
-                var importInstance = doc.GetElement(reference) as ImportInstance;
-                
-                if (importInstance == null)
-                {
-                    message = "Selected element is not a CAD ImportInstance.";
-                    return Result.Failed;
-                }
-
-                var foundationType = new FilteredElementCollector(doc)
+                var levels = new FilteredElementCollector(doc)
+                    .OfClass(typeof(Level))
+                    .Cast<Level>()
+                    .OrderBy(level => level.Elevation)
+                    .ToList();
+                var foundationTypes = new FilteredElementCollector(doc)
                     .OfClass(typeof(FamilySymbol))
                     .OfCategory(BuiltInCategory.OST_StructuralFoundation)
                     .Cast<FamilySymbol>()
-                    .FirstOrDefault();
+                    .Where(HasWritableDimensions)
+                    .OrderBy(symbol => symbol.FamilyName)
+                    .ThenBy(symbol => symbol.Name)
+                    .ToList();
 
-                if (foundationType == null)
+                if (levels.Count == 0 || foundationTypes.Count == 0)
                 {
-                    message = "No Structural Foundation Family found.";
+                    message = levels.Count == 0
+                        ? "The project contains no levels."
+                        : "No structural foundation type has writable Length and Width parameters.";
+                    TaskDialog.Show("Auto Foundation", message);
                     return Result.Failed;
                 }
 
-                var parser = new CadParserService();
-                var foundationsData = parser.ExtractFoundationData(importInstance, "S-FND");
-
-                using (var tx = new Transaction(doc, "Auto Place Foundations"))
+                var viewModel = new AutoFoundationViewModel
                 {
-                    tx.Start();
-
-                    if (!foundationType.IsActive)
-                        foundationType.Activate();
-
-                    var level = new FilteredElementCollector(doc)
-                        .OfClass(typeof(Level))
-                        .FirstElement() as Level;
-
-                    foreach (var data in foundationsData)
-                    {
-                        var instance = doc.Create.NewFamilyInstance(data.Center, foundationType, level, Autodesk.Revit.DB.Structure.StructuralType.Footing);
-                        
-                        if (data.RotationAngle != 0)
-                        {
-                            var axis = Line.CreateBound(data.Center, data.Center + XYZ.BasisZ);
-                            ElementTransformUtils.RotateElement(doc, instance.Id, axis, data.RotationAngle);
-                        }
-                    }
-
-                    tx.Commit();
-                }
-
-                TaskDialog.Show("Success", $"Created {foundationsData.Count} foundations.");
+                    Levels = levels,
+                    FoundationFamilies = foundationTypes,
+                    SelectedLevel = levels[0],
+                    SelectedFamily = foundationTypes[0]
+                };
+                var handler = new AutoFoundationRevitEventHandler(doc, viewModel);
+                var externalEvent = ExternalEvent.Create(handler);
+                new AutoFoundationWindow(viewModel, externalEvent).Show();
                 return Result.Succeeded;
             }
             catch (Exception ex)
@@ -76,6 +65,18 @@ namespace Antigravity.Core.Commands
                 message = ex.Message;
                 return Result.Failed;
             }
+        }
+
+        private static bool HasWritableDimensions(FamilySymbol symbol)
+        {
+            var length = symbol.get_Parameter(BuiltInParameter.STRUCTURAL_FOUNDATION_LENGTH)
+                ?? symbol.LookupParameter("Length");
+            var width = symbol.get_Parameter(BuiltInParameter.STRUCTURAL_FOUNDATION_WIDTH)
+                ?? symbol.LookupParameter("Width");
+            return length != null && width != null
+                && !length.IsReadOnly && !width.IsReadOnly
+                && length.StorageType == StorageType.Double
+                && width.StorageType == StorageType.Double;
         }
     }
 }
