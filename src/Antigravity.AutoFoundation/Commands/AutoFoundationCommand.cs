@@ -40,11 +40,9 @@ namespace Antigravity.AutoFoundation.Commands
                     .ThenBy(symbol => symbol.Name)
                     .ToList();
 
-                if (levels.Count == 0 || foundationTypes.Count == 0)
+                if (levels.Count == 0)
                 {
-                    message = levels.Count == 0
-                        ? "The project contains no levels."
-                        : "No structural foundation type has writable Length and Width parameters.";
+                    message = "The project contains no levels.";
                     TaskDialog.Show("Auto Foundation", message);
                     return Result.Failed;
                 }
@@ -54,7 +52,7 @@ namespace Antigravity.AutoFoundation.Commands
                     Levels = levels,
                     FoundationFamilies = foundationTypes,
                     SelectedLevel = levels[0],
-                    SelectedFamily = foundationTypes[0]
+                    SelectedFamily = foundationTypes.FirstOrDefault()
                 };
                 var handler = new AutoFoundationRevitEventHandler(doc, viewModel);
                 var externalEvent = ExternalEvent.Create(handler);

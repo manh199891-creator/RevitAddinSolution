@@ -22,7 +22,12 @@ namespace Antigravity.AutoFoundation.Services
         public void Execute(UIApplication app)
         {
             var uidoc = app.ActiveUIDocument;
-            if (_viewModel.SelectedFamily == null || _viewModel.SelectedLevel == null) return;
+            if (_viewModel.SelectedFamily == null)
+            {
+                TaskDialog.Show("Auto Foundation", "Vui lòng load Family Móng (Structural Foundation) trước khi chạy lệnh.");
+                return;
+            }
+            if (_viewModel.SelectedLevel == null) return;
             if (uidoc == null || !ReferenceEquals(uidoc.Document, _document))
             {
                 TaskDialog.Show("Auto Foundation", "The active document changed. Close this window and start Auto Foundation again in the intended document.");
