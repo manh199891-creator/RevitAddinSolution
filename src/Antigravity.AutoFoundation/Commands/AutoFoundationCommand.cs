@@ -3,10 +3,10 @@ using System.Linq;
 using Autodesk.Revit.Attributes;
 using Autodesk.Revit.DB;
 using Autodesk.Revit.UI;
-using Antigravity.Core.Services;
-using Antigravity.Core.UI;
+using Antigravity.AutoFoundation.Services;
+using Antigravity.AutoFoundation.UI;
 
-namespace Antigravity.Core.Commands
+namespace Antigravity.AutoFoundation.Commands
 {
     [Transaction(TransactionMode.Manual)]
     public class AutoFoundationCommand : IExternalCommand

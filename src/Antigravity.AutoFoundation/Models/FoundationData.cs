@@ -1,4 +1,4 @@
-namespace Antigravity.Core.Models
+namespace Antigravity.AutoFoundation.Models
 {
     public class FoundationData
     {

@@ -1,8 +1,8 @@
 using System;
 using System.Collections.Generic;
-using Antigravity.Core.Models;
+using Antigravity.AutoFoundation.Models;
 
-namespace Antigravity.Core.Services
+namespace Antigravity.AutoFoundation.Services
 {
     public class FoundationPlacementOrchestrator
     {

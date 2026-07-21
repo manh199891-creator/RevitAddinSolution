@@ -1,6 +1,6 @@
 using System;
 
-namespace Antigravity.Core.Services
+namespace Antigravity.AutoFoundation.Services
 {
     public interface IFoundationPlacementAdapter
     {

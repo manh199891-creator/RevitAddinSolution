@@ -132,6 +132,16 @@ namespace Antigravity.Main
             btnDoorClearance.LargeImage = logoImage;
 
 
+            PushButtonData btnAutoFoundation = new PushButtonData(
+                "btnAutoFoundation",
+                "Draw\nFoundations",
+                assemblyPath.Replace("Antigravity.Main.dll", "Antigravity.AutoFoundation.dll"),
+                "Antigravity.AutoFoundation.Commands.AutoFoundationCommand");
+
+            btnAutoFoundation.ToolTip = "Create structural foundations automatically from CAD geometry.";
+            btnAutoFoundation.LargeImage = logoImage;
+
+            structuralPanel.AddItem(btnAutoFoundation);
             structuralPanel.AddItem(btnDrawColumns);
             structuralPanel.AddItem(btnDrawBeams);
             structuralPanel.AddItem(btnDrawWalls);

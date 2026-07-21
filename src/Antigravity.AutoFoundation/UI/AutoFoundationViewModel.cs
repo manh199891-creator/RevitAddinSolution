@@ -1,9 +1,9 @@
-﻿using System.Collections.Generic;
+using System.Collections.Generic;
 using System.ComponentModel;
 using System.Runtime.CompilerServices;
 using Autodesk.Revit.DB;
 
-namespace Antigravity.Core.UI
+namespace Antigravity.AutoFoundation.UI
 {
     public class AutoFoundationViewModel : INotifyPropertyChanged
     {

@@ -61,6 +61,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Antigravity.HatchPatterns.C
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Antigravity.HatchPatterns.Core", "src\Antigravity.HatchPatterns.Core\Antigravity.HatchPatterns.Core.csproj", "{334D9940-6837-4AC0-A14F-CB6D1B9A09B2}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Antigravity.AutoFoundation", "src\Antigravity.AutoFoundation\Antigravity.AutoFoundation.csproj", "{B142D220-ED65-43B5-9CA2-B5BEE069547A}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -395,6 +397,18 @@ Global
 		{334D9940-6837-4AC0-A14F-CB6D1B9A09B2}.Release|x64.Build.0 = Release|Any CPU
 		{334D9940-6837-4AC0-A14F-CB6D1B9A09B2}.Release|x86.ActiveCfg = Release|Any CPU
 		{334D9940-6837-4AC0-A14F-CB6D1B9A09B2}.Release|x86.Build.0 = Release|Any CPU
+		{B142D220-ED65-43B5-9CA2-B5BEE069547A}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{B142D220-ED65-43B5-9CA2-B5BEE069547A}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{B142D220-ED65-43B5-9CA2-B5BEE069547A}.Debug|x64.ActiveCfg = Debug|Any CPU
+		{B142D220-ED65-43B5-9CA2-B5BEE069547A}.Debug|x64.Build.0 = Debug|Any CPU
+		{B142D220-ED65-43B5-9CA2-B5BEE069547A}.Debug|x86.ActiveCfg = Debug|Any CPU
+		{B142D220-ED65-43B5-9CA2-B5BEE069547A}.Debug|x86.Build.0 = Debug|Any CPU
+		{B142D220-ED65-43B5-9CA2-B5BEE069547A}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{B142D220-ED65-43B5-9CA2-B5BEE069547A}.Release|Any CPU.Build.0 = Release|Any CPU
+		{B142D220-ED65-43B5-9CA2-B5BEE069547A}.Release|x64.ActiveCfg = Release|Any CPU
+		{B142D220-ED65-43B5-9CA2-B5BEE069547A}.Release|x64.Build.0 = Release|Any CPU
+		{B142D220-ED65-43B5-9CA2-B5BEE069547A}.Release|x86.ActiveCfg = Release|Any CPU
+		{B142D220-ED65-43B5-9CA2-B5BEE069547A}.Release|x86.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
@@ -420,5 +434,6 @@ Global
 		{6D8F6F0E-2CC9-4E93-9A3B-DFEB94F822DE} = {827E0CD3-B72D-47B6-A68D-7590B98EB39B}
 		{D768DFAF-5928-4E7C-9CDE-FF688D590AA4} = {827E0CD3-B72D-47B6-A68D-7590B98EB39B}
 		{334D9940-6837-4AC0-A14F-CB6D1B9A09B2} = {827E0CD3-B72D-47B6-A68D-7590B98EB39B}
+		{B142D220-ED65-43B5-9CA2-B5BEE069547A} = {827E0CD3-B72D-47B6-A68D-7590B98EB39B}
 	EndGlobalSection
 EndGlobal

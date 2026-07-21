@@ -1,12 +1,12 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using Autodesk.Revit.DB;
 using Autodesk.Revit.UI;
 using Autodesk.Revit.UI.Selection;
-using Antigravity.Core.UI;
+using Antigravity.AutoFoundation.UI;
 
-namespace Antigravity.Core.Services
+namespace Antigravity.AutoFoundation.Services
 {
     public class AutoFoundationRevitEventHandler : IExternalEventHandler
     {

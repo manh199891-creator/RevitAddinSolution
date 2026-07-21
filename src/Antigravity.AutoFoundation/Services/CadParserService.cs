@@ -2,10 +2,10 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using Autodesk.Revit.DB;
-using Antigravity.Core.Geometry;
-using Antigravity.Core.Models;
+using Antigravity.AutoFoundation.Geometry;
+using Antigravity.AutoFoundation.Models;
 
-namespace Antigravity.Core.Services
+namespace Antigravity.AutoFoundation.Services
 {
     public class CadParserService : ICadParserService
     {

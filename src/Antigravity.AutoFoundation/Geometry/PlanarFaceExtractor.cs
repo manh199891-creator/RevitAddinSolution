@@ -2,7 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 
-namespace Antigravity.Core.Geometry
+namespace Antigravity.AutoFoundation.Geometry
 {
     /// <summary>
     /// Dependency-free 2D planar graph polygonizer used by CAD adapters.

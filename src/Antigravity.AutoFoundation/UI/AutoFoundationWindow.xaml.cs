@@ -1,9 +1,9 @@
-﻿using System;
+using System;
 using System.Windows;
 using System.Windows.Input;
 using Autodesk.Revit.UI;
 
-namespace Antigravity.Core.UI
+namespace Antigravity.AutoFoundation.UI
 {
     public partial class AutoFoundationWindow : Window
     {
