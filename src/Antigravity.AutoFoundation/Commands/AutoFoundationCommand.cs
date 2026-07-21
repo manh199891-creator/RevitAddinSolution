@@ -1,3 +1,4 @@
+using Antigravity.AutoFoundation.Utils;
 using System;
 using System.Linq;
 using Autodesk.Revit.Attributes;
@@ -66,17 +67,10 @@ namespace Antigravity.AutoFoundation.Commands
                 return Result.Failed;
             }
         }
-
         private static bool HasWritableDimensions(FamilySymbol symbol)
         {
-            var length = symbol.get_Parameter(BuiltInParameter.STRUCTURAL_FOUNDATION_LENGTH)
-                ?? symbol.LookupParameter("Length");
-            var width = symbol.get_Parameter(BuiltInParameter.STRUCTURAL_FOUNDATION_WIDTH)
-                ?? symbol.LookupParameter("Width");
-            return length != null && width != null
-                && !length.IsReadOnly && !width.IsReadOnly
-                && length.StorageType == StorageType.Double
-                && width.StorageType == StorageType.Double;
+            return FoundationParameterHelper.HasWritableDimensions(symbol);
         }
     }
 }
+

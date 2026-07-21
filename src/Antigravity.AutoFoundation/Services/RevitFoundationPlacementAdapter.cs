@@ -1,3 +1,4 @@
+using Antigravity.AutoFoundation.Utils;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -34,8 +35,8 @@ namespace Antigravity.AutoFoundation.Services
                 .Select(id => _doc.GetElement(id) as FamilySymbol)
                 .FirstOrDefault(x => 
                 {
-                    var lenParam = x.get_Parameter(BuiltInParameter.STRUCTURAL_FOUNDATION_LENGTH) ?? x.LookupParameter("Length");
-                    var widParam = x.get_Parameter(BuiltInParameter.STRUCTURAL_FOUNDATION_WIDTH) ?? x.LookupParameter("Width");
+                    var (lenParam, widParam) = FoundationParameterHelper.GetDimensions(x);
+                    
                     if (lenParam == null || widParam == null || lenParam.StorageType != StorageType.Double || widParam.StorageType != StorageType.Double) return false;
                     return Math.Abs(lenParam.AsDouble() - length) < 0.001 &&
                            Math.Abs(widParam.AsDouble() - width) < 0.001;
@@ -61,8 +62,8 @@ namespace Antigravity.AutoFoundation.Services
                 {
                     subTx.Start();
                     var targetType = _baseType.Duplicate(newName) as FamilySymbol;
-                    var lParam = targetType.get_Parameter(BuiltInParameter.STRUCTURAL_FOUNDATION_LENGTH) ?? targetType.LookupParameter("Length");
-                    var wParam = targetType.get_Parameter(BuiltInParameter.STRUCTURAL_FOUNDATION_WIDTH) ?? targetType.LookupParameter("Width");
+                    var (lParam, wParam) = FoundationParameterHelper.GetDimensions(targetType);
+                    
                     
                     if (lParam == null || wParam == null || 
                         lParam.IsReadOnly || wParam.IsReadOnly || 
@@ -166,3 +167,4 @@ namespace Antigravity.AutoFoundation.Services
         }
     }
 }
+
