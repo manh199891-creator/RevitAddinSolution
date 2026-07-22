@@ -182,8 +182,7 @@
         <Border Grid.Row="2" Background="#F5F6F8" BorderBrush="#D1D5DB" BorderThickness="1" CornerRadius="6" Padding="15">
             <ScrollViewer VerticalScrollBarVisibility="Auto">
                 <StackPanel>
-                    <!-- <Button Content="🎯  Set Coordinate Origin (CAD ↔ Revit)" Style="{StaticResource SecondaryBtn}" Margin="0,0,0,15"/> -->
-
+                    <Button x:Name="BtnSetOrigin" Content="🎯  Set Coordinate Origin (CAD ↔ Revit)" Style="{StaticResource SecondaryBtn}" Margin="0,0,0,15" Click="BtnSetOrigin_Click"/>
                     <Grid Margin="0,0,0,15">
                         <Grid.ColumnDefinitions>
                             <ColumnDefinition Width="*"/>

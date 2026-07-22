@@ -54,9 +54,7 @@ namespace Antigravity.AutoFoundation.Commands
                     SelectedLevel = levels[0],
                     SelectedFamily = foundationTypes.FirstOrDefault()
                 };
-                var handler = new AutoFoundationRevitEventHandler(doc, viewModel);
-                var externalEvent = ExternalEvent.Create(handler);
-                new AutoFoundationWindow(viewModel, externalEvent).Show();
+                new AutoFoundationWindow(viewModel, uiapp).ShowDialog();
                 return Result.Succeeded;
             }
             catch (Exception ex)
