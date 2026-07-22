@@ -11,12 +11,18 @@ namespace Antigravity.AutoFoundation.Services
         private readonly Document _doc;
         private readonly FamilySymbol _baseType;
         private readonly List<Level> _levels;
+        private readonly string _paramL;
+        private readonly string _paramW;
+        private readonly double _offset;
 
-        public RevitFoundationPlacementAdapter(Document doc, FamilySymbol baseType, List<Level> levels)
+        public RevitFoundationPlacementAdapter(Document doc, FamilySymbol baseType, List<Level> levels, string paramL = "h", string paramW = "b", double offset = 0)
         {
             _doc = doc;
             _baseType = baseType;
             _levels = levels;
+            _paramL = paramL;
+            _paramW = paramW;
+            _offset = offset;
         }
 
         public bool TryResolveLevel(double elevation, out double levelElevation)
@@ -35,7 +41,7 @@ namespace Antigravity.AutoFoundation.Services
                 .Select(id => _doc.GetElement(id) as FamilySymbol)
                 .FirstOrDefault(x => 
                 {
-                    var (lenParam, widParam) = FoundationParameterHelper.GetDimensions(x);
+                    var (lenParam, widParam) = FoundationParameterHelper.GetDimensions(x, _paramL, _paramW);
                     
                     if (lenParam == null || widParam == null || lenParam.StorageType != StorageType.Double || widParam.StorageType != StorageType.Double) return false;
                     return Math.Abs(lenParam.AsDouble() - length) < 0.001 &&
@@ -62,7 +68,7 @@ namespace Antigravity.AutoFoundation.Services
                 {
                     subTx.Start();
                     var targetType = _baseType.Duplicate(newName) as FamilySymbol;
-                    var (lParam, wParam) = FoundationParameterHelper.GetDimensions(targetType);
+                    var (lParam, wParam) = FoundationParameterHelper.GetDimensions(targetType, _paramL, _paramW);
                     
                     
                     if (lParam == null || wParam == null || 
@@ -132,6 +138,23 @@ namespace Antigravity.AutoFoundation.Services
                         return false;
                     }
 
+                    if (_offset != 0)
+                    {
+                        // Convert from mm to feet
+                        double offsetFt = _offset / 304.8;
+                        Parameter pOffset = instance.get_Parameter(BuiltInParameter.FLOOR_HEIGHTABOVELEVEL_PARAM);
+                        if (pOffset == null) pOffset = instance.get_Parameter(BuiltInParameter.INSTANCE_ELEVATION_PARAM);
+                        if (pOffset != null && !pOffset.IsReadOnly)
+                        {
+                            pOffset.Set(offsetFt);
+                        }
+                        else
+                        {
+                            pOffset = instance.LookupParameter("Height Offset From Level") ?? instance.LookupParameter("Offset");
+                            if (pOffset != null && !pOffset.IsReadOnly) pOffset.Set(offsetFt);
+                        }
+                    }
+
                     if (rotationAngle != 0)
                     {
                         var axis = Line.CreateBound(centerPoint, centerPoint + XYZ.BasisZ);
@@ -167,4 +190,5 @@ namespace Antigravity.AutoFoundation.Services
         }
     }
 }
+
 

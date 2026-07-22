@@ -21,6 +21,15 @@ namespace Antigravity.AutoFoundation.UI
         private string _cadLayer = "S-FND";
         public string CadLayer { get { return _cadLayer; } set { _cadLayer = value; OnPropertyChanged(); } }
 
+        private string _offset = "0";
+        public string Offset { get { return _offset; } set { _offset = value; OnPropertyChanged(); } }
+
+        private string _paramW = "b";
+        public string ParamW { get { return _paramW; } set { _paramW = value; OnPropertyChanged(); } }
+
+        private string _paramL = "h";
+        public string ParamL { get { return _paramL; } set { _paramL = value; OnPropertyChanged(); } }
+
         protected virtual void OnPropertyChanged([CallerMemberName] string propertyName = null)
         {
             PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));

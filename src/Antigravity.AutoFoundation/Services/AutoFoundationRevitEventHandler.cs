@@ -77,7 +77,10 @@ namespace Antigravity.AutoFoundation.Services
                     if (!foundationType.IsActive)
                         foundationType.Activate();
 
-                    var adapter = new RevitFoundationPlacementAdapter(doc, foundationType, levels);
+                    double offset = 0;
+                    double.TryParse(_viewModel.Offset, out offset);
+
+                    var adapter = new RevitFoundationPlacementAdapter(doc, foundationType, levels, _viewModel.ParamL, _viewModel.ParamW, offset);
                     var orchestrator = new FoundationPlacementOrchestrator(adapter, new CadParserService());
                     
                     string layer = string.IsNullOrEmpty(_viewModel.CadLayer) ? "S-FND" : _viewModel.CadLayer;

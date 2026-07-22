@@ -1,7 +1,7 @@
 <Window x:Class="Antigravity.AutoFoundation.UI.AutoFoundationWindow"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-        Title="VILAI VIET Auto Foundation Creator" Height="450" Width="400"
+        Title="VILAI VIET Auto Foundation Creator" Height="500" Width="400"
         WindowStyle="None" AllowsTransparency="True" Background="Transparent"
         MouseLeftButtonDown="Window_MouseLeftButtonDown"
         WindowStartupLocation="CenterScreen">
@@ -89,6 +89,9 @@
                         <TextBlock Text="Level:" Grid.Row="0" Grid.Column="0" FontWeight="SemiBold"/>
                         <ComboBox Grid.Row="1" Grid.Column="0" Margin="0,0,5,0" ItemsSource="{Binding Levels}" DisplayMemberPath="Name" SelectedItem="{Binding SelectedLevel}"/>
                         
+                        <TextBlock Text="Offset (mm):" Grid.Row="2" Grid.Column="0" FontWeight="SemiBold" Margin="0,10,0,0"/>
+                        <TextBox Grid.Row="3" Grid.Column="0" Margin="0,0,5,0" Text="{Binding Offset, UpdateSourceTrigger=PropertyChanged}"/>
+                        
                         <TextBlock Text="CAD Layer:" Grid.Row="0" Grid.Column="1" FontWeight="SemiBold"/>
                         <TextBox Grid.Row="1" Grid.Column="1" Margin="5,0,0,0" Text="{Binding CadLayer, UpdateSourceTrigger=PropertyChanged}"/>
                     </Grid>
@@ -97,6 +100,20 @@
                         <StackPanel>
                             <TextBlock Text="Family Type:" FontWeight="SemiBold"/>
                             <ComboBox Margin="0,5,0,10" ItemsSource="{Binding FoundationFamilies}" DisplayMemberPath="Name" SelectedItem="{Binding SelectedFamily}"/>
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="*"/>
+                                </Grid.ColumnDefinitions>
+                                <StackPanel Grid.Column="0" Margin="0,0,5,0">
+                                    <TextBlock Text="Parameter - Width:" FontWeight="SemiBold"/>
+                                    <TextBox Text="{Binding ParamW}" Margin="0,5,0,0"/>
+                                </StackPanel>
+                                <StackPanel Grid.Column="1" Margin="5,0,0,0">
+                                    <TextBlock Text="Parameter - Length:" FontWeight="SemiBold"/>
+                                    <TextBox Text="{Binding ParamL}" Margin="0,5,0,0"/>
+                                </StackPanel>
+                            </Grid>
                         </StackPanel>
                     </GroupBox>
                 </StackPanel>
