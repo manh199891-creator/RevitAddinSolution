@@ -1,0 +1,160 @@
+<Window x:Class="Antigravity.SharedParamMapper.Views.ParamMapperWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        xmlns:controls="clr-namespace:Antigravity.Core.UI.Controls;assembly=Antigravity.Core"
+        xmlns:models="clr-namespace:Antigravity.SharedParamMapper.Models"
+        mc:Ignorable="d"
+        Title="Shared Parameter Mapper" Height="600" Width="850"
+        WindowStartupLocation="CenterScreen"
+        Background="{DynamicResource VvSurfaceBrush}">
+
+    <Window.Resources>
+        <ResourceDictionary>
+            <ResourceDictionary.MergedDictionaries>
+                <ResourceDictionary Source="pack://application:,,,/Antigravity.Core;component/UI/Themes/DesignTokens.xaml" />
+                <ResourceDictionary Source="pack://application:,,,/Antigravity.Core;component/UI/Themes/Typography.xaml" />
+                <ResourceDictionary Source="pack://application:,,,/Antigravity.Core;component/UI/Themes/Controls.xaml" />
+                <ResourceDictionary Source="pack://application:,,,/Antigravity.Core;component/UI/Themes/DataControls.xaml" />
+            </ResourceDictionary.MergedDictionaries>
+
+            <DataTemplate x:Key="MappedValueTemplate">
+                <ContentControl Content="{Binding}">
+                    <ContentControl.Style>
+                        <Style TargetType="ContentControl">
+                            <Setter Property="ContentTemplate">
+                                <Setter.Value>
+                                    <DataTemplate>
+                                        <TextBox Text="{Binding MappedValue, UpdateSourceTrigger=PropertyChanged}" 
+                                                 Style="{StaticResource VvTextBoxStyle}" Padding="2"/>
+                                    </DataTemplate>
+                                </Setter.Value>
+                            </Setter>
+                            <Style.Triggers>
+                                <DataTrigger Binding="{Binding SelectedSource}" Value="{x:Static models:MappingSource.BuiltInParam}">
+                                    <Setter Property="ContentTemplate">
+                                        <Setter.Value>
+                                            <DataTemplate>
+                                                <ComboBox ItemsSource="{Binding AvailableSourceParams}" 
+                                                          SelectedItem="{Binding MappedValue, UpdateSourceTrigger=PropertyChanged}"
+                                                          Style="{StaticResource VvComboBoxStyle}" Padding="2"/>
+                                            </DataTemplate>
+                                        </Setter.Value>
+                                    </Setter>
+                                </DataTrigger>
+                                <DataTrigger Binding="{Binding SelectedSource}" Value="{x:Static models:MappingSource.OtherSharedParam}">
+                                    <Setter Property="ContentTemplate">
+                                        <Setter.Value>
+                                            <DataTemplate>
+                                                <ComboBox ItemsSource="{Binding AvailableSourceParams}" 
+                                                          SelectedItem="{Binding MappedValue, UpdateSourceTrigger=PropertyChanged}"
+                                                          Style="{StaticResource VvComboBoxStyle}" Padding="2"/>
+                                            </DataTemplate>
+                                        </Setter.Value>
+                                    </Setter>
+                                </DataTrigger>
+                                <DataTrigger Binding="{Binding SelectedSource}" Value="{x:Static models:MappingSource.Formula}">
+                                    <Setter Property="ContentTemplate">
+                                        <Setter.Value>
+                                            <DataTemplate>
+                                                <TextBox Text="{Binding MappedValue, UpdateSourceTrigger=PropertyChanged}" 
+                                                         Tag="e.g. {Length} * 2"
+                                                         Style="{StaticResource VvTextBoxStyle}" Padding="2"/>
+                                            </DataTemplate>
+                                        </Setter.Value>
+                                    </Setter>
+                                </DataTrigger>
+                            </Style.Triggers>
+                        </Style>
+                    </ContentControl.Style>
+                </ContentControl>
+            </DataTemplate>
+        </ResourceDictionary>
+    </Window.Resources>
+
+    <Grid Margin="10">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+        </Grid.RowDefinitions>
+
+        <!-- Header -->
+        <controls:BrandHeader TitleText="Shared Parameter Mapper" Grid.Row="0" Margin="0,0,0,15"/>
+
+        <!-- Filters -->
+        <StackPanel Grid.Row="1" Margin="0,0,0,15">
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="Auto"/>
+                    <ColumnDefinition Width="200"/>
+                    <ColumnDefinition Width="Auto"/>
+                    <ColumnDefinition Width="300"/>
+                </Grid.ColumnDefinitions>
+                
+                <TextBlock Text="Category:" VerticalAlignment="Center" Margin="0,0,10,0" Foreground="{DynamicResource VvTextPrimaryBrush}"/>
+                <ComboBox Grid.Column="1" ItemsSource="{Binding Categories}" DisplayMemberPath="Name" SelectedItem="{Binding SelectedCategory}" Style="{StaticResource VvComboBoxStyle}"/>
+
+                <TextBlock Grid.Column="2" Text="Family Type:" VerticalAlignment="Center" Margin="20,0,10,0" Foreground="{DynamicResource VvTextPrimaryBrush}"/>
+                <ComboBox Grid.Column="3" ItemsSource="{Binding FamilyTypes}" DisplayMemberPath="Name" SelectedItem="{Binding SelectedFamilyType}" Style="{StaticResource VvComboBoxStyle}"/>
+            </Grid>
+            
+            <StackPanel Orientation="Horizontal" Margin="0,15,0,0">
+                <TextBlock Text="Apply to:" VerticalAlignment="Center" Margin="0,0,15,0" Foreground="{DynamicResource VvTextPrimaryBrush}"/>
+                <RadioButton Content="All instances" IsChecked="{Binding ApplyToAll}" Margin="0,0,15,0" Foreground="{DynamicResource VvTextPrimaryBrush}"/>
+                <RadioButton Content="Selected elements only" IsChecked="{Binding ApplyToSelected}" Foreground="{DynamicResource VvTextPrimaryBrush}"/>
+            </StackPanel>
+        </StackPanel>
+
+        <!-- DataGrid -->
+        <DataGrid Grid.Row="2" ItemsSource="{Binding ParamRows}" AutoGenerateColumns="False" CanUserAddRows="False" 
+                  Style="{StaticResource VvDataGridStyle}" Background="{DynamicResource VvSurfaceBrush}">
+            <DataGrid.Columns>
+                <DataGridTextColumn Header="Parameter" Binding="{Binding ParamName}" Width="200" IsReadOnly="True"/>
+                <DataGridTextColumn Header="Group" Binding="{Binding ParamGroup}" Width="150" IsReadOnly="True"/>
+                
+                <DataGridTemplateColumn Header="I/T" Width="40">
+                    <DataGridTemplateColumn.CellTemplate>
+                        <DataTemplate>
+                            <Border Background="{DynamicResource VvBorderBrush}" CornerRadius="2" Padding="2" HorizontalAlignment="Center" VerticalAlignment="Center">
+                                <TextBlock Text="{Binding Scope}" FontSize="10" Foreground="{DynamicResource VvTextPrimaryBrush}"/>
+                            </Border>
+                        </DataTemplate>
+                    </DataGridTemplateColumn.CellTemplate>
+                </DataGridTemplateColumn>
+
+                <DataGridTemplateColumn Header="Source" Width="150">
+                    <DataGridTemplateColumn.CellTemplate>
+                        <DataTemplate>
+                            <ComboBox ItemsSource="{Binding DataContext.MappingSourceOptions, RelativeSource={RelativeSource AncestorType=Window}}" 
+                                      SelectedItem="{Binding SelectedSource, UpdateSourceTrigger=PropertyChanged}"
+                                      Style="{StaticResource VvComboBoxStyle}" Padding="2"/>
+                        </DataTemplate>
+                    </DataGridTemplateColumn.CellTemplate>
+                </DataGridTemplateColumn>
+
+                <DataGridTemplateColumn Header="Mapped Value" Width="*" CellTemplate="{StaticResource MappedValueTemplate}"/>
+            </DataGrid.Columns>
+        </DataGrid>
+
+        <!-- Status -->
+        <TextBlock Grid.Row="3" Text="{Binding StatusMessage}" Foreground="{DynamicResource VvAccentBrush}" Margin="0,10,0,10"/>
+
+        <!-- Footer -->
+        <Grid Grid.Row="4" Margin="0,10,0,0">
+            <StackPanel Orientation="Horizontal" HorizontalAlignment="Left">
+                <Button Content="Save Template" Command="{Binding SaveCommand}" Style="{StaticResource VvSecondaryButtonStyle}" Margin="0,0,10,0" Width="120"/>
+                <Button Content="Load Template" Command="{Binding LoadCommand}" Style="{StaticResource VvSecondaryButtonStyle}" Margin="0,0,10,0" Width="120"/>
+                <!-- Export could go here -->
+            </StackPanel>
+            
+            <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
+                <Button Content="Sync Params" Command="{Binding SyncCommand}" Style="{StaticResource VvPrimaryButtonStyle}" Margin="0,0,10,0" Width="120"/>
+                <Button Content="Close" Click="BtnClose_Click" Style="{StaticResource VvSecondaryButtonStyle}" Width="80"/>
+            </StackPanel>
+        </Grid>
+    </Grid>
+</Window>
