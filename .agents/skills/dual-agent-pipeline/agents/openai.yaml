@@ -1,0 +1,4 @@
+interface:
+  display_name: "Dual Agent Pipeline"
+  short_description: "Run research, plan, code, and release reviews"
+  default_prompt: "Use $dual-agent-pipeline to run an independently reviewed project task in the appropriate mode."

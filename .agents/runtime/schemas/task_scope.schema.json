@@ -1,0 +1,44 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Task Scope",
+  "type": "object",
+  "properties": {
+    "schema_version": { "type": "integer" },
+    "task_id": { "type": "string" },
+    "mode": {
+      "type": "string",
+      "enum": ["research", "plan", "code", "release"]
+    },
+    "repository_root": { "type": "string" },
+    "allowed_files": {
+      "type": "array",
+      "items": { "type": "string" }
+    },
+    "included_files": {
+      "type": "array",
+      "items": { "type": "string" },
+      "description": "Optional exact dirty-file set for isolating a task in a shared worktree."
+    },
+    "forbidden": {
+      "type": "array",
+      "items": { "type": "string" }
+    },
+    "artifact_files": {
+      "type": "array",
+      "items": { "type": "string" }
+    },
+    "plan_files": {
+      "type": "array",
+      "items": { "type": "string" }
+    },
+    "acceptance_criteria_files": {
+      "type": "array",
+      "items": { "type": "string" }
+    },
+    "implementation_report_files": {
+      "type": "array",
+      "items": { "type": "string" }
+    }
+  },
+  "required": ["schema_version", "task_id", "repository_root", "allowed_files", "forbidden"]
+}
