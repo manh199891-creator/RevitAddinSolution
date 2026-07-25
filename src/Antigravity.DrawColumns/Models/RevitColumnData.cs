@@ -13,5 +13,6 @@ namespace Antigravity.DrawColumns.Models
         public double Height { get; set; } // H (Y dimension relative to element)
         public double Radius { get; set; }
         public string ColumnName { get; set; }
+        public string EntityType { get; set; }
     }
 }

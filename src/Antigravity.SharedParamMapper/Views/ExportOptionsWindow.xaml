@@ -1,0 +1,32 @@
+<Window x:Class="Antigravity.SharedParamMapper.Views.ExportOptionsWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="Export Options" Height="350" Width="300"
+        WindowStartupLocation="CenterOwner"
+        ResizeMode="NoResize"
+        ShowInTaskbar="False">
+    <Grid Margin="10">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+            <RowDefinition Height="Auto"/>
+        </Grid.RowDefinitions>
+        
+        <TextBlock x:Name="InstructionText" Text="Select categories to export:" FontWeight="Bold" Margin="0,0,0,10"/>
+        
+        <Border Grid.Row="1" BorderBrush="#ccc" BorderThickness="1" Background="White">
+            <ListBox x:Name="CategoryListBox" SelectionMode="Multiple" BorderThickness="0">
+                <ListBox.ItemTemplate>
+                    <DataTemplate>
+                        <CheckBox Content="{Binding Name}" IsChecked="{Binding IsSelected, Mode=TwoWay}" Margin="2"/>
+                    </DataTemplate>
+                </ListBox.ItemTemplate>
+            </ListBox>
+        </Border>
+
+        <StackPanel Grid.Row="2" Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,10,0,0">
+            <Button x:Name="ActionBtn" Content="Export" Width="80" Click="BtnExport_Click" Margin="0,0,10,0" Background="#0066cc" Foreground="White" BorderThickness="0" Padding="5"/>
+            <Button Content="Cancel" Width="80" Click="BtnCancel_Click" Background="#f0f0f0" BorderBrush="#ccc" Padding="5"/>
+        </StackPanel>
+    </Grid>
+</Window>

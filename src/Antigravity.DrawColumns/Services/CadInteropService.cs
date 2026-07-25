@@ -31,7 +31,8 @@ namespace Antigravity.DrawColumns.Services
                 _acadApp.Visible = true;
                 dynamic utility = _acadDoc.Utility;
                 utility.Prompt("\nClick the corresponding origin point on the AutoCAD drawing: ");
-                dynamic cadPt = utility.GetPoint(Type.Missing, "\nSelect CAD origin: ");
+                dynamic cadPtUcs = utility.GetPoint(Type.Missing, "\nSelect CAD origin: ");
+                dynamic cadPt = utility.TranslateCoordinates(cadPtUcs, 1, 0, false); // UCS to WCS
                 
                 double cadX = (double)cadPt[0]; // mm
                 double cadY = (double)cadPt[1]; // mm
@@ -74,8 +75,27 @@ namespace Antigravity.DrawColumns.Services
                         columns.Add(col);
                 }
                 
+                // Lọc trùng (ưu tiên Block > Polyline > Hatch)
+                var finalColumns = new List<RevitColumnData>();
+                foreach (var col in columns)
+                {
+                    var existing = finalColumns.Find(c => Math.Abs(c.X - col.X) < 10.0 && Math.Abs(c.Y - col.Y) < 10.0);
+                    if (existing != null)
+                    {
+                        if (GetEntityPriority(col.EntityType) > GetEntityPriority(existing.EntityType))
+                        {
+                            finalColumns.Remove(existing);
+                            finalColumns.Add(col);
+                        }
+                    }
+                    else
+                    {
+                        finalColumns.Add(col);
+                    }
+                }
+                
                 sset.Delete();
-                return columns;
+                return finalColumns;
             }
             catch (Exception ex)
             {
@@ -127,8 +147,12 @@ namespace Antigravity.DrawColumns.Services
             {
                 _acadApp.Visible = true;
                 dynamic utility = _acadDoc.Utility;
-                var pt1 = utility.GetPoint(Type.Missing, "\nChọn điểm thứ nhất: ");
-                var pt2 = utility.GetCorner(pt1, "\nChọn điểm đối diện: ");
+                var pt1Ucs = utility.GetPoint(Type.Missing, "\nChọn điểm thứ nhất: ");
+                var pt2Ucs = utility.GetCorner(pt1Ucs, "\nChọn điểm đối diện: ");
+                
+                var pt1 = utility.TranslateCoordinates(pt1Ucs, 1, 0, false); // UCS to WCS
+                var pt2 = utility.TranslateCoordinates(pt2Ucs, 1, 0, false); // UCS to WCS
+                
                 return new double[][] { pt1 as double[], pt2 as double[] };
             }
             catch { throw new Exception("Hủy chọn điểm."); }
@@ -153,6 +177,7 @@ namespace Antigravity.DrawColumns.Services
         {
             string objName = entity.ObjectName;
             RevitColumnData data = new RevitColumnData();
+            data.EntityType = objName;
 
             try
             {
@@ -254,6 +279,14 @@ namespace Antigravity.DrawColumns.Services
                 return foundText;
             }
             catch { return ""; }
+        }
+
+        private int GetEntityPriority(string entityType)
+        {
+            if (entityType == "AcDbBlockReference") return 3;
+            if (entityType == "AcDbPolyline" || entityType == "AcDb2dPolyline" || entityType == "AcDbCircle") return 2;
+            if (entityType == "AcDbHatch") return 1;
+            return 0;
         }
     }
 }

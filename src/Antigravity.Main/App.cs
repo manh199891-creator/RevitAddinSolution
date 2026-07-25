@@ -12,7 +12,7 @@ namespace Antigravity.Main
     public class App : IExternalApplication
     {
         private UIControlledApplication _uiControlledApplication;
-        private DoorClearanceBox.Updaters.DoorChangeUpdater _doorClearanceUpdater;
+        private Autodesk.Revit.DB.IUpdater _doorClearanceUpdater;
 
         static App()
         {
@@ -22,11 +22,9 @@ namespace Antigravity.Main
         private static Assembly ResolveAntigravityAssembly(object sender, ResolveEventArgs args)
         {
             string assemblyName = new AssemblyName(args.Name).Name;
-            if (!assemblyName.StartsWith("Antigravity.", StringComparison.OrdinalIgnoreCase))
-                return null;
-
             string baseDir = Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location);
             string candidate = Path.Combine(baseDir, assemblyName + ".dll");
+            
             if (File.Exists(candidate))
                 return Assembly.LoadFrom(candidate);
 
@@ -58,6 +56,19 @@ namespace Antigravity.Main
         }
 
         public Result OnStartup(UIControlledApplication application)
+        {
+            try
+            {
+                return OnStartupInternal(application);
+            }
+            catch (Exception ex)
+            {
+                TaskDialog.Show("VilaiViet Startup Error", ex.ToString());
+                return Result.Failed;
+            }
+        }
+
+        private Result OnStartupInternal(UIControlledApplication application)
         {
             // 1. Create Ribbon Tab
             string tabName = "VILAIVIET";

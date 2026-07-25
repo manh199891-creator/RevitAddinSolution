@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<RevitAddIns>
+  <!-- File Manifest chuyên dụng CHỈ dành cho Revit Add-In Manager (Type=Command) -->
+  <AddIn Type="Command">
+    <Name>VILAIVIET-LOQN1-Location</Name>
+    <Assembly>C:\Users\baonguyen1.vpi\Desktop\Antigravity\LOQN1_Location_element\LOQN1_Location_element.dll</Assembly>
+    <FullClassName>LOQN1_Location_element.Command</FullClassName>
+    <ClientId>a8f3b2d1-7e4c-4991-b328-9821456102ab</ClientId>
+    <VendorId>VILAIVIET</VendorId>
+    <VendorDescription>VILAIVIET</VendorDescription>
+  </AddIn>
+</RevitAddIns>

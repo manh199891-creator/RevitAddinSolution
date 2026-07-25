@@ -11,18 +11,18 @@ namespace Antigravity.SharedParamMapper.Services
         public List<Category> GetAllCategories(Document doc)
         {
             var categories = new List<Category>();
-            // Use an arbitrary view or doc settings, or just iterate Categories
-            // Note: Not all categories have elements. We can filter categories that actually have elements in the model
-            var elementCats = new FilteredElementCollector(doc)
-                .WhereElementIsNotElementType()
-                .Select(e => e.Category)
-                .Where(c => c != null && c.CategoryType == CategoryType.Model)
-                .GroupBy(c => c.Id.IntegerValue)
-                .Select(g => g.First())
-                .OrderBy(c => c.Name)
-                .ToList();
-
-            return elementCats;
+            foreach (Category c in doc.Settings.Categories)
+            {
+                if (c.CategoryType == CategoryType.Model && c.AllowsBoundParameters && c.Parent == null)
+                {
+                    // Exclude Detail Items (2D)
+                    if (c.Id.IntegerValue != (int)BuiltInCategory.OST_DetailComponents)
+                    {
+                        categories.Add(c);
+                    }
+                }
+            }
+            return categories.OrderBy(c => c.Name).ToList();
         }
 
         public List<SharedParameterElement> GetBoundSharedParams(Document doc, Category category)
@@ -73,10 +73,10 @@ namespace Antigravity.SharedParamMapper.Services
             return ParamScope.Instance; // Default fallback
         }
 
-        public List<ElementType> GetFamilyTypesInCategory(Document doc, BuiltInCategory bic)
+        public List<ElementType> GetFamilyTypesInCategory(Document doc, ElementId categoryId)
         {
             var types = new FilteredElementCollector(doc)
-                .OfCategory(bic)
+                .OfCategoryId(categoryId)
                 .WhereElementIsElementType()
                 .Cast<ElementType>()
                 .OrderBy(t => t.FamilyName)
@@ -95,6 +95,15 @@ namespace Antigravity.SharedParamMapper.Services
                 .WhereElementIsNotElementType()
                 .FirstOrDefault(e => e.GetTypeId() == type.Id);
 
+            // Fallback: if no instance of this specific type exists, grab ANY instance of this category
+            if (sampleInstance == null)
+            {
+                sampleInstance = new FilteredElementCollector(doc)
+                    .OfCategoryId(type.Category.Id)
+                    .WhereElementIsNotElementType()
+                    .FirstOrDefault();
+            }
+
             if (sampleInstance != null)
             {
                 foreach (Parameter p in sampleInstance.Parameters)
@@ -108,6 +117,16 @@ namespace Antigravity.SharedParamMapper.Services
             {
                 paramNames.Add(p.Definition.Name);
             }
+
+            if (type is HostObjAttributes)
+            {
+                paramNames.Add("<Material: Structure>");
+                paramNames.Add("<Material: Finish>");
+                paramNames.Add("<Material: All>");
+            }
+
+            paramNames.Add("<Family Name>");
+            paramNames.Add("<Type Name>");
 
             return paramNames.OrderBy(n => n).ToList();
         }

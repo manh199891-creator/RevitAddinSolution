@@ -228,6 +228,7 @@
             <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,0,0,15">
                 <Button x:Name="BtnDrawRectangle" Content="□  Draw Rect" Style="{StaticResource PrimaryBtn}" Margin="0,0,8,0" Click="BtnDrawRectangle_Click"/>
                 <Button x:Name="BtnSelectPolyline" Content="◇  Select Polyline" Style="{StaticResource PrimaryBtn}" Margin="0,0,8,0" Click="BtnSelectPolyline_Click"/>
+                <Button x:Name="BtnDrawNetBoundary" Content="🏗 Chọn Biên Net Hatch" ToolTip="Chọn các nét biên rời rạc → tự ghép thành sàn" Style="{StaticResource PrimaryBtn}" Margin="0,0,8,0" Click="BtnDrawNetBoundary_Click"/>
                 <Button x:Name="BtnAutoHatch" Content="▧  Auto Hatch" Style="{StaticResource PrimaryBtn}" Margin="0,0,8,0" Click="BtnAutoHatch_Click"/>
                 <Button Content="✖  Cancel" Style="{StaticResource SecondaryBtn}" Click="BtnCancel_Click"/>
             </StackPanel>

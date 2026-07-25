@@ -228,6 +228,74 @@ namespace Antigravity.DrawFloors.Services
         }
 
         // ─────────────────────────────────────────────
+        // CHỌN CÁC ĐƯỜNG BIÊN NET RỜI RẠC
+        // ─────────────────────────────────────────────
+
+        /// <summary>
+        /// User window-select các Lines/Polylines rời rạc bao quanh vùng sàn.
+        /// Addin tự ghép thành các CurveLoop khép kín.
+        /// Outer loop (lớn nhất) đầu tiên, holes tiếp theo.
+        /// </summary>
+        public List<List<Curve>> SelectNetBoundaryLines()
+        {
+            var result = new List<List<Curve>>();
+            try
+            {
+                _acadApp.Visible = true;
+
+                // Tạo selection set tạm
+                string ssetName = "NetBoundarySel_" + DateTime.Now.Ticks;
+                dynamic ssets = _acadDoc.SelectionSets;
+                dynamic sset = ssets.Add(ssetName);
+
+                _acadUtil.Prompt(
+                    "\nSelect (Window Selection) loose Lines/Polylines for floor boundary. " +
+                    "Press ENTER to confirm: ");
+                sset.SelectOnScreen();
+
+                var looseCurves = new List<Curve>();
+
+                for (int i = 0; i < sset.Count; i++)
+                {
+                    dynamic ent = sset.Item(i);
+                    string objName = ent.ObjectName.ToString();
+                    
+                    if (objName == "AcDbLine" ||
+                        objName == "AcDbPolyline" ||
+                        objName == "AcDb2dPolyline" ||
+                        objName == "AcDb3dPolyline" ||
+                        objName == "AcDbArc")
+                    {
+                        var curves = ExtractCurvesFromAnyEntity(ent);
+                        if (curves != null)
+                            looseCurves.AddRange(curves);
+                    }
+                }
+
+                sset.Delete();
+
+                // Ghép các curve rời rạc thành các vòng khép kín bằng Auto-Trim
+                var generatedLoops = AutoTrimAndBuildLoops(looseCurves);
+
+                foreach (var loop in generatedLoops)
+                {
+                    if (loop.Count >= 3)
+                        result.Add(loop);
+                }
+
+                // Sắp xếp: loop lớn nhất (diện tích lớn nhất) là outer, còn lại là holes
+                result.Sort((a, b) =>
+                    GetCurvesArea(b).CompareTo(GetCurvesArea(a))); // giảm dần
+
+                return result;
+            }
+            catch (Exception ex)
+            {
+                throw new Exception("Error selecting net boundary lines: " + ex.Message);
+            }
+        }
+
+        // ─────────────────────────────────────────────
         // CHỌN VÀ PARSE HATCH
         // ─────────────────────────────────────────────
 
@@ -822,6 +890,277 @@ namespace Antigravity.DrawFloors.Services
 
             loops.Sort((a, b) => GetCurvesArea(b).CompareTo(GetCurvesArea(a)));
             return loops;
+        }
+
+        // ─────────────────────────────────────────────
+        // THUẬT TOÁN AUTO-TRIM & EXTEND
+        // ─────────────────────────────────────────────
+
+        private List<List<Curve>> AutoTrimAndBuildLoops(List<Curve> sourceCurves)
+        {
+            var loops = new List<List<Curve>>();
+            if (sourceCurves == null || sourceCurves.Count == 0) return loops;
+
+            const double SnapTol = 0.01; // ~3mm snap tolerance
+            const double GridCell = 0.05; // ~15mm grid cell for hash
+
+            // Phân loại Line và Non-Line
+            var lines = new List<Line>();
+            var otherCurves = new List<Curve>();
+            foreach (var c in sourceCurves)
+            {
+                if (c == null || c.Length < 0.003) continue;
+                if (c is Line ln) lines.Add(ln);
+                else otherCurves.Add(c);
+            }
+
+            // Collect all intersection/endpoint data per line
+            var linePoints = new Dictionary<int, List<XYZ>>();
+            for (int i = 0; i < lines.Count; i++)
+            {
+                linePoints[i] = new List<XYZ>
+                {
+                    lines[i].GetEndPoint(0),
+                    lines[i].GetEndPoint(1)
+                };
+            }
+
+            // Step 1: Auto-Extend — Tìm giao điểm mọi cặp Line, KHÔNG giới hạn khoảng cách
+            for (int i = 0; i < lines.Count; i++)
+            {
+                for (int j = i + 1; j < lines.Count; j++)
+                {
+                    XYZ p = GetLineIntersection(lines[i], lines[j]);
+                    if (p != null)
+                    {
+                        linePoints[i].Add(p);
+                        linePoints[j].Add(p);
+                    }
+                }
+            }
+
+            // Chặt các Line thành đoạn nhỏ tại các điểm giao
+            var allSegments = new List<Curve>();
+            allSegments.AddRange(otherCurves);
+
+            foreach (var kvp in linePoints)
+            {
+                var line = lines[kvp.Key];
+                var pts = kvp.Value;
+                XYZ dir = line.Direction;
+
+                // Project + sort theo hướng line
+                pts = pts.OrderBy(p => (p - line.GetEndPoint(0)).DotProduct(dir)).ToList();
+
+                // Deduplicate: loại bỏ các điểm quá gần nhau
+                var deduped = new List<XYZ> { pts[0] };
+                for (int i = 1; i < pts.Count; i++)
+                {
+                    if (pts[i].DistanceTo(deduped.Last()) > SnapTol)
+                        deduped.Add(pts[i]);
+                }
+
+                // Tạo các phân đoạn
+                for (int i = 0; i < deduped.Count - 1; i++)
+                {
+                    double dist = deduped[i].DistanceTo(deduped[i + 1]);
+                    if (dist > SnapTol)
+                    {
+                        try { allSegments.Add(Line.CreateBound(deduped[i], deduped[i + 1])); }
+                        catch { }
+                    }
+                }
+            }
+
+            // Step 2: Auto-Trim — Xóa râu ria (Pruning tails)
+            allSegments = PruneTails(allSegments, GridCell);
+
+            // Step 3: Tái tạo CurveLoops từ các cạnh còn lại
+            // Dùng tolerance rộng hơn để bắt các điểm gần nhau
+            return BuildLoopsFromPrunedSegments(allSegments, SnapTol);
+        }
+
+        /// <summary>
+        /// Build loops từ các segments đã prune, dùng tolerance rộng hơn
+        /// và chấp nhận loop >= 2 cạnh (ví dụ box = 4 cạnh nhưng 
+        /// sau split có thể ít hơn 3 nếu các cạnh dài).
+        /// </summary>
+        private List<List<Curve>> BuildLoopsFromPrunedSegments(List<Curve> segments, double tol)
+        {
+            var loops = new List<List<Curve>>();
+            var remaining = segments?
+                .Where(c => c != null && c.Length >= 0.003)
+                .ToList() ?? new List<Curve>();
+
+            while (remaining.Count > 0)
+            {
+                var loop = new List<Curve> { remaining[0] };
+                remaining.RemoveAt(0);
+
+                bool extended;
+                do
+                {
+                    extended = false;
+                    XYZ loopEnd = loop.Last().GetEndPoint(1);
+
+                    double bestDist = double.MaxValue;
+                    int bestIdx = -1;
+                    bool bestReverse = false;
+
+                    for (int i = 0; i < remaining.Count; i++)
+                    {
+                        Curve candidate = remaining[i];
+                        double dStart = loopEnd.DistanceTo(candidate.GetEndPoint(0));
+                        double dEnd = loopEnd.DistanceTo(candidate.GetEndPoint(1));
+
+                        if (dStart <= tol && dStart < bestDist)
+                        {
+                            bestDist = dStart;
+                            bestIdx = i;
+                            bestReverse = false;
+                        }
+                        if (dEnd <= tol && dEnd < bestDist)
+                        {
+                            bestDist = dEnd;
+                            bestIdx = i;
+                            bestReverse = true;
+                        }
+                    }
+
+                    if (bestIdx >= 0)
+                    {
+                        var chosen = remaining[bestIdx];
+                        if (bestReverse) chosen = chosen.CreateReversed();
+                        loop.Add(chosen);
+                        remaining.RemoveAt(bestIdx);
+                        extended = true;
+                    }
+                } while (extended);
+
+                // Kiểm tra khép kín: đầu cuối gặp đầu đầu
+                if (loop.Count >= 2 && 
+                    loop.Last().GetEndPoint(1).DistanceTo(loop.First().GetEndPoint(0)) <= tol)
+                {
+                    loops.Add(loop);
+                }
+            }
+
+            loops.Sort((a, b) => GetCurvesArea(b).CompareTo(GetCurvesArea(a)));
+            return loops;
+        }
+
+        private XYZ GetLineIntersection(Line L1, Line L2)
+        {
+            XYZ p1 = L1.GetEndPoint(0);
+            XYZ v1 = L1.Direction;
+            XYZ p2 = L2.GetEndPoint(0);
+            XYZ v2 = L2.Direction;
+
+            double det = v1.X * v2.Y - v1.Y * v2.X;
+            if (Math.Abs(det) < 1e-6) return null; // Song song hoặc trùng
+
+            double t1 = ((p2.X - p1.X) * v2.Y - (p2.Y - p1.Y) * v2.X) / det;
+            XYZ intersect = p1 + v1.Multiply(t1);
+            return new XYZ(intersect.X, intersect.Y, p1.Z);
+        }
+
+        private double DistanceToSegment(XYZ p, Line line)
+        {
+            XYZ p1 = line.GetEndPoint(0);
+            XYZ p2 = line.GetEndPoint(1);
+            XYZ v = p2 - p1;
+            double len2 = v.DotProduct(v);
+            if (len2 == 0) return p.DistanceTo(p1);
+            double t = Math.Max(0, Math.Min(1, (p - p1).DotProduct(v) / len2));
+            XYZ projection = p1 + v.Multiply(t);
+            return p.DistanceTo(projection);
+        }
+
+        private List<Curve> PruneTails(List<Curve> segments, double gridCell)
+        {
+            bool changed;
+            do
+            {
+                changed = false;
+                var comparer = new XyzGridComparer(gridCell);
+                var ptCount = new Dictionary<XYZ, int>(comparer);
+
+                foreach (var seg in segments)
+                {
+                    XYZ p1 = seg.GetEndPoint(0);
+                    XYZ p2 = seg.GetEndPoint(1);
+                    IncrementPoint(ptCount, p1, comparer);
+                    IncrementPoint(ptCount, p2, comparer);
+                }
+
+                var remaining = new List<Curve>();
+                foreach (var seg in segments)
+                {
+                    XYZ p1 = seg.GetEndPoint(0);
+                    XYZ p2 = seg.GetEndPoint(1);
+                    int c1 = GetPointCount(ptCount, p1, comparer);
+                    int c2 = GetPointCount(ptCount, p2, comparer);
+                    if (c1 > 1 && c2 > 1)
+                    {
+                        remaining.Add(seg);
+                    }
+                    else
+                    {
+                        changed = true;
+                    }
+                }
+                segments = remaining;
+            } while (changed);
+
+            return segments;
+        }
+
+        private void IncrementPoint(Dictionary<XYZ, int> dict, XYZ pt, XyzGridComparer comparer)
+        {
+            // Tìm key đã tồn tại gần pt
+            foreach (var key in dict.Keys)
+            {
+                if (comparer.Equals(key, pt))
+                {
+                    dict[key]++;
+                    return;
+                }
+            }
+            dict[pt] = 1;
+        }
+
+        private int GetPointCount(Dictionary<XYZ, int> dict, XYZ pt, XyzGridComparer comparer)
+        {
+            foreach (var kvp in dict)
+            {
+                if (comparer.Equals(kvp.Key, pt))
+                    return kvp.Value;
+            }
+            return 0;
+        }
+
+        /// <summary>
+        /// Grid-based comparer: hash theo ô lưới lớn, Equals dùng distance check.
+        /// Giải quyết bug hash collision khi 2 điểm gần nhau rơi vào khác bucket.
+        /// </summary>
+        private class XyzGridComparer : IEqualityComparer<XYZ>
+        {
+            private readonly double _cell;
+            public XyzGridComparer(double cellSize) { _cell = cellSize; }
+
+            public bool Equals(XYZ a, XYZ b)
+            {
+                if (a == null || b == null) return false;
+                return a.DistanceTo(b) <= _cell * 0.5;
+            }
+
+            public int GetHashCode(XYZ obj)
+            {
+                // Hash bằng cell lớn — chấp nhận collision, Equals sẽ phân xử
+                int gx = (int)Math.Floor(obj.X / _cell);
+                int gy = (int)Math.Floor(obj.Y / _cell);
+                return gx * 73856093 ^ gy * 19349663;
+            }
         }
 
         private void ExtractBulgeVerticesToPoints(dynamic vertices, List<XYZ> pts)

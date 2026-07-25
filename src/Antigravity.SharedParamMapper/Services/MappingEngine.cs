@@ -61,13 +61,42 @@ namespace Antigravity.SharedParamMapper.Services
                     {
                         try
                         {
+                            bool setSuccess = false;
                             if (rule.Scope == ParamScope.Instance)
                             {
-                                SetParameterValue(element, rule);
+                                setSuccess = SetParameterValue(element, rule, null, result);
                             }
-                            else if (rule.Scope == ParamScope.Type && !typeParamsSet && elementType != null)
+                            else if (rule.Scope == ParamScope.Type)
                             {
-                                SetParameterValue(elementType, rule, element); // Use instance context for formula if needed
+                                if (!typeParamsSet && elementType != null)
+                                    setSuccess = SetParameterValue(elementType, rule, element, result);
+                                else
+                                    setSuccess = true; // Already set for type
+                            }
+                            else if (rule.Scope == ParamScope.Unknown)
+                            {
+                                var p = element.get_Parameter(rule.SharedParamGuid) ?? element.LookupParameter(rule.SharedParamName);
+                                if (p != null)
+                                {
+                                    setSuccess = SetParameterValue(element, rule, null, result);
+                                }
+                                else if (!typeParamsSet && elementType != null)
+                                {
+                                    var tp = elementType.get_Parameter(rule.SharedParamGuid) ?? elementType.LookupParameter(rule.SharedParamName);
+                                    if (tp != null)
+                                    {
+                                        setSuccess = SetParameterValue(elementType, rule, element, result);
+                                    }
+                                }
+                                else if (typeParamsSet)
+                                {
+                                    setSuccess = true;
+                                }
+                            }
+
+                            if (!setSuccess)
+                            {
+                                elementSuccess = false;
                             }
                         }
                         catch (Exception ex)
@@ -88,7 +117,7 @@ namespace Antigravity.SharedParamMapper.Services
             return result;
         }
 
-        private void SetParameterValue(Element targetElement, MappingRule rule, Element contextElement = null)
+        private bool SetParameterValue(Element targetElement, MappingRule rule, Element contextElement = null, ApplyResult result = null)
         {
             var param = targetElement.get_Parameter(rule.SharedParamGuid);
             if (param == null)
@@ -96,7 +125,16 @@ namespace Antigravity.SharedParamMapper.Services
                 param = targetElement.LookupParameter(rule.SharedParamName);
             }
 
-            if (param == null || param.IsReadOnly) return;
+            if (param == null)
+            {
+                result?.Errors.Add($"Target parameter '{rule.SharedParamName}' not found on element {targetElement.Id}.");
+                return false;
+            }
+            if (param.IsReadOnly)
+            {
+                result?.Errors.Add($"Target parameter '{rule.SharedParamName}' is read-only on element {targetElement.Id}.");
+                return false;
+            }
 
             string valueToSet = null;
             // Use contextElement (Instance) for formula/source eval if setting a Type param, 
@@ -110,11 +148,63 @@ namespace Antigravity.SharedParamMapper.Services
                     break;
                 case MappingSource.BuiltInParam:
                 case MappingSource.OtherSharedParam:
-                    var sourceParam = evalElement.LookupParameter(rule.SourceParameterName);
-                    if (sourceParam != null)
+                    if (rule.SourceParameterName.StartsWith("<") && rule.SourceParameterName.EndsWith(">"))
                     {
+                        valueToSet = EvaluateVirtualParameter(evalElement, rule.SourceParameterName);
+                        if (valueToSet == null)
+                        {
+                            result?.Errors.Add($"Virtual parameter '{rule.SourceParameterName}' returned null on eval element {evalElement.Id}.");
+                            return false;
+                        }
+                    }
+                    else
+                    {
+                        var sourceParam = evalElement.LookupParameter(rule.SourceParameterName);
+                        
+                        // Fallback: If not found on instance, check if it's a Type parameter
+                        if (sourceParam == null)
+                        {
+                            var typeId = evalElement.GetTypeId();
+                            if (typeId != ElementId.InvalidElementId)
+                            {
+                                var typeElem = evalElement.Document.GetElement(typeId);
+                                if (typeElem != null)
+                                {
+                                    sourceParam = typeElem.LookupParameter(rule.SourceParameterName);
+                                }
+                            }
+                        }
+
+                        if (sourceParam != null)
+                        {
+                            // Direct transfer if types match (avoids unit string parsing issues)
+                        if (param.StorageType == sourceParam.StorageType)
+                        {
+                            switch (param.StorageType)
+                            {
+                                case StorageType.Double:
+                                    param.Set(sourceParam.AsDouble());
+                                    return true;
+                                case StorageType.Integer:
+                                    param.Set(sourceParam.AsInteger());
+                                    return true;
+                                case StorageType.ElementId:
+                                    param.Set(sourceParam.AsElementId());
+                                    return true;
+                                case StorageType.String:
+                                    param.Set(sourceParam.AsString() ?? string.Empty);
+                                    return true;
+                            }
+                        }
+
                         if (sourceParam.StorageType == StorageType.String) valueToSet = sourceParam.AsString();
                         else valueToSet = sourceParam.AsValueString() ?? sourceParam.AsDouble().ToString();
+                    }
+                        else
+                        {
+                            result?.Errors.Add($"Source parameter '{rule.SourceParameterName}' not found on eval element {evalElement.Id}.");
+                            return false;
+                        }
                     }
                     break;
                 case MappingSource.Formula:
@@ -124,21 +214,113 @@ namespace Antigravity.SharedParamMapper.Services
 
             if (valueToSet != null)
             {
+                if (valueToSet == "")
+                {
+                    if (param.StorageType == StorageType.String)
+                    {
+                        param.Set("");
+                    }
+                    // For non-string parameters, clearing is not universally supported in older Revit API, so we just skip setting without throwing an error
+                    return true;
+                }
+
                 if (param.StorageType == StorageType.String)
                 {
                     param.Set(valueToSet);
+                    return true;
                 }
                 else
                 {
                     // Attempt to set by value string if it's double/int (handles units natively)
                     bool set = param.SetValueString(valueToSet);
-                    if (!set && double.TryParse(valueToSet, out double dVal))
+                    if (!set)
                     {
-                        // Fallback to raw double if SetValueString fails
-                        param.Set(dVal);
+                        // Fallback to raw double parsing if SetValueString fails (e.g. Number parameter)
+                        // Strip out non-numeric characters for safety if needed, but simple TryParse first
+                        var cleanStr = new string(valueToSet.Where(c => char.IsDigit(c) || c == '.' || c == '-' || c == ',').ToArray());
+                        if (double.TryParse(cleanStr, out double dVal))
+                        {
+                            param.Set(dVal);
+                            return true;
+                        }
+                        result?.Errors.Add($"Failed to parse '{valueToSet}' to match target parameter '{rule.SharedParamName}' type.");
+                        return false;
+                    }
+                    return true;
+                }
+            }
+
+            return false;
+        }
+        private string EvaluateVirtualParameter(Element element, string virtualParamName)
+        {
+            Document doc = element.Document;
+            
+            ElementType type = element as ElementType;
+            if (type == null)
+            {
+                type = doc.GetElement(element.GetTypeId()) as ElementType;
+            }
+
+            if (virtualParamName == "<Family Name>") return type.FamilyName;
+            if (virtualParamName == "<Type Name>") return type.Name;
+
+            if (type is HostObjAttributes hostObj)
+            {
+                var structure = hostObj.GetCompoundStructure();
+                if (structure != null)
+                {
+                    if (virtualParamName == "<Material: Structure>")
+                    {
+                        for (int i = 0; i < structure.LayerCount; i++)
+                        {
+                            if (structure.GetLayerFunction(i) == MaterialFunctionAssignment.Structure)
+                            {
+                                var matId = structure.GetMaterialId(i);
+                                if (matId != ElementId.InvalidElementId)
+                                {
+                                    var mat = doc.GetElement(matId) as Material;
+                                    if (mat != null) return mat.Name;
+                                }
+                            }
+                        }
+                    }
+                    else if (virtualParamName == "<Material: All>")
+                    {
+                        var names = new List<string>();
+                        for (int i = 0; i < structure.LayerCount; i++)
+                        {
+                            var matId = structure.GetMaterialId(i);
+                            if (matId != ElementId.InvalidElementId)
+                            {
+                                var mat = doc.GetElement(matId) as Material;
+                                if (mat != null) names.Add(mat.Name);
+                            }
+                        }
+                        return string.Join(" / ", names);
+                    }
+                    else if (virtualParamName == "<Material: Finish>")
+                    {
+                        var names = new List<string>();
+                        for (int i = 0; i < structure.LayerCount; i++)
+                        {
+                            var func = structure.GetLayerFunction(i);
+                            if (func == MaterialFunctionAssignment.Finish1 || func == MaterialFunctionAssignment.Finish2)
+                            {
+                                var matId = structure.GetMaterialId(i);
+                                if (matId != ElementId.InvalidElementId)
+                                {
+                                    var mat = doc.GetElement(matId) as Material;
+                                    if (mat != null) names.Add(mat.Name);
+                                }
+                            }
+                        }
+                        return string.Join(" / ", names);
                     }
                 }
             }
+
+            return null;
         }
     }
 }

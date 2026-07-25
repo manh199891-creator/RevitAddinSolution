@@ -19,6 +19,7 @@ namespace Antigravity.DrawBeams.Models
         public double MeasuredWidth { get; set; }
         public bool IsPaired { get; set; }
 
-        public bool IsValid => (Width > 0 && Height > 0) || (IsPaired && MeasuredWidth > 0 && Height > 0);
+        // Cho phép Height = 0 để AssignMarksToBeams có thể tìm lại
+        public bool IsValid => (Width > 0) || (IsPaired && MeasuredWidth > 0);
     }
 }

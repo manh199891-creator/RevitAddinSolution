@@ -233,7 +233,23 @@
                                     <ColumnDefinition Width="*"/>
                                     <ColumnDefinition Width="Auto"/>
                                 </Grid.ColumnDefinitions>
-                                <ComboBox x:Name="cbTextLayer" Style="{StaticResource ComboStyle}" Grid.Column="0"/>
+                                
+                                <Grid Grid.Column="0">
+                                    <TextBox x:Name="txtTextLayers" Style="{StaticResource ModernTextBox}" Padding="6,2,24,2" ToolTip="Nhập 1 hoặc nhiều layer cách nhau bằng dấu phẩy, hoặc chọn từ danh sách" TextChanged="TxtTextLayers_TextChanged"/>
+                                    <ToggleButton x:Name="btnToggleTextLayers" Width="20" Height="20" HorizontalAlignment="Right" Margin="0,0,2,0" Background="Transparent" BorderThickness="0" Content="▼" FontSize="10"/>
+                                    <Popup IsOpen="{Binding IsChecked, ElementName=btnToggleTextLayers}" StaysOpen="False" PlacementTarget="{Binding ElementName=txtTextLayers}" MaxHeight="200" Width="{Binding ActualWidth, ElementName=txtTextLayers}">
+                                        <Border Background="White" BorderBrush="#D1D5DB" BorderThickness="1" CornerRadius="4">
+                                            <ListBox x:Name="lbTextLayers" SelectionMode="Multiple" MaxHeight="190" ScrollViewer.VerticalScrollBarVisibility="Auto" SelectionChanged="LbTextLayers_SelectionChanged">
+                                                <ListBox.ItemTemplate>
+                                                    <DataTemplate>
+                                                        <CheckBox Content="{Binding}" IsChecked="{Binding IsSelected, RelativeSource={RelativeSource AncestorType=ListBoxItem}}" Focusable="False" Margin="2"/>
+                                                    </DataTemplate>
+                                                </ListBox.ItemTemplate>
+                                            </ListBox>
+                                        </Border>
+                                    </Popup>
+                                </Grid>
+                                
                                 <Button x:Name="btnPickTextLayer" Content="..." Style="{StaticResource SecondaryBtn}" Width="35" Margin="4,0,0,0" Grid.Column="1" Click="BtnPickTextLayer_Click" Padding="0,0"/>
                             </Grid>
                         </StackPanel>
@@ -245,7 +261,40 @@
                                     <ColumnDefinition Width="*"/>
                                     <ColumnDefinition Width="Auto"/>
                                 </Grid.ColumnDefinitions>
-                                <ComboBox x:Name="cbBeamLayer" Style="{StaticResource ComboStyle}" Grid.Column="0"/>
+                                
+                                <Grid Grid.Column="0">
+                                    <TextBox x:Name="txtBeamLayers" Style="{StaticResource ModernTextBox}" Padding="6,2,24,2" ToolTip="Nhập 1 hoặc nhiều layer cách nhau bằng dấu phẩy, hoặc chọn từ danh sách" TextChanged="TxtBeamLayers_TextChanged"/>
+                                    <ToggleButton x:Name="btnToggleBeamLayers" Width="24" HorizontalAlignment="Right" Background="Transparent" BorderThickness="0" Focusable="False">
+                                        <Path Data="M 0 0 L 4 4 L 8 0 Z" Fill="#666666" VerticalAlignment="Center" HorizontalAlignment="Center"/>
+                                    </ToggleButton>
+                                    <Popup IsOpen="{Binding IsChecked, ElementName=btnToggleBeamLayers}" StaysOpen="False" PlacementTarget="{Binding ElementName=txtBeamLayers}" Width="{Binding ActualWidth, ElementName=txtBeamLayers}">
+                                        <Border Background="White" BorderBrush="#D1D5DB" BorderThickness="1" MaxHeight="200" SnapsToDevicePixels="True">
+                                            <ListBox x:Name="lbBeamLayers" SelectionMode="Multiple" BorderThickness="0" Background="Transparent" SelectionChanged="LbBeamLayers_SelectionChanged">
+                                                <ListBox.ItemContainerStyle>
+                                                    <Style TargetType="ListBoxItem">
+                                                        <Setter Property="Background" Value="Transparent"/>
+                                                        <Setter Property="Padding" Value="4,2"/>
+                                                        <Setter Property="Template">
+                                                            <Setter.Value>
+                                                                <ControlTemplate TargetType="ListBoxItem">
+                                                                    <Border Background="{TemplateBinding Background}">
+                                                                        <CheckBox Content="{Binding}" IsChecked="{Binding IsSelected, RelativeSource={RelativeSource TemplatedParent}}" Margin="4,4" Focusable="False" IsHitTestVisible="False"/>
+                                                                    </Border>
+                                                                </ControlTemplate>
+                                                            </Setter.Value>
+                                                        </Setter>
+                                                        <Style.Triggers>
+                                                            <Trigger Property="IsMouseOver" Value="True">
+                                                                <Setter Property="Background" Value="#F3F4F6"/>
+                                                            </Trigger>
+                                                        </Style.Triggers>
+                                                    </Style>
+                                                </ListBox.ItemContainerStyle>
+                                            </ListBox>
+                                        </Border>
+                                    </Popup>
+                                </Grid>
+                                
                                 <Button x:Name="btnPickBeamLayer" Content="..." Style="{StaticResource SecondaryBtn}" Width="35" Margin="4,0,0,0" Grid.Column="1" Click="BtnPickBeamLayer_Click" Padding="0,0"/>
                             </Grid>
                         </StackPanel>

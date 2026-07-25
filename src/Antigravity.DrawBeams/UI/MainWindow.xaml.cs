@@ -54,12 +54,20 @@ namespace Antigravity.DrawBeams.UI
                 if (_cadService.Connect())
                 {
                     var layers = _cadService.GetLayers();
-                    cbBeamLayer.ItemsSource = layers;
-                    cbTextLayer.ItemsSource = layers;
+                    lbBeamLayers.ItemsSource = layers;
+                    lbTextLayers.ItemsSource = layers;
                     
                     // Auto-select common layer names if found
-                    cbBeamLayer.SelectedItem = layers.FirstOrDefault(l => l.ToLower().Contains("beam") || l.ToLower().Contains("dam"));
-                    cbTextLayer.SelectedItem = layers.FirstOrDefault(l => l.ToLower().Contains("text") || l.ToLower().Contains("dim"));
+                    string commonBeam = layers.FirstOrDefault(l => l.ToLower().Contains("beam") || l.ToLower().Contains("dam"));
+                    if (commonBeam != null)
+                    {
+                        lbBeamLayers.SelectedItems.Add(commonBeam);
+                    }
+                    string commonText = layers.FirstOrDefault(l => l.ToLower().Contains("text") || l.ToLower().Contains("dim"));
+                    if (commonText != null)
+                    {
+                        lbTextLayers.SelectedItems.Add(commonText);
+                    }
                 }
             }
             catch { }
@@ -161,14 +169,29 @@ namespace Antigravity.DrawBeams.UI
                     var info = _cadService.GetEntityInfo();
                     if (info != null && info.ContainsKey("Layer"))
                     {
-                        string layer = info["Layer"];
-                        if (cbBeamLayer.ItemsSource == null || !((List<string>)cbBeamLayer.ItemsSource).Contains(layer))
+                        string pickedLayer = info["Layer"].Trim();
+
+                        // Refresh source list nếu cần
+                        if (lbBeamLayers.ItemsSource == null || !((List<string>)lbBeamLayers.ItemsSource).Contains(pickedLayer))
                         {
                             var layers = _cadService.GetLayers();
-                            cbBeamLayer.ItemsSource = layers;
-                            cbTextLayer.ItemsSource = layers;
+                            lbBeamLayers.ItemsSource = layers;
+                            lbTextLayers.ItemsSource = layers;
                         }
-                        cbBeamLayer.SelectedItem = layer;
+
+                        // Append layer (tránh trùng) — hỗ trợ nhiều layer cách nhau bằng dấu phẩy
+                        string existing = txtBeamLayers.Text?.Trim() ?? "";
+                        var existingSet = existing
+                            .Split(new[] { ',', ';' }, StringSplitOptions.RemoveEmptyEntries)
+                            .Select(l => l.Trim())
+                            .ToHashSet(StringComparer.OrdinalIgnoreCase);
+
+                        if (!existingSet.Contains(pickedLayer))
+                        {
+                            txtBeamLayers.Text = string.IsNullOrEmpty(existing)
+                                ? pickedLayer
+                                : existing + ", " + pickedLayer;
+                        }
                     }
                 }
             }
@@ -178,27 +201,38 @@ namespace Antigravity.DrawBeams.UI
 
         private void BtnPickTextLayer_Click(object sender, RoutedEventArgs e)
         {
-            this.Hide();
             try
             {
+                this.Hide();
                 if (_cadService.Connect())
                 {
                     var info = _cadService.GetEntityInfo();
                     if (info != null && info.ContainsKey("Layer"))
                     {
-                        string layer = info["Layer"];
-                        if (cbTextLayer.ItemsSource == null || !((List<string>)cbTextLayer.ItemsSource).Contains(layer))
+                        string layer = info["Layer"].Trim();
+                        if (lbTextLayers.ItemsSource == null || !((List<string>)lbTextLayers.ItemsSource).Contains(layer))
                         {
                             var layers = _cadService.GetLayers();
-                            cbBeamLayer.ItemsSource = layers;
-                            cbTextLayer.ItemsSource = layers;
+                            lbTextLayers.ItemsSource = layers;
                         }
-                        cbTextLayer.SelectedItem = layer;
+                        
+                        var currentSelected = (txtTextLayers.Text ?? "").Split(new[] { ',', ';' }, StringSplitOptions.RemoveEmptyEntries).Select(s => s.Trim()).ToList();
+                        if (!currentSelected.Contains(layer, StringComparer.OrdinalIgnoreCase))
+                        {
+                            currentSelected.Add(layer);
+                            txtTextLayers.Text = string.Join(", ", currentSelected);
+                        }
                     }
                 }
             }
-            catch (Exception ex) { MessageBox.Show(ex.Message); }
-            finally { this.Show(); }
+            catch (Exception ex)
+            {
+                MessageBox.Show("Lỗi: " + ex.Message);
+            }
+            finally
+            {
+                this.Show();
+            }
         }
 
         public void DoProcessing()
@@ -221,10 +255,22 @@ namespace Antigravity.DrawBeams.UI
                 // 2. Pick Beams from CAD
                 _cadService.Connect();
                 
-                string beamLayer = cbBeamLayer.SelectedItem?.ToString();
-                string textLayer = cbTextLayer.SelectedItem?.ToString();
+                // Parse beam layers: hỗ trợ nhiều layer cách nhau bằng dấu phẩy
+                string beamLayerRaw = txtBeamLayers.Text?.Trim() ?? "";
+                List<string> beamLayers = beamLayerRaw
+                    .Split(new[] { ',', ';' }, StringSplitOptions.RemoveEmptyEntries)
+                    .Select(l => l.Trim())
+                    .Where(l => !string.IsNullOrEmpty(l))
+                    .ToList();
+
+                string textLayerRaw = txtTextLayers.Text?.Trim() ?? "";
+                List<string> textLayers = textLayerRaw
+                    .Split(new[] { ',', ';' }, StringSplitOptions.RemoveEmptyEntries)
+                    .Select(l => l.Trim())
+                    .Where(l => !string.IsNullOrEmpty(l))
+                    .ToList();
                 
-                List<CadBeamData> cadBeams = _cadService.GetCadBeams(beamLayer, textLayer);
+                List<CadBeamData> cadBeams = _cadService.GetCadBeams(beamLayers.Count > 0 ? beamLayers : null, textLayers.Count > 0 ? textLayers : null);
 
                 if (cadBeams == null || cadBeams.Count == 0)
                 {
@@ -313,6 +359,56 @@ namespace Antigravity.DrawBeams.UI
         private void BtnCancel_Click(object sender, RoutedEventArgs e)
         {
             this.Close();
+        }
+
+        private void TxtBeamLayers_TextChanged(object sender, TextChangedEventArgs e)
+        {
+            if (lbBeamLayers == null || lbBeamLayers.ItemsSource == null) return;
+            string[] selected = (txtBeamLayers.Text ?? "").Split(new[] { ',', ';' }, StringSplitOptions.RemoveEmptyEntries).Select(s => s.Trim()).ToArray();
+            
+            lbBeamLayers.SelectionChanged -= LbBeamLayers_SelectionChanged;
+            lbBeamLayers.SelectedItems.Clear();
+            foreach (var item in lbBeamLayers.ItemsSource)
+            {
+                if (selected.Contains(item.ToString(), StringComparer.OrdinalIgnoreCase))
+                {
+                    lbBeamLayers.SelectedItems.Add(item);
+                }
+            }
+            lbBeamLayers.SelectionChanged += LbBeamLayers_SelectionChanged;
+        }
+
+        private void LbBeamLayers_SelectionChanged(object sender, SelectionChangedEventArgs e)
+        {
+            var selectedLayers = lbBeamLayers.SelectedItems.Cast<string>().ToList();
+            txtBeamLayers.TextChanged -= TxtBeamLayers_TextChanged;
+            txtBeamLayers.Text = string.Join(", ", selectedLayers);
+            txtBeamLayers.TextChanged += TxtBeamLayers_TextChanged;
+        }
+
+        private void TxtTextLayers_TextChanged(object sender, TextChangedEventArgs e)
+        {
+            if (lbTextLayers == null || lbTextLayers.ItemsSource == null) return;
+            string[] selected = (txtTextLayers.Text ?? "").Split(new[] { ',', ';' }, StringSplitOptions.RemoveEmptyEntries).Select(s => s.Trim()).ToArray();
+            
+            lbTextLayers.SelectionChanged -= LbTextLayers_SelectionChanged;
+            lbTextLayers.SelectedItems.Clear();
+            foreach (var item in lbTextLayers.ItemsSource)
+            {
+                if (selected.Contains(item.ToString(), StringComparer.OrdinalIgnoreCase))
+                {
+                    lbTextLayers.SelectedItems.Add(item);
+                }
+            }
+            lbTextLayers.SelectionChanged += LbTextLayers_SelectionChanged;
+        }
+
+        private void LbTextLayers_SelectionChanged(object sender, SelectionChangedEventArgs e)
+        {
+            var selectedLayers = lbTextLayers.SelectedItems.Cast<string>().ToList();
+            txtTextLayers.TextChanged -= TxtTextLayers_TextChanged;
+            txtTextLayers.Text = string.Join(", ", selectedLayers);
+            txtTextLayers.TextChanged += TxtTextLayers_TextChanged;
         }
     }
 }

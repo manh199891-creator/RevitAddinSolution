@@ -161,7 +161,8 @@ namespace Antigravity.DrawBeams.Services
         // V12: THUẬT TOÁN CHÍNH - Anchor → Text → Partner
         // ================================================================
 
-        public List<CadBeamData> GetCadBeams(string beamLayer = null, string textLayer = null)
+        /// <summary>beamLayers: danh sách layer nét dầm (hỗ trợ nhiều layer). Truyền null/empty = không lọc layer.</summary>
+        public List<CadBeamData> GetCadBeams(IReadOnlyList<string> beamLayers = null, IReadOnlyList<string> textLayers = null)
         {
             List<CadBeamData> beams = new List<CadBeamData>();
             try
@@ -180,6 +181,11 @@ namespace Antigravity.DrawBeams.Services
                 // ── Bước 1: Thu thập TẤT CẢ đối tượng ──
                 List<CadLineSegment> allSegments = new List<CadLineSegment>();
                 List<dynamic> allTexts = new List<dynamic>();
+
+                var activeTextLayers = (textLayers ?? new List<string>())
+                    .Where(l => !string.IsNullOrWhiteSpace(l))
+                    .Select(l => l.Trim())
+                    .ToHashSet(StringComparer.OrdinalIgnoreCase);
 
                 for (int i = 0; i < sset.Count; i++)
                 {
@@ -210,7 +216,7 @@ namespace Antigravity.DrawBeams.Services
                     }
                     else if (objName == "AcDbText" || objName == "AcDbMText")
                     {
-                        if (string.IsNullOrEmpty(textLayer) || string.Equals(entLayer, textLayer, StringComparison.OrdinalIgnoreCase))
+                        if (activeTextLayers.Count == 0 || activeTextLayers.Contains(entLayer))
                         {
                             allTexts.Add(entity);
                         }
@@ -220,13 +226,20 @@ namespace Antigravity.DrawBeams.Services
                 // ── Bước 2: Phân loại Anchor Lines (nét trên beam layer) vs All Lines ──
                 allSegments = PreProcessSegments(allSegments);
 
+                // Chuẩn hoá danh sách beam layers (hỗ trợ nhiều layer)
+                var activeBeamLayers = (beamLayers ?? new List<string>())
+                    .Where(l => !string.IsNullOrWhiteSpace(l))
+                    .Select(l => l.Trim())
+                    .ToHashSet(StringComparer.OrdinalIgnoreCase);
+
                 List<CadLineSegment> anchorLines;
                 List<CadLineSegment> potentialPartners;
 
-                if (!string.IsNullOrEmpty(beamLayer))
+                if (activeBeamLayers.Count > 0)
                 {
-                    anchorLines = allSegments.Where(s => string.Equals(s.Layer, beamLayer, StringComparison.OrdinalIgnoreCase)).ToList();
-                    // Fallback: nếu không có nét nào trên beamLayer, thử nhận Layer "0"
+                    // Anchor = nét thuộc BẤT KỲ layer nào trong danh sách
+                    anchorLines = allSegments.Where(s => activeBeamLayers.Contains(s.Layer)).ToList();
+                    // Fallback: nếu không tìm được nét nào → thử Layer "0"
                     if (anchorLines.Count == 0)
                         anchorLines = allSegments.Where(s => s.Layer == "0").ToList();
                     potentialPartners = allSegments; // Tất cả nét đều có thể là partner
@@ -253,7 +266,7 @@ namespace Antigravity.DrawBeams.Services
                     {
                         var plTexts = FindParallelTexts(anchor, allTexts);
                         double beamB = anchor.PolylineWidth;
-                        double beamH = 500; // fallback mặc định
+                        double beamH = 0; // Để trống Height để AssignMarksToBeams tự điền
                         string beamContent = "";
                         if (plTexts.Count > 0)
                         {
@@ -292,13 +305,34 @@ namespace Antigravity.DrawBeams.Services
                             double measuredW = GetPerpendicularDistance(anchor.StartPoint, anchor.EndPoint, groupPartner.StartPoint);
                             if (overlapLen > 200 && measuredW > 50)
                             {
-                                var plTexts2 = FindParallelTexts(anchor, allTexts);
-                                // Root cause fix: PHẢI có Text kích thước hợp lệ, không dùng measuredW làm Width
-                                if (plTexts2.Count == 0) { } // Bỏ qua nếu không có text
-                                else
+                                var plTexts2 = FindTextsInBeamBoundingBox(anchor, groupPartner, allTexts);
+                                
+                                double gB = 0, gH = 0;
+                                string gContent = "";
+                                
+                                if (plTexts2.Count > 0)
                                 {
-                                    double gB = plTexts2[0].Width, gH = plTexts2[0].Height;
-                                    string gContent = plTexts2[0].Content;
+                                    var dimTexts = plTexts2
+                                        .Where(t => t.Width > 0 && t.Height > 0)
+                                        .OrderBy(t => Math.Abs(t.Width - measuredW))
+                                        .ToList();
+
+                                    if (dimTexts.Count > 0)
+                                    {
+                                        gB = dimTexts[0].Width;
+                                        gH = dimTexts[0].Height;
+                                        gContent = dimTexts[0].Content;
+                                    }
+                                }
+
+                                // Validation
+                                if (gB > 0 && Math.Abs(gB - measuredW) / gB > 0.30)
+                                {
+                                    gB = 0; gH = 0; gContent = "";
+                                }
+
+                                if (gB > 0)
+                                {
                                     confirmedCandidates.Add(new BeamCandidate
                                     {
                                         MainLine = anchor,
@@ -316,74 +350,93 @@ namespace Antigravity.DrawBeams.Services
                         continue;
                     }
 
-                    // 3a. Tìm Text song song gần nhất (bán kính R = width * 1.5, tối thiểu 1500mm)
-                    var nearbyTexts = FindParallelTexts(anchor, allTexts);
-                    if (nearbyTexts.Count == 0)
+                    // 3. Tìm tất cả nét song song tiềm năng (đã lọc length > 200)
+                    foreach (var partner in potentialPartners)
                     {
-                        // Root cause fix: Nếu không có Text và commonWidths rỗng → bỏ qua hoàn toàn
-                        // Không bao giờ dùng measuredWidth làm TextWidth → nguồn gốc của kích thước rác
-                        if (commonWidths.Count > 0)
+                        if (partner.Id == anchor.Id || usedIds.Contains(partner.Id)) continue;
+                        
+                        // Kiểm tra góc song song
+                        double anchorDx = anchor.DirectionX, anchorDy = anchor.DirectionY, anchorLen = anchor.Length;
+                        double partnerDx = partner.DirectionX, partnerDy = partner.DirectionY, partnerLen = partner.Length;
+                        if (partnerLen < 200) continue;
+
+                        double dot = Math.Abs((anchorDx * partnerDx + anchorDy * partnerDy) / (anchorLen * partnerLen));
+                        if (dot < 0.999) continue; // Phải song song
+
+                        // Kiểm tra khoảng cách đo được hợp lý (50mm - 2000mm)
+                        double measuredWidth = GetPerpendicularDistance(anchor.StartPoint, anchor.EndPoint, partner.StartPoint);
+                        if (measuredWidth < 50 || measuredWidth > 2000) continue;
+
+                        // Kiểm tra overlap
+                        double overlapLen = GetSegmentOverlapLength(anchor, partner);
+                        if (overlapLen < 200) continue;
+                        
+                        // Anti-False-Positive: Dầm không được dài ngắn hơn rộng (trừ khi overlap rất lớn)
+                        if (anchor.Length < measuredWidth * 1.2 && overlapLen < measuredWidth * 1.5) continue;
+
+                        // TẠO BOUNDING BOX và QUÉT TEXT
+                        var textsInBox = FindTextsInBeamBoundingBox(anchor, partner, allTexts);
+
+                        double expectedB = 0, expectedH = 0;
+                        string textContent = "";
+                        double confidence = overlapLen;
+                        
+                        if (textsInBox.Count > 0)
                         {
-                            CadLineSegment partner = FindPartnerWithoutText(anchor, potentialPartners, usedIds, commonWidths);
-                            if (partner != null)
+                            // Lọc ra text kích thước và ưu tiên text có Width gần với measuredWidth nhất
+                            var dimTexts = textsInBox
+                                .Where(t => t.Width > 0 && t.Height > 0)
+                                .OrderBy(t => Math.Abs(t.Width - measuredWidth))
+                                .ToList();
+
+                            if (dimTexts.Count > 0)
                             {
-                                double overlapLen = GetSegmentOverlapLength(anchor, partner);
-                                double measuredWidth = GetPerpendicularDistance(anchor.StartPoint, anchor.EndPoint, partner.StartPoint);
-                                // Chỉ chấp nhận nếu measuredWidth khớp với ít nhất 1 common width ±15%
-                                double matchedWidth = commonWidths
-                                    .Where(w => Math.Abs(w - measuredWidth) / w < 0.15)
-                                    .OrderBy(w => Math.Abs(w - measuredWidth))
-                                    .FirstOrDefault();
-                                if (matchedWidth > 0 && overlapLen > 200 && IsProjectionWithinRange(anchor, partner))
-                                {
-                                    confirmedCandidates.Add(new BeamCandidate
-                                    {
-                                        MainLine = anchor,
-                                        SubLine = partner,
-                                        MeasuredWidth = measuredWidth,
-                                        TextWidth = matchedWidth, // Dùng kích thước chuẩn từ text, không dùng số đo thô
-                                        TextHeight = 500,
-                                        TextContent = "",
-                                        OverlapLength = overlapLen,
-                                        Confidence = overlapLen + 100
-                                    });
-                                }
+                                expectedB = dimTexts[0].Width;
+                                expectedH = dimTexts[0].Height;
+                                textContent = dimTexts[0].Content;
+                                confidence += 500; // Ưu tiên có text
                             }
                         }
-                        continue;
-                    }
 
-                    // 3b. Với mỗi Text, lấy giá trị B → Tìm nét Partner cách anchor đúng B (±20mm)
-                    foreach (var textInfo in nearbyTexts)
-                    {
-                        double expectedWidth = textInfo.Width;
-
-                        CadLineSegment partner = FindParallelPartner(anchor, potentialPartners, expectedWidth, usedIds);
-
-                        if (partner != null)
+                        // VALIDATION: Reject nếu text nói B = 500 nhưng đo thực tế = 300 (lệch > 30%)
+                        // (Nghĩa là bắt nhầm text của dầm bên cạnh)
+                        if (expectedB > 0 && Math.Abs(expectedB - measuredWidth) / expectedB > 0.30)
                         {
-                            double overlapLen = GetSegmentOverlapLength(anchor, partner);
+                            expectedB = 0;
+                            expectedH = 0;
+                            textContent = "";
+                            confidence -= 500;
+                        }
 
-                            // 3c. Double-Check: Trung điểm partner chiếu xuống anchor phải nằm trong phạm vi
-                            if (overlapLen > 200 && IsProjectionWithinRange(anchor, partner))
+                        // Nếu không có text -> fallback check commonWidths
+                        if (expectedB == 0 && commonWidths.Count > 0)
+                        {
+                            double matchedWidth = commonWidths
+                                .Where(w => Math.Abs(w - measuredWidth) / w < 0.30)
+                                .OrderBy(w => Math.Abs(w - measuredWidth))
+                                .FirstOrDefault();
+                            if (matchedWidth > 0)
                             {
-                                 double measuredWidth = GetPerpendicularDistance(anchor.StartPoint, anchor.EndPoint, partner.StartPoint);
-                                
-                                // Anti-False-Positive: Dầm không được rộng quá 1200mm và phải dài hơn rộng
-                                if (measuredWidth > 1200 || anchor.Length < measuredWidth * 1.2) continue;
-
-                                confirmedCandidates.Add(new BeamCandidate
-                                {
-                                    MainLine = anchor,
-                                    SubLine = partner,
-                                    MeasuredWidth = measuredWidth,
-                                    TextWidth = textInfo.Width,
-                                    TextHeight = textInfo.Height,
-                                    TextContent = textInfo.Content,
-                                    OverlapLength = overlapLen,
-                                    Confidence = (overlapLen) + (string.Equals(anchor.Layer, partner.Layer, StringComparison.OrdinalIgnoreCase) ? 500 : 200)
-                                });
+                                expectedB = matchedWidth;
+                                expectedH = 0; // Để trống Height để AssignMarksToBeams tự điền
+                                confidence += 100;
                             }
+                        }
+
+                        if (expectedB > 0)
+                        {
+                            // Thêm candidate
+                            confirmedCandidates.Add(new BeamCandidate
+                            {
+                                MainLine = anchor,
+                                SubLine = partner,
+                                MeasuredWidth = measuredWidth,
+                                TextWidth = expectedB,
+                                TextHeight = expectedH,
+                                TextContent = textContent,
+                                OverlapLength = overlapLen,
+                                Confidence = confidence + (string.Equals(anchor.Layer, partner.Layer, StringComparison.OrdinalIgnoreCase) ? 200 : 0)
+                            });
                         }
                     }
                 }
@@ -416,7 +469,7 @@ namespace Antigravity.DrawBeams.Services
 
                 // ── Bước 5 (Fallback): Xử lý nét Anchor chưa có partner ──
                 // Nếu không có beam layer → bỏ qua (tránh false positive)
-                if (!string.IsNullOrEmpty(beamLayer))
+                if (activeBeamLayers.Count > 0)
                 {
                     foreach (var anchor in anchorLines)
                     {
@@ -533,6 +586,82 @@ namespace Antigravity.DrawBeams.Services
             return result.OrderBy(t => t.Distance).ToList();
         }
 
+        private bool IsPointInRotatedRect(
+            double px, double py,
+            double[] rectCenter, double ux, double uy,
+            double halfAlong, double halfAcross)
+        {
+            double dx = px - rectCenter[0];
+            double dy = py - rectCenter[1];
+
+            // Project onto the length axis (ux, uy)
+            double projAlong = dx * ux + dy * uy;
+            if (Math.Abs(projAlong) > halfAlong) return false;
+
+            // Project onto the width axis (-uy, ux)
+            double nx = -uy;
+            double ny = ux;
+            double projAcross = dx * nx + dy * ny;
+            if (Math.Abs(projAcross) > halfAcross) return false;
+
+            return true;
+        }
+
+        private List<TextInfo> FindTextsInBeamBoundingBox(
+            CadLineSegment mainLine, CadLineSegment subLine, 
+            List<dynamic> allTexts,
+            double extendAlong = 500.0, double extendAcross = 200.0)
+        {
+            var result = new List<TextInfo>();
+
+            // 1. Tính unit vector hướng dầm (theo mainLine)
+            double dx = mainLine.DirectionX;
+            double dy = mainLine.DirectionY;
+            double len = mainLine.Length;
+            if (len < 1) return result;
+            double ux = dx / len;
+            double uy = dy / len;
+
+            // 2. Tính trung điểm của cả khối dầm (midpoint của main và sub)
+            double midX = (mainLine.MidX + subLine.MidX) / 2.0;
+            double midY = (mainLine.MidY + subLine.MidY) / 2.0;
+            double[] center = new double[] { midX, midY };
+
+            // 3. Tính kích thước bounding box
+            // Chiều dài = max(mainLen, subLen) / 2 + extendAlong
+            double halfAlong = Math.Max(mainLine.Length, subLine.Length) / 2.0 + extendAlong;
+            
+            // Chiều rộng = khoảng cách giữa 2 nét / 2 + extendAcross
+            double measuredWidth = GetPerpendicularDistance(mainLine.StartPoint, mainLine.EndPoint, subLine.StartPoint);
+            double halfAcross = (measuredWidth / 2.0) + extendAcross;
+
+            // 4. Lọc text
+            foreach (var txt in allTexts)
+            {
+                double[] p = txt.InsertionPoint;
+                if (IsPointInRotatedRect(p[0], p[1], center, ux, uy, halfAlong, halfAcross))
+                {
+                    string content = GetCleanText(txt);
+                    if (string.IsNullOrWhiteSpace(content)) continue;
+
+                    var info = new TextInfo { Content = content };
+                    
+                    // Thử parse kích thước
+                    var tempBeam = new CadBeamData { TextContent = content };
+                    ParseDimensionsV12(tempBeam);
+                    info.Width = tempBeam.Width;
+                    info.Height = tempBeam.Height;
+                    
+                    // Tính khoảng cách tới tâm để sort
+                    info.Distance = Math.Sqrt(Math.Pow(p[0] - midX, 2) + Math.Pow(p[1] - midY, 2));
+                    
+                    result.Add(info);
+                }
+            }
+
+            return result.OrderBy(t => t.Distance).ToList();
+        }
+
         /// <summary>Tìm nét song song cách anchor đúng widthMm (±20mm), không quan tâm layer</summary>
         private List<double> GetCommonBeamWidths(List<dynamic> allTexts)
         {
@@ -576,7 +705,7 @@ namespace Antigravity.DrawBeams.Services
             if (measuredWidth < 50 || measuredWidth > 3000) return double.NegativeInfinity;
 
             double widthScore = 1.0 - (Math.Abs(measuredWidth - expectedWidth) / expectedWidth);
-            if (widthScore < 0.7) return double.NegativeInfinity; // Chỉ cho phép sai số tối đa 30%
+            if (widthScore < 0.0) return double.NegativeInfinity; // Cho phép sai số tối đa 100% (ví dụ: vẽ nét 200, text 400)
 
             double overlap = GetSegmentOverlapLength(anchor, candidate);
             if (overlap < 200) return double.NegativeInfinity;
@@ -618,9 +747,6 @@ namespace Antigravity.DrawBeams.Services
                 double overlap = GetSegmentOverlapLength(anchor, line);
                 if (overlap < 200) continue;
 
-                // 4. Double-check: Trung điểm line B chiếu lên anchor A phải nằm trong phạm vi
-                if (!IsProjectionWithinRange(anchor, line)) continue;
-
                 // Chọn partner có overlap lớn nhất
                 double score = CalculatePartnerScore(anchor, line, widthMm);
                 if (score > bestScore)
@@ -661,7 +787,6 @@ namespace Antigravity.DrawBeams.Services
 
                 double overlap = GetSegmentOverlapLength(anchor, line);
                 if (overlap < 200) continue;
-                if (!IsProjectionWithinRange(anchor, line)) continue;
 
                 double score = expectedWidths
                     .Select(width => CalculatePartnerScore(anchor, line, width))
@@ -678,17 +803,6 @@ namespace Antigravity.DrawBeams.Services
             }
 
             return bestPartner;
-        }
-
-        private bool IsProjectionWithinRange(CadLineSegment anchor, CadLineSegment partner)
-        {
-            double dx = anchor.DirectionX, dy = anchor.DirectionY;
-            double len = anchor.Length;
-            if (len < 10) return false;
-            double ux = dx / len, uy = dy / len;
-
-            double proj = ((partner.MidX - anchor.StartPoint[0]) * ux + (partner.MidY - anchor.StartPoint[1]) * uy) / len;
-            return proj > -0.3 && proj < 1.3;
         }
 
         /// <summary>Tính đường tâm dầm từ 2 nét song song</summary>
@@ -1000,13 +1114,15 @@ namespace Antigravity.DrawBeams.Services
                 .Where(s => s.GroupId == null && s.PolylineWidth <= 0 && s.Length > 50)
                 .ToList();
 
+            // V14: Bỏ Layer+Color khỏi group key → nét đồng tuyến trên các layer khác nhau
+            // vẫn được merge thành 1 anchor, giữ nguyên Layer của segment đầu trong cluster.
             var groups = normalSegments.GroupBy(s =>
             {
                 double angleKey = Math.Round(s.Angle / 0.01);
                 double normalX = -Math.Sin(s.Angle);
                 double normalY = Math.Cos(s.Angle);
                 double distanceKey = Math.Round(((s.StartPoint[0] * normalX) + (s.StartPoint[1] * normalY)) / 20.0);
-                return $"{s.Layer}|{s.Color}|{angleKey}|{distanceKey}";
+                return $"{angleKey}|{distanceKey}";
             });
 
             foreach (var group in groups)
@@ -1213,57 +1329,81 @@ namespace Antigravity.DrawBeams.Services
 
         private void AssignMarksToBeams(List<CadBeamData> beams, List<dynamic> allTexts)
         {
-            // Pass 1: Gán Mark text gần nhất cho beam chưa có Mark
+            // Pass 1: Gán Mark (và Dimension nếu chưa có) cho beam từ text nằm trong vùng bounding box
             foreach (var beam in beams)
             {
-                if (!string.IsNullOrEmpty(beam.Mark)) continue;
-
                 double midX = (beam.StartX + beam.EndX) / 2.0;
                 double midY = (beam.StartY + beam.EndY) / 2.0;
-                double beamAngle = Math.Atan2(beam.EndY - beam.StartY, beam.EndX - beam.StartX);
-                while (beamAngle < 0) beamAngle += Math.PI;
-                while (beamAngle >= Math.PI) beamAngle -= Math.PI;
+                
+                double dx = beam.EndX - beam.StartX;
+                double dy = beam.EndY - beam.StartY;
+                double len = Math.Sqrt(dx * dx + dy * dy);
+                if (len < 1) continue;
+                
+                double ux = dx / len;
+                double uy = dy / len;
+                
+                // Mở rộng bounding box
+                double halfAlong = len / 2.0 + 500.0;
+                double halfAcross = (beam.Width > 0 ? beam.Width : 400.0) / 2.0 + 200.0;
+                double[] center = new double[] { midX, midY };
 
-                dynamic closestMarkText = null;
-                double minDist = 5000;
+                var nearbyTexts = new List<Tuple<double, string>>();
 
                 foreach (var txt in allTexts)
                 {
-                    string content = GetCleanText(txt);
-                    if (string.IsNullOrWhiteSpace(content)) continue;
-
                     double[] p = txt.InsertionPoint;
-                    double dist = Math.Sqrt(Math.Pow(p[0] - midX, 2) + Math.Pow(p[1] - midY, 2));
-                    if (dist < minDist)
+                    
+                    // Kiểm tra điểm có nằm trong Bounding Box của dầm không
+                    if (IsPointInRotatedRect(p[0], p[1], center, ux, uy, halfAlong, halfAcross))
                     {
-                        // Fix High: Kiểm tra góc xoay của Text phải tương đối song song với dầm
-                        double txtRot = 0;
-                        try { txtRot = (double)txt.Rotation; } catch { }
-                        double angleDiff = Math.Abs(beamAngle - txtRot);
-                        while (angleDiff > Math.PI / 2) angleDiff = Math.PI - angleDiff;
-                        if (angleDiff > 0.5) continue; // Lệch quá ~30 độ thì bỏ qua
+                        string content = GetCleanText(txt);
+                        if (string.IsNullOrWhiteSpace(content)) continue;
 
-                        minDist = dist;
-                        closestMarkText = txt;
+                        double dist = Math.Sqrt(Math.Pow(p[0] - midX, 2) + Math.Pow(p[1] - midY, 2));
+                        nearbyTexts.Add(new Tuple<double, string>(dist, content));
                     }
                 }
 
-                if (closestMarkText != null)
+                // Sắp xếp text theo khoảng cách tăng dần
+                nearbyTexts = nearbyTexts.OrderBy(t => t.Item1).ToList();
+
+                // KHÔNG ghi đè dimension nếu dầm đã có Width, Height hợp lệ
+                bool foundDim = (beam.Width > 0 && beam.Height > 0);
+                bool foundMark = !string.IsNullOrEmpty(beam.Mark);
+
+                foreach (var txtTuple in nearbyTexts)
                 {
-                    string content = GetCleanText(closestMarkText);
+                    if (foundDim && foundMark) break;
+
+                    string content = txtTuple.Item2;
                     var dimensionMatch = Regex.Match(content, @"(\d+[\.,]?\d*)\s*[xX\*\-\/]\s*(\d+[\.,]?\d*)");
 
                     if (dimensionMatch.Success)
                     {
-                        bool canUpdateDimensions = string.IsNullOrEmpty(beam.TextContent) || beam.Width <= 0 || beam.Height <= 0;
-                        beam.TextContent = content;
-                        if (canUpdateDimensions)
+                        if (!foundDim)
+                        {
+                            beam.TextContent = content;
                             ParseDimensionsV12(beam);
-                        ExtractMark(beam);
+                            
+                            // Nếu text có chứa cả mark (ví dụ: D1 220x400)
+                            if (!foundMark)
+                            {
+                                ExtractMark(beam);
+                                if (!string.IsNullOrEmpty(beam.Mark))
+                                    foundMark = true;
+                            }
+                            foundDim = true;
+                        }
                     }
                     else
                     {
-                        beam.Mark = content;
+                        if (!foundMark)
+                        {
+                            // Text không chứa số đo -> đây là Mark riêng biệt (vd: D1, B3)
+                            beam.Mark = content;
+                            foundMark = true;
+                        }
                     }
                 }
             }

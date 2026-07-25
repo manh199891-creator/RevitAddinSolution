@@ -13,7 +13,8 @@ namespace Antigravity.SharedParamMapper.Models
     public enum ParamScope
     {
         Instance,
-        Type
+        Type,
+        Unknown
     }
 
     public class MappingRule

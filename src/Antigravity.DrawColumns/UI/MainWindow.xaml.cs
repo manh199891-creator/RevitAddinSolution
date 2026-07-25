@@ -16,12 +16,17 @@ namespace Antigravity.DrawColumns.UI
         private Document _doc;
         
         private CadInteropService _cadService = new CadInteropService();
+        private BuildColumnsEventHandler _handler;
+        private ExternalEvent _exEvent;
 
         public MainWindow(UIApplication uiapp)
         {
             InitializeComponent();
             _uiapp = uiapp;
             _doc = uiapp.ActiveUIDocument.Document;
+            
+            _handler = new BuildColumnsEventHandler();
+            _exEvent = ExternalEvent.Create(_handler);
             
             LoadLevels();
             LoadFamilies();
@@ -194,15 +199,18 @@ namespace Antigravity.DrawColumns.UI
             string pH = cmbParamH.Text;
             string pDia = cmbParamDia.Text;
 
-            RevitColumnBuilder builder = new RevitColumnBuilder(
-                _doc,
-                baseSymbolRect, baseSymbolCirc,
-                baseLevel, topLevel,
-                botOffset, topOffset,
-                pB, pH, pDia);
+            _handler.CadColumns = cadCols;
+            _handler.BaseSymbolRect = baseSymbolRect;
+            _handler.BaseSymbolCirc = baseSymbolCirc;
+            _handler.BaseLevel = baseLevel;
+            _handler.TopLevel = topLevel;
+            _handler.BotOffset = botOffset;
+            _handler.TopOffset = topOffset;
+            _handler.ParamB = pB;
+            _handler.ParamH = pH;
+            _handler.ParamDia = pDia;
 
-            int successCount = builder.BuildColumns(cadCols);
-            MessageBox.Show(string.Format("Đã tạo thành công {0} cột trong Revit.", successCount), "Hoàn thành");
+            _exEvent.Raise();
         }
         
         private FamilySymbol GetFirstSymbol(Family family)

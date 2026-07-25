@@ -44,6 +44,23 @@ namespace Antigravity.SharedParamMapper.Services
             return JsonConvert.DeserializeObject<MappingTemplate>(json) ?? new MappingTemplate { ProjectName = projectName };
         }
 
+        public void ExportToFile(MappingTemplate template, string filePath)
+        {
+            template.LastModified = DateTime.Now;
+            string json = JsonConvert.SerializeObject(template, Formatting.Indented);
+            File.WriteAllText(filePath, json);
+        }
+
+        public MappingTemplate ImportFromFile(string filePath)
+        {
+            if (!File.Exists(filePath))
+            {
+                throw new FileNotFoundException("Template file not found.");
+            }
+            string json = File.ReadAllText(filePath);
+            return JsonConvert.DeserializeObject<MappingTemplate>(json);
+        }
+
         public List<string> ListTemplates()
         {
             var templates = new List<string>();

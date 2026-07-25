@@ -248,6 +248,45 @@ namespace Antigravity.DrawFloors.UI
         }
 
         // ─────────────────────────────────────────────
+        // NÚT 3: CHỌN BIÊN NET (LINES/POLYLINES RỜI RẠC)
+        // ─────────────────────────────────────────────
+
+        private void BtnDrawNetBoundary_Click(object sender, RoutedEventArgs e)
+        {
+            if (!ValidateCommonParams()) return;
+            try
+            {
+                this.Hide();
+                var cadSvc = GetCadService();
+                var profile = cadSvc.SelectNetBoundaryLines();
+                this.Show();
+
+                if (profile == null || profile.Count == 0)
+                {
+                    MessageBox.Show("Không tìm thấy đường biên hợp lệ trong vùng chọn.",
+                        "Notification", MessageBoxButton.OK, MessageBoxImage.Warning);
+                    return;
+                }
+
+                // [0] = outer boundary, [1..n] = holes
+                _handler.IsBatchMode      = false;
+                _handler.ProfilePoints    = null;
+                _handler.ProfileCurves    = profile;
+                _handler.TargetLevelId    = SelectedLevel.Id;
+                _handler.TargetFloorTypeId = SelectedFloorType.Id;
+                _handler.OffsetMm         = OffsetMm;
+                _handler.TransactionName  = "Create floor from Net Boundary";
+                _exEvent.Raise();
+            }
+            catch (Exception ex)
+            {
+                this.Show();
+                MessageBox.Show("Error:\n" + ex.Message, "Error",
+                    MessageBoxButton.OK, MessageBoxImage.Error);
+            }
+        }
+
+        // ─────────────────────────────────────────────
         // NÚT 3: TẠO SÀN TỰ ĐỘNG TỪ HATCH
         // ─────────────────────────────────────────────
 

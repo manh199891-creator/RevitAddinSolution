@@ -49,7 +49,8 @@ $modules = @(
     "WallMepClash",
     "HoanThien",
     "ArchModeling",
-    "HatchPatterns.Contracts"
+    "HatchPatterns.Contracts",
+    "AutoFoundation"
 )
 
 Write-Host "Dang copy cac file DLL tu bin/Debug..." -ForegroundColor Yellow

@@ -3,6 +3,7 @@ using System.Linq;
 using Antigravity.Core.Services;
 using Antigravity.SharedParamMapper.ViewModels;
 using Antigravity.SharedParamMapper.Views;
+using Antigravity.SharedParamMapper.Services;
 using Autodesk.Revit.Attributes;
 using Autodesk.Revit.DB;
 using Autodesk.Revit.UI;
@@ -28,10 +29,16 @@ namespace Antigravity.SharedParamMapper
                 }
 
                 var selectedIds = uidoc.Selection.GetElementIds();
-                var viewModel = new ParamMapperViewModel(doc, selectedIds);
+                var handler = new ActionEventHandler();
+                var viewModel = new ParamMapperViewModel(uiapp, selectedIds, handler);
                 var window = new ParamMapperWindow(viewModel);
 
-                window.ShowDialog();
+                var interop = new System.Windows.Interop.WindowInteropHelper(window)
+                {
+                    Owner = uiapp.MainWindowHandle
+                };
+
+                window.Show();
 
                 return Result.Succeeded;
             }
