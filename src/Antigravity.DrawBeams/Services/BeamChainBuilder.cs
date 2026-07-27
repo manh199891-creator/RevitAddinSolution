@@ -53,8 +53,11 @@ namespace Antigravity.DrawBeams.Services
 
             if (validSegments.Count == 0) return new List<BeamChain>();
 
-            // 2. Deterministic initial ordering of input segments to eliminate input-order dependence
-            var sortedInput = validSegments
+            // 2. Pre-process segments: Split long segments at non-collinear intersections (junctions)
+            var preprocessedSegments = PreprocessSegmentJunctionSplits(validSegments);
+
+            // 3. Deterministic initial ordering of input segments
+            var sortedInput = preprocessedSegments
                 .OrderByDescending(s => s.Length)
                 .ThenBy(s => s.StartX)
                 .ThenBy(s => s.StartY)
@@ -68,7 +71,6 @@ namespace Antigravity.DrawBeams.Services
 
             while (unassigned.Count > 0)
             {
-                // Pick longest remaining unassigned segment as seed
                 var seed = sortedInput.First(s => unassigned.Contains(s));
                 var currentChainSegments = new List<CadBeamSegment> { seed };
                 unassigned.Remove(seed);
@@ -77,19 +79,16 @@ namespace Antigravity.DrawBeams.Services
                 do
                 {
                     addedAny = false;
-
-                    // Compute current chain axis from current chain segments
                     var (ux, uy, theta) = ComputeChainAxis(currentChainSegments);
                     double nx = -uy;
                     double ny = ux;
 
-                    // Search unassigned candidates that are compatible with chain axis and all existing segments
                     CadBeamSegment bestCandidate = null;
                     double minDistance = double.MaxValue;
 
                     foreach (var candidate in sortedInput.Where(s => unassigned.Contains(s)))
                     {
-                        if (IsSegmentCompatibleWithChain(candidate, currentChainSegments, ux, uy, theta, nx, ny))
+                        if (IsSegmentCompatibleWithChain(candidate, currentChainSegments, sortedInput, ux, uy, theta, nx, ny))
                         {
                             double dist = ComputeDistanceToChain(candidate, currentChainSegments, ux, uy);
                             if (dist < minDistance)
@@ -113,7 +112,6 @@ namespace Antigravity.DrawBeams.Services
                 chains.Add(chain);
             }
 
-            // Sort final chains deterministically
             return chains
                 .OrderBy(c => c.StartX)
                 .ThenBy(c => c.StartY)
@@ -122,9 +120,109 @@ namespace Antigravity.DrawBeams.Services
                 .ToList();
         }
 
+        private List<CadBeamSegment> PreprocessSegmentJunctionSplits(List<CadBeamSegment> segments)
+        {
+            var result = new List<CadBeamSegment>();
+
+            foreach (var seg in segments)
+            {
+                var splitPoints = new List<double>(); // Projection t values along seg
+
+                foreach (var other in segments)
+                {
+                    if (ReferenceEquals(seg, other)) continue;
+
+                    // Only consider non-collinear other segments
+                    double angleDiff = Math.Abs(seg.Angle - other.Angle);
+                    if (angleDiff > Math.PI / 2.0) angleDiff = Math.PI - angleDiff;
+                    if (angleDiff * 180.0 / Math.PI <= _options.AngularToleranceDegrees) continue; // Collinear -> ignore
+
+                    // Compute line-line intersection or point-line proximity
+                    if (TryGetSegmentIntersection(seg, other, out double tSeg, out double tOther))
+                    {
+                        // tSeg must be strictly inside seg interior (margin = JunctionToleranceMm)
+                        double marginT = _options.JunctionToleranceMm / seg.Length;
+                        if (tSeg > marginT && tSeg < (1.0 - marginT) && tOther >= -0.1 && tOther <= 1.1)
+                        {
+                            splitPoints.Add(tSeg);
+                        }
+                    }
+                }
+
+                if (splitPoints.Count == 0)
+                {
+                    result.Add(seg);
+                }
+                else
+                {
+                    splitPoints = splitPoints.Distinct().OrderBy(t => t).ToList();
+                    double currentT = 0;
+
+                    foreach (double t in splitPoints)
+                    {
+                        if (t - currentT > 1e-3)
+                        {
+                            result.Add(CreateSubSegment(seg, currentT, t));
+                            currentT = t;
+                        }
+                    }
+                    if (1.0 - currentT > 1e-3)
+                    {
+                        result.Add(CreateSubSegment(seg, currentT, 1.0));
+                    }
+                }
+            }
+
+            return result;
+        }
+
+        private bool TryGetSegmentIntersection(CadBeamSegment s1, CadBeamSegment s2, out double t1, out double t2)
+        {
+            t1 = 0; t2 = 0;
+            double dx1 = s1.EndX - s1.StartX;
+            double dy1 = s1.EndY - s1.StartY;
+            double dx2 = s2.EndX - s2.StartX;
+            double dy2 = s2.EndY - s2.StartY;
+
+            double denom = dx1 * dy2 - dy1 * dx2;
+            if (Math.Abs(denom) < 1e-9) return false;
+
+            double dx3 = s2.StartX - s1.StartX;
+            double dy3 = s2.StartY - s1.StartY;
+
+            t1 = (dx3 * dy2 - dy3 * dx2) / denom;
+            t2 = (dx3 * dy1 - dy3 * dx1) / denom;
+
+            return true;
+        }
+
+        private CadBeamSegment CreateSubSegment(CadBeamSegment parent, double tStart, double tEnd)
+        {
+            double sx = parent.StartX + (parent.EndX - parent.StartX) * tStart;
+            double sy = parent.StartY + (parent.EndY - parent.StartY) * tStart;
+            double ex = parent.StartX + (parent.EndX - parent.StartX) * tEnd;
+            double ey = parent.StartY + (parent.EndY - parent.StartY) * tEnd;
+
+            return new CadBeamSegment
+            {
+                StartX = sx,
+                StartY = sy,
+                EndX = ex,
+                EndY = ey,
+                Width = parent.Width,
+                Height = parent.Height,
+                MeasuredWidth = parent.MeasuredWidth,
+                Mark = parent.Mark,
+                TextContent = parent.TextContent,
+                IsPaired = parent.IsPaired,
+                SourceLineIds = parent.SourceLineIds != null ? new List<string>(parent.SourceLineIds) : new List<string>(),
+                Confidence = parent.Confidence,
+                Layer = parent.Layer
+            };
+        }
+
         private (double ux, double uy, double theta) ComputeChainAxis(List<CadBeamSegment> segments)
         {
-            // Reference direction from longest segment
             var refSeg = segments.OrderByDescending(s => s.Length).First();
             double refUx = refSeg.DirectionX / refSeg.Length;
             double refUy = refSeg.DirectionY / refSeg.Length;
@@ -137,7 +235,6 @@ namespace Antigravity.DrawBeams.Services
                 double segUx = s.DirectionX / s.Length;
                 double segUy = s.DirectionY / s.Length;
 
-                // Handle reversed direction segments by flipping vector if dot product < 0
                 if (segUx * refUx + segUy * refUy < 0)
                 {
                     segUx = -segUx;
@@ -152,7 +249,6 @@ namespace Antigravity.DrawBeams.Services
             double ux = (len < 1e-9) ? refUx : sumX / len;
             double uy = (len < 1e-9) ? refUy : sumY / len;
 
-            // Enforce Canonical Axis Direction (ux > 0, or if |ux| <= 1e-9 then uy > 0)
             if (ux < -1e-9 || (Math.Abs(ux) <= 1e-9 && uy < -1e-9))
             {
                 ux = -ux;
@@ -169,6 +265,7 @@ namespace Antigravity.DrawBeams.Services
         private bool IsSegmentCompatibleWithChain(
             CadBeamSegment candidate,
             List<CadBeamSegment> chainSegments,
+            List<CadBeamSegment> allSegments,
             double ux, double uy, double theta,
             double nx, double ny)
         {
@@ -201,11 +298,11 @@ namespace Antigravity.DrawBeams.Services
             }
 
             // 3. Lateral Offset Check against chain axis
-            var allSegments = chainSegments.Concat(new[] { candidate });
+            var allChainPlusCandidate = chainSegments.Concat(new[] { candidate });
             double minLateral = double.MaxValue;
             double maxLateral = double.MinValue;
 
-            foreach (var s in allSegments)
+            foreach (var s in allChainPlusCandidate)
             {
                 double lat1 = s.StartX * nx + s.StartY * ny;
                 double lat2 = s.EndX * nx + s.EndY * ny;
@@ -215,7 +312,16 @@ namespace Antigravity.DrawBeams.Services
 
             if ((maxLateral - minLateral) > _options.LateralOffsetToleranceMm) return false;
 
-            // 4. Longitudinal Gap / Overlap Check against closest adjacent segment in chain
+            // 4. Junction Check (MAJOR 1): Ensure candidate does not connect across a Junction Node with a non-collinear segment
+            foreach (var s in chainSegments)
+            {
+                if (IsJunctionBetween(candidate, s, allSegments, ux, uy))
+                {
+                    return false; // Junction node detected -> DO NOT MERGE
+                }
+            }
+
+            // 5. Longitudinal Gap / Overlap Check against closest adjacent segment in chain
             bool connectsToAny = false;
             foreach (var s in chainSegments)
             {
@@ -227,6 +333,71 @@ namespace Antigravity.DrawBeams.Services
             }
 
             return connectsToAny;
+        }
+
+        private bool IsJunctionBetween(CadBeamSegment s1, CadBeamSegment s2, List<CadBeamSegment> allSegments, double ux, double uy)
+        {
+            // Find connection region between s1 and s2
+            double t1_1 = s1.StartX * ux + s1.StartY * uy;
+            double t1_2 = s1.EndX * ux + s1.EndY * uy;
+            double min1 = Math.Min(t1_1, t1_2);
+            double max1 = Math.Max(t1_1, t1_2);
+
+            double t2_1 = s2.StartX * ux + s2.StartY * uy;
+            double t2_2 = s2.EndX * ux + s2.EndY * uy;
+            double min2 = Math.Min(t2_1, t2_2);
+            double max2 = Math.Max(t2_1, t2_2);
+
+            double connectionT;
+            if (max1 <= min2) connectionT = (max1 + min2) / 2.0;
+            else if (max2 <= min1) connectionT = (max2 + min1) / 2.0;
+            else connectionT = (Math.Max(min1, min2) + Math.Min(max1, max2)) / 2.0;
+
+            // Calculate world coords of connection point
+            var (refUx, refUy, _) = ComputeChainAxis(new List<CadBeamSegment> { s1, s2 });
+            double nx = -refUy;
+            double ny = refUx;
+            double avgOffset = (s1.StartX * nx + s1.StartY * ny + s2.StartX * nx + s2.StartY * ny) / 2.0;
+
+            double connX = connectionT * refUx + avgOffset * nx;
+            double connY = connectionT * refUy + avgOffset * ny;
+
+            // Check if any non-collinear segment in allSegments meets near (connX, connY)
+            foreach (var other in allSegments)
+            {
+                if (ReferenceEquals(other, s1) || ReferenceEquals(other, s2)) continue;
+
+                // Angle check
+                double angleDiff = Math.Abs(s1.Angle - other.Angle);
+                if (angleDiff > Math.PI / 2.0) angleDiff = Math.PI - angleDiff;
+                if (angleDiff * 180.0 / Math.PI <= _options.AngularToleranceDegrees) continue; // Collinear -> ignore
+
+                // Proximity check from conn point to other segment
+                double distToOther = DistancePointToSegment(connX, connY, other.StartX, other.StartY, other.EndX, other.EndY);
+                if (distToOther <= _options.JunctionToleranceMm)
+                {
+                    return true; // Junction detected!
+                }
+            }
+
+            return false;
+        }
+
+        private double DistancePointToSegment(double px, double py, double sx, double sy, double ex, double ey)
+        {
+            double dx = ex - sx;
+            double dy = ey - sy;
+            double lenSq = dx * dx + dy * dy;
+
+            if (lenSq < 1e-9) return Math.Sqrt((px - sx) * (px - sx) + (py - sy) * (py - sy));
+
+            double t = ((px - sx) * dx + (py - sy) * dy) / lenSq;
+            t = Math.Max(0, Math.Min(1, t));
+
+            double projX = sx + t * dx;
+            double projY = sy + t * dy;
+
+            return Math.Sqrt((px - projX) * (px - projX) + (py - projY) * (py - projY));
         }
 
         private bool AreTwoSegmentsAdjacent(CadBeamSegment s1, CadBeamSegment s2, double ux, double uy)
@@ -256,18 +427,15 @@ namespace Antigravity.DrawBeams.Services
                 double overlap = Math.Min(max1, max2) - Math.Max(min1, min2);
                 if (overlap <= 1e-4)
                 {
-                    // Touching at endpoint (zero overlap)
                     return true;
                 }
 
-                // True geometric duplicate check (min and max match within tolerance)
                 bool isDuplicate = Math.Abs(min1 - min2) <= 1e-3 && Math.Abs(max1 - max2) <= 1e-3;
                 if (isDuplicate)
                 {
                     return true;
                 }
 
-                // Containment (non-duplicate) and partial overlap MUST satisfy MinimumOverlapMm
                 return overlap >= _options.MinimumOverlapMm;
             }
         }

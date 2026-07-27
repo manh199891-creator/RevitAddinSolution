@@ -516,28 +516,23 @@ namespace Antigravity.DrawBeams.Services
 
                 sset.Delete();
 
-                // ── Bước 6: BeamChainBuilder Integration ──
-                var chainBuilder = new BeamChainBuilder();
-                var chains = chainBuilder.BuildChains(rawSegments);
+                // ── Bước 6: BeamCadPipeline Integration ──
+                var dimTextDTOs = allTexts.Select(t => new CadDimensionText
+                {
+                    X = t.InsertionPoint != null && t.InsertionPoint.Length >= 2 ? t.InsertionPoint[0] : 0,
+                    Y = t.InsertionPoint != null && t.InsertionPoint.Length >= 2 ? t.InsertionPoint[1] : 0,
+                    Rotation = t.Rotation,
+                    Width = t.Width,
+                    Height = t.Height,
+                    Content = t.Content,
+                    Confidence = 500
+                }).ToList();
+
+                var pipeline = new BeamCadPipeline();
+                var pipelineBeams = pipeline.ProcessPipeline(rawSegments, dimTextDTOs);
 
                 beams.Clear();
-                foreach (var chain in chains)
-                {
-                    var beam = new CadBeamData
-                    {
-                        StartX = chain.StartX,
-                        StartY = chain.StartY,
-                        EndX = chain.EndX,
-                        EndY = chain.EndY,
-                        Width = chain.Width,
-                        Height = chain.Height,
-                        Mark = chain.Mark,
-                        TextContent = chain.Segments.FirstOrDefault(s => !string.IsNullOrEmpty(s.TextContent))?.TextContent,
-                        IsPaired = chain.Segments.Any(s => s.IsPaired),
-                        MeasuredWidth = chain.Segments.FirstOrDefault(s => s.MeasuredWidth > 0)?.MeasuredWidth ?? 0
-                    };
-                    beams.Add(beam);
-                }
+                beams.AddRange(pipelineBeams);
 
                 AssignMarksToBeams(beams, allTexts);
 
