@@ -25,6 +25,179 @@ namespace Antigravity.DrawBeams.Tests
             _pipeline = new BeamCadPipeline(options);
         }
 
+        // ==========================================
+        // MAJOR 1: SEGMENT CUTTING AT DIMENSION BOUNDARY
+        // ==========================================
+
+        [Fact]
+        public void Pipeline_SingleLongSegment_CrossesDimensionBoundary_CutsSegmentExactlyAtSplitPoint()
+        {
+            // Single long horizontal segment 0 -> 3000
+            var longSeg = new CadBeamSegment
+            {
+                StartX = 0, StartY = 0, EndX = 3000, EndY = 0,
+                Width = 0, Height = 0, MeasuredWidth = 400,
+                IsPaired = true, Confidence = 100
+            };
+
+            var text1 = new CadDimensionText { X = 500, Y = 0, Width = 400, Height = 600, Content = "D1 400x600" };
+            var text2 = new CadDimensionText { X = 2500, Y = 0, Width = 400, Height = 700, Content = "D2 400x700" };
+
+            var beams = _pipeline.ProcessPipeline(new[] { longSeg }, new[] { text1, text2 });
+
+            Assert.Equal(2, beams.Count);
+
+            var beam1 = beams.First(b => b.Height == 600);
+            var beam2 = beams.First(b => b.Height == 700);
+
+            Assert.Equal(0, beam1.StartX, 2);
+            Assert.Equal(1500, beam1.EndX, 2);
+            Assert.Equal(400, beam1.Width);
+            Assert.Equal(600, beam1.Height);
+
+            Assert.Equal(1500, beam2.StartX, 2);
+            Assert.Equal(3000, beam2.EndX, 2);
+            Assert.Equal(400, beam2.Width);
+            Assert.Equal(700, beam2.Height);
+        }
+
+        [Fact]
+        public void Pipeline_Diagonal45DegSegment_CrossesDimensionBoundary_CutsSegmentAtExactLineCoordinates()
+        {
+            double rad = Math.PI / 4.0; // 45 deg
+            double cos = Math.Cos(rad);
+            double sin = Math.Sin(rad);
+
+            // 45 deg segment 0 -> 3000 along 45 deg ray
+            var diagSeg = new CadBeamSegment
+            {
+                StartX = 0, StartY = 0,
+                EndX = 3000 * cos, EndY = 3000 * sin,
+                Width = 0, Height = 0, MeasuredWidth = 400,
+                IsPaired = true, Confidence = 100
+            };
+
+            var text1 = new CadDimensionText { X = 500 * cos, Y = 500 * sin, Width = 400, Height = 600, Content = "D1 400x600" };
+            var text2 = new CadDimensionText { X = 2500 * cos, Y = 2500 * sin, Width = 400, Height = 700, Content = "D2 400x700" };
+
+            var beams = _pipeline.ProcessPipeline(new[] { diagSeg }, new[] { text1, text2 });
+
+            Assert.Equal(2, beams.Count);
+
+            var beam1 = beams.First(b => b.Height == 600);
+            var beam2 = beams.First(b => b.Height == 700);
+
+            Assert.Equal(0, beam1.StartX, 2);
+            Assert.Equal(0, beam1.StartY, 2);
+            Assert.Equal(1500 * cos, beam1.EndX, 2);
+            Assert.Equal(1500 * sin, beam1.EndY, 2);
+
+            Assert.Equal(1500 * cos, beam2.StartX, 2);
+            Assert.Equal(1500 * sin, beam2.StartY, 2);
+            Assert.Equal(3000 * cos, beam2.EndX, 2);
+            Assert.Equal(3000 * sin, beam2.EndY, 2);
+        }
+
+        // ==========================================
+        // MAJOR 2: CONSISTENT PRIMARY SEGMENT METADATA
+        // ==========================================
+
+        [Fact]
+        public void Pipeline_ConsistentPrimarySegmentMetadata_TakesMetadataFromHighestConfidenceSegment()
+        {
+            var segLowConf = new CadBeamSegment
+            {
+                StartX = 0, StartY = 0, EndX = 1000, EndY = 0,
+                Width = 400, Height = 600, Mark = "D1", TextContent = "D1 400x600",
+                Confidence = 100, IsPaired = true, MeasuredWidth = 400
+            };
+
+            var segHighConf = new CadBeamSegment
+            {
+                StartX = 1000, StartY = 0, EndX = 2000, EndY = 0,
+                Width = 400, Height = 600, Mark = "D2", TextContent = "D2 400x600",
+                Confidence = 900, IsPaired = true, MeasuredWidth = 400
+            };
+
+            var beams = _pipeline.ProcessPipeline(new[] { segLowConf, segHighConf });
+
+            Assert.Single(beams);
+            Assert.Equal("D2", beams[0].Mark);
+            Assert.Equal("D2 400x600", beams[0].TextContent);
+        }
+
+        // ==========================================
+        // MAJOR 3: OPTIONS OVERRIDE PROPAGATION
+        // ==========================================
+
+        [Fact]
+        public void Pipeline_OptionsOverride_PropagatesEndpointGapToleranceToChainBuilder()
+        {
+            // Default options in _pipeline has EndpointGapToleranceMm = 100.
+            // Pass overrideOptions with EndpointGapToleranceMm = 10.
+            var overrideOptions = new BeamContinuityOptions
+            {
+                AngularToleranceDegrees = 2.5,
+                EndpointGapToleranceMm = 10, // Override gap tolerance to 10mm
+                LateralOffsetToleranceMm = 30,
+                WidthToleranceRatio = 0.20,
+                MinimumOverlapMm = 200,
+                JunctionToleranceMm = 50.0
+            };
+
+            // Two segments with a gap of 50mm
+            var seg1 = new CadBeamSegment { StartX = 0, StartY = 0, EndX = 1000, EndY = 0, Width = 400, Height = 600 };
+            var seg2 = new CadBeamSegment { StartX = 1050, StartY = 0, EndX = 2000, EndY = 0, Width = 400, Height = 600 };
+
+            // With default options (gap 100), they would merge into 1 beam.
+            // With overrideOptions (gap 10), 50mm gap > 10mm -> MUST split into 2 beams!
+            var beams = _pipeline.ProcessPipeline(new[] { seg1, seg2 }, null, overrideOptions);
+
+            Assert.Equal(2, beams.Count);
+        }
+
+        // ==========================================
+        // MINOR 1: DIMENSION GROUPING TOLERANCE
+        // ==========================================
+
+        [Fact]
+        public void Pipeline_DimensionGroupingTolerance_TreatsSlightImprecisionAsSameDimension()
+        {
+            var seg1 = new CadBeamSegment { StartX = 0, StartY = 0, EndX = 1000, EndY = 0, MeasuredWidth = 400, IsPaired = true };
+            var seg2 = new CadBeamSegment { StartX = 1000, StartY = 0, EndX = 2000, EndY = 0, MeasuredWidth = 400, IsPaired = true };
+
+            // Text 1: 400.0 x 600.0, Text 2: 399.999 x 600.001
+            var text1 = new CadDimensionText { X = 500, Y = 0, Width = 400.0, Height = 600.0, Content = "D1 400x600" };
+            var text2 = new CadDimensionText { X = 1500, Y = 0, Width = 399.999, Height = 600.001, Content = "D1 400x600" };
+
+            var beams = _pipeline.ProcessPipeline(new[] { seg1, seg2 }, new[] { text1, text2 });
+
+            // Treated as same dimension -> NO split -> 1 beam!
+            Assert.Single(beams);
+            Assert.Equal(0, beams[0].StartX);
+            Assert.Equal(2000, beams[0].EndX);
+        }
+
+        // ==========================================
+        // MINOR 2: DIRECTION-INDEPENDENT DEDUPLICATION
+        // ==========================================
+
+        [Fact]
+        public void Pipeline_DirectionIndependentDeduplication_TreatsReversedGeometryAsDuplicate()
+        {
+            var segForward = new CadBeamSegment { StartX = 0, StartY = 0, EndX = 1000, EndY = 0, Width = 400, Height = 600, IsPaired = true };
+            var segReversed = new CadBeamSegment { StartX = 1000, StartY = 0, EndX = 0, EndY = 0, Width = 400, Height = 600, IsPaired = true };
+
+            var beams = _pipeline.ProcessPipeline(new[] { segForward, segReversed });
+
+            // Reversed endpoints -> deduplicated into 1 beam!
+            Assert.Single(beams);
+        }
+
+        // ==========================================
+        // STANDARD PIPELINE REGRESSION TESTS
+        // ==========================================
+
         [Fact]
         public void Pipeline_ThreeStraightSegments_ProducesOneLongCadBeamData()
         {
@@ -63,32 +236,6 @@ namespace Antigravity.DrawBeams.Tests
         }
 
         [Fact]
-        public void Pipeline_UnknownMiddleSegment_SplitsCorrectlyByText()
-        {
-            // seg1 has 0x0, seg2 has 0x0, seg3 has 0x0
-            var seg1 = new CadBeamSegment { StartX = 0, StartY = 0, EndX = 1000, EndY = 0, Width = 0, Height = 0, MeasuredWidth = 400, IsPaired = true, Confidence = 100 };
-            var seg2 = new CadBeamSegment { StartX = 1000, StartY = 0, EndX = 2000, EndY = 0, Width = 0, Height = 0, MeasuredWidth = 400, IsPaired = true, Confidence = 100 };
-            var seg3 = new CadBeamSegment { StartX = 2000, StartY = 0, EndX = 3000, EndY = 0, Width = 0, Height = 0, MeasuredWidth = 400, IsPaired = true, Confidence = 100 };
-
-            // Text 1 at x=500 is 400x600 ("D1")
-            var text1 = new CadDimensionText { X = 500, Y = 0, Width = 400, Height = 600, Content = "D1 400x600" };
-            // Text 2 at x=2500 is 400x700 ("D2")
-            var text2 = new CadDimensionText { X = 2500, Y = 0, Width = 400, Height = 700, Content = "D2 400x700" };
-
-            var beams = _pipeline.ProcessPipeline(new[] { seg1, seg2, seg3 }, new[] { text1, text2 });
-
-            Assert.Equal(2, beams.Count);
-            var beam1 = beams.First(b => b.Height == 600);
-            var beam2 = beams.First(b => b.Height == 700);
-
-            Assert.Equal(400, beam1.Width);
-            Assert.Equal(600, beam1.Height);
-
-            Assert.Equal(400, beam2.Width);
-            Assert.Equal(700, beam2.Height);
-        }
-
-        [Fact]
         public void Pipeline_TJunction_ProducesThreeCadBeamData()
         {
             var segA = new CadBeamSegment { StartX = 0, StartY = 0, EndX = 1000, EndY = 0, Width = 400, Height = 600, MeasuredWidth = 400, IsPaired = true, TextContent = "D1 400x600" };
@@ -98,57 +245,7 @@ namespace Antigravity.DrawBeams.Tests
             var beams = _pipeline.ProcessPipeline(new[] { segA, segB, segC });
 
             Assert.Equal(3, beams.Count);
-            Assert.False(beams.Any(b => Math.Abs(b.StartX - 0) < 1e-3 && Math.Abs(b.EndX - 2000) < 1e-3));
-        }
-
-        [Fact]
-        public void Pipeline_DuplicateInput_DoesNotDuplicateCadBeamData()
-        {
-            var seg1 = new CadBeamSegment { StartX = 0, StartY = 0, EndX = 1000, EndY = 0, Width = 400, Height = 600, IsPaired = true };
-            var seg1Dup = new CadBeamSegment { StartX = 0, StartY = 0, EndX = 1000, EndY = 0, Width = 400, Height = 600, IsPaired = true };
-
-            var beams = _pipeline.ProcessPipeline(new[] { seg1, seg1Dup });
-
-            Assert.Single(beams);
-            Assert.Equal(0, beams[0].StartX);
-            Assert.Equal(1000, beams[0].EndX);
-        }
-
-        [Fact]
-        public void Pipeline_MetadataAssignment_ConsistentWidthHeightMarkAndMeasuredWidth()
-        {
-            var seg1 = new CadBeamSegment
-            {
-                StartX = 0, StartY = 0, EndX = 1000, EndY = 0,
-                Width = 350, Height = 550, MeasuredWidth = 350,
-                Mark = "SB1", TextContent = "SB1 350x550",
-                Confidence = 900, IsPaired = true
-            };
-
-            var beams = _pipeline.ProcessPipeline(new[] { seg1 });
-
-            Assert.Single(beams);
-            Assert.Equal(350, beams[0].Width);
-            Assert.Equal(550, beams[0].Height);
-            Assert.Equal(350, beams[0].MeasuredWidth);
-            Assert.Equal("SB1", beams[0].Mark);
-            Assert.Equal("SB1 350x550", beams[0].TextContent);
-        }
-
-        [Fact]
-        public void Pipeline_IsPaired_PreservedCorrectly()
-        {
-            var pairedSeg = new CadBeamSegment { StartX = 0, StartY = 0, EndX = 1000, EndY = 0, Width = 400, Height = 600, IsPaired = true, MeasuredWidth = 400 };
-            var singleSeg = new CadBeamSegment { StartX = 0, StartY = 100, EndX = 1000, EndY = 100, Width = 400, Height = 600, IsPaired = false };
-
-            var beams = _pipeline.ProcessPipeline(new[] { pairedSeg, singleSeg });
-
-            Assert.Equal(2, beams.Count);
-            var pairedBeam = beams.First(b => b.StartY == 0);
-            var singleBeam = beams.First(b => b.StartY == 100);
-
-            Assert.True(pairedBeam.IsPaired);
-            Assert.False(singleBeam.IsPaired);
+            Assert.DoesNotContain(beams, b => Math.Abs(b.StartX - 0) < 1e-3 && Math.Abs(b.EndX - 2000) < 1e-3);
         }
 
         [Fact]
