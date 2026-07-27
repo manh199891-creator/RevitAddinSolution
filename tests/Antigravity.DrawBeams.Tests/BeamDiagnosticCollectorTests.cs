@@ -8,6 +8,7 @@ using Xunit;
 
 namespace Antigravity.DrawBeams.Tests
 {
+    [Collection("Sequential")]
     public class BeamDiagnosticCollectorTests
     {
         private readonly BeamDiagnosticCollector _collector;
@@ -490,7 +491,8 @@ namespace Antigravity.DrawBeams.Tests
 
             collector.CompleteSession();
 
-            Assert.Contains(session.Entries, e => e.Action == BeamDiagnosticAction.Warning && e.Reason.Contains("DiagnosticCounterInvariantFailed"));
+            var entries = session.Entries.ToList();
+            Assert.Contains(entries, e => e.Action == BeamDiagnosticAction.Warning && e.Reason.Contains("DiagnosticCounterInvariantFailed"));
         }
 
         [Fact]

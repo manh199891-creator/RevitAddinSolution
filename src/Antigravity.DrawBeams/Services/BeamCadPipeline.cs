@@ -72,13 +72,26 @@ namespace Antigravity.DrawBeams.Services
 
                 var parentIds = !string.IsNullOrEmpty(parentId) ? new List<string> { parentId } : (beam.ParentDiagnosticIds ?? new List<string>());
 
+                var rootRawIds = beam.RootRawCandidateIds != null && beam.RootRawCandidateIds.Count > 0
+                    ? new List<string>(beam.RootRawCandidateIds)
+                    : (beam.ParentDiagnosticIds != null && beam.ParentDiagnosticIds.Count > 0
+                        ? new List<string>(beam.ParentDiagnosticIds)
+                        : (!string.IsNullOrEmpty(parentId) ? new List<string> { parentId } : new List<string> { finalId }));
+
+                beam.RootRawCandidateIds = rootRawIds;
+
+                if (BeamDiagnosticCollector.Instance.Options.Enabled && rootRawIds.Count == 0)
+                {
+                    BeamDiagnosticCollector.Instance.RecordWarning($"InvariantViolation: Final candidate {finalId} has empty RootRawCandidateIds");
+                }
+
                 BeamDiagnosticCollector.Instance.Record(new BeamDiagnosticEntry
                 {
                     CandidateId = finalId,
                     DiagnosticId = finalId,
                     ObjectType = "FinalCandidate",
                     ParentDiagnosticIds = parentIds,
-                    RootRawCandidateIds = beam.RootRawCandidateIds ?? new List<string>(),
+                    RootRawCandidateIds = rootRawIds,
                     Stage = BeamDiagnosticStage.FinalCandidate,
                     Action = BeamDiagnosticAction.Kept,
                     Reason = "Final candidate kept after overlap resolution and deduplication.",

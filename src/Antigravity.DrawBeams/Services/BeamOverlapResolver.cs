@@ -22,15 +22,31 @@ namespace Antigravity.DrawBeams.Services
             var inputList = beams.Where(b => b != null && b.IsValid).ToList();
             if (inputList.Count <= 1) return inputList;
 
-            // Step 1: Canonicalize Start -> End direction
+            // Step 1: Canonicalize Start -> End direction & preserve lineage
             var canonicalBeams = inputList.Select(b => CanonicalizeBeam(b)).ToList();
 
-            // Step 2: Sort candidates by priority score descending, then length descending
+            // Check Phase 3 measured-width sanity & calculate priorities
+            var candidatePriorities = new Dictionary<CadBeamData, BeamPriorityResult>();
+            foreach (var b in canonicalBeams)
+            {
+                var prio = BeamCandidatePriorityCalculator.CalculatePriority(b);
+                candidatePriorities[b] = prio;
+
+                if (prio.WidthAgreement == MeasuredWidthAgreement.Weak)
+                {
+                    BeamDiagnosticCollector.Instance.RecordWarning(
+                        $"MeasuredWidthMismatch: Candidate {b.DiagnosticId} has Width={b.Width} but MeasuredWidth={b.MeasuredWidth} (ratio={prio.MeasuredWidthAgreementRatio:P1})");
+                }
+            }
+
+            // Step 2: Sort candidates by PriorityScore descending, then length descending, then coordinates
             var sortedCandidates = canonicalBeams
-                .OrderByDescending(b => GetPriorityScore(b))
+                .OrderByDescending(b => candidatePriorities[b].FinalPriorityScore)
                 .ThenByDescending(b => GetBeamLength(b))
                 .ThenBy(b => b.StartX)
                 .ThenBy(b => b.StartY)
+                .ThenBy(b => b.EndX)
+                .ThenBy(b => b.EndY)
                 .ToList();
 
             var suppressed = new HashSet<CadBeamData>();
@@ -40,19 +56,17 @@ namespace Antigravity.DrawBeams.Services
                 var beamA = sortedCandidates[i];
                 if (suppressed.Contains(beamA)) continue;
 
-                string idA = !string.IsNullOrEmpty(beamA.DiagnosticId) ? beamA.DiagnosticId : $"CAND_{Math.Round(beamA.StartX)}_{Math.Round(beamA.StartY)}_{Math.Round(beamA.EndX)}_{Math.Round(beamA.EndY)}";
+                string idA = GetDiagnosticId(beamA);
 
                 for (int j = i + 1; j < sortedCandidates.Count; j++)
                 {
                     var beamB = sortedCandidates[j];
                     if (suppressed.Contains(beamB)) continue;
 
-                    string idB = !string.IsNullOrEmpty(beamB.DiagnosticId) ? beamB.DiagnosticId : $"CAND_{Math.Round(beamB.StartX)}_{Math.Round(beamB.StartY)}_{Math.Round(beamB.EndX)}_{Math.Round(beamB.EndY)}";
+                    string idB = GetDiagnosticId(beamB);
 
-                    double scoreA = GetPriorityScore(beamA);
-                    double scoreB = GetPriorityScore(beamB);
+                    var decision = EvaluateOverlapPairInternal(beamA, beamB, opt, candidatePriorities, out string suppressionReason, out BeamOverlapPairMetrics metrics);
 
-                    var decision = EvaluateOverlapPair(beamA, beamB, opt);
                     if (decision == OverlapDecision.SuppressB)
                     {
                         suppressed.Add(beamB);
@@ -61,18 +75,23 @@ namespace Antigravity.DrawBeams.Services
                             CandidateId = idB,
                             DiagnosticId = idB,
                             ObjectType = "SuppressedCandidate",
-                            ParentDiagnosticIds = beamB.ParentDiagnosticIds ?? new List<string>(),
-                            RootRawCandidateIds = beamB.RootRawCandidateIds ?? new List<string>(),
+                            ParentDiagnosticIds = beamB.ParentDiagnosticIds != null ? new List<string>(beamB.ParentDiagnosticIds) : new List<string>(),
+                            RootRawCandidateIds = GetRootRawCandidateIds(beamB),
                             RelatedCandidateId = idA,
                             WinnerDiagnosticId = idA,
                             LoserDiagnosticId = idB,
                             Stage = BeamDiagnosticStage.OverlapDecision,
                             Action = BeamDiagnosticAction.Suppressed,
-                            Reason = $"Suppressed by higher priority candidate {idA}",
+                            Reason = suppressionReason,
                             DetectionMethod = beamB.DetectionMethod,
                             Confidence = beamB.Confidence,
-                            PriorityScore = scoreB,
-                            CompetingPriorityScore = scoreA,
+                            PriorityScore = metrics.PriorityScoreB,
+                            CompetingPriorityScore = metrics.PriorityScoreA,
+                            AngularDifferenceDegrees = metrics.AngularDifferenceDegrees,
+                            CenterlineDistanceMm = metrics.CenterlineDistanceMm,
+                            OverlapLengthMm = metrics.OverlapLengthMm,
+                            OverlapRatio = metrics.OverlapRatio,
+                            IsContained = metrics.IsContained,
                             StartX = beamB.StartX, StartY = beamB.StartY, EndX = beamB.EndX, EndY = beamB.EndY,
                             Width = beamB.Width, Height = beamB.Height, Mark = beamB.Mark
                         });
@@ -85,18 +104,23 @@ namespace Antigravity.DrawBeams.Services
                             CandidateId = idA,
                             DiagnosticId = idA,
                             ObjectType = "SuppressedCandidate",
-                            ParentDiagnosticIds = beamA.ParentDiagnosticIds ?? new List<string>(),
-                            RootRawCandidateIds = beamA.RootRawCandidateIds ?? new List<string>(),
+                            ParentDiagnosticIds = beamA.ParentDiagnosticIds != null ? new List<string>(beamA.ParentDiagnosticIds) : new List<string>(),
+                            RootRawCandidateIds = GetRootRawCandidateIds(beamA),
                             RelatedCandidateId = idB,
                             WinnerDiagnosticId = idB,
                             LoserDiagnosticId = idA,
                             Stage = BeamDiagnosticStage.OverlapDecision,
                             Action = BeamDiagnosticAction.Suppressed,
-                            Reason = $"Suppressed by higher priority candidate {idB}",
+                            Reason = suppressionReason,
                             DetectionMethod = beamA.DetectionMethod,
                             Confidence = beamA.Confidence,
-                            PriorityScore = scoreA,
-                            CompetingPriorityScore = scoreB,
+                            PriorityScore = metrics.PriorityScoreA,
+                            CompetingPriorityScore = metrics.PriorityScoreB,
+                            AngularDifferenceDegrees = metrics.AngularDifferenceDegrees,
+                            CenterlineDistanceMm = metrics.CenterlineDistanceMm,
+                            OverlapLengthMm = metrics.OverlapLengthMm,
+                            OverlapRatio = metrics.OverlapRatio,
+                            IsContained = metrics.IsContained,
                             StartX = beamA.StartX, StartY = beamA.StartY, EndX = beamA.EndX, EndY = beamA.EndY,
                             Width = beamA.Width, Height = beamA.Height, Mark = beamA.Mark
                         });
@@ -115,20 +139,22 @@ namespace Antigravity.DrawBeams.Services
 
             foreach (var b in activeList)
             {
-                string id = !string.IsNullOrEmpty(b.DiagnosticId) ? b.DiagnosticId : $"CAND_{Math.Round(b.StartX)}_{Math.Round(b.StartY)}_{Math.Round(b.EndX)}_{Math.Round(b.EndY)}";
+                string id = GetDiagnosticId(b);
+                var prio = candidatePriorities[b];
+
                 BeamDiagnosticCollector.Instance.Record(new BeamDiagnosticEntry
                 {
                     CandidateId = id,
                     DiagnosticId = id,
                     ObjectType = "ActiveCandidate",
-                    ParentDiagnosticIds = b.ParentDiagnosticIds ?? new List<string>(),
-                    RootRawCandidateIds = b.RootRawCandidateIds ?? new List<string>(),
+                    ParentDiagnosticIds = b.ParentDiagnosticIds != null ? new List<string>(b.ParentDiagnosticIds) : new List<string>(),
+                    RootRawCandidateIds = GetRootRawCandidateIds(b),
                     Stage = BeamDiagnosticStage.OverlapDecision,
                     Action = BeamDiagnosticAction.Kept,
                     Reason = "Kept by BeamOverlapResolver",
                     DetectionMethod = b.DetectionMethod,
                     Confidence = b.Confidence,
-                    PriorityScore = GetPriorityScore(b),
+                    PriorityScore = prio.FinalPriorityScore,
                     StartX = b.StartX, StartY = b.StartY, EndX = b.EndX, EndY = b.EndY,
                     Width = b.Width, Height = b.Height, Mark = b.Mark
                 });
@@ -147,26 +173,9 @@ namespace Antigravity.DrawBeams.Services
 
         public static double GetPriorityScore(CadBeamData b)
         {
-            double baseScore;
-            switch (b.DetectionMethod)
-            {
-                case BeamDetectionMethod.PairedLines:
-                    baseScore = b.HasDimensionText ? 10000.0 : 6000.0;
-                    break;
-                case BeamDetectionMethod.PolylineWidth:
-                    baseScore = b.HasDimensionText ? 8000.0 : 4000.0;
-                    break;
-                case BeamDetectionMethod.SingleLineFallback:
-                    baseScore = 2000.0;
-                    break;
-                case BeamDetectionMethod.DimensionSplit:
-                    baseScore = 1000.0;
-                    break;
-                default:
-                    baseScore = 500.0;
-                    break;
-            }
-            return baseScore + b.Confidence;
+            if (b == null) return 0.0;
+            var result = BeamCandidatePriorityCalculator.CalculatePriority(b);
+            return result.FinalPriorityScore;
         }
 
         private enum OverlapDecision
@@ -176,56 +185,151 @@ namespace Antigravity.DrawBeams.Services
             SuppressB
         }
 
-        private OverlapDecision EvaluateOverlapPair(CadBeamData a, CadBeamData b, BeamOverlapOptions opt)
+        private struct BeamOverlapPairMetrics
         {
-            // 1. Angle Check
+            public double AngularDifferenceDegrees;
+            public double CenterlineDistanceMm;
+            public double OverlapLengthMm;
+            public double OverlapRatio;
+            public bool IsContained;
+            public double PriorityScoreA;
+            public double PriorityScoreB;
+        }
+
+        private OverlapDecision EvaluateOverlapPairInternal(
+            CadBeamData a,
+            CadBeamData b,
+            BeamOverlapOptions opt,
+            Dictionary<CadBeamData, BeamPriorityResult> priorities,
+            out string suppressionReason,
+            out BeamOverlapPairMetrics metrics)
+        {
+            suppressionReason = null;
+
             double angleA = GetBeamAngle(a);
             double angleB = GetBeamAngle(b);
             double angleDiff = Math.Abs(angleA - angleB);
             if (angleDiff > Math.PI / 2.0) angleDiff = Math.PI - angleDiff;
+            double angleDiffDeg = angleDiff * 180.0 / Math.PI;
 
-            if (angleDiff * 180.0 / Math.PI > opt.AngularToleranceDegrees)
-            {
-                return OverlapDecision.KeepBoth; // Angle difference > tolerance -> separate
-            }
-
-            // 2. Perpendicular Centerline Distance Check
             double lenA = GetBeamLength(a);
             double lenB = GetBeamLength(b);
-            if (lenA < 1e-3 || lenB < 1e-3) return OverlapDecision.KeepBoth;
 
-            double midAx = (a.StartX + a.EndX) / 2.0;
-            double midAy = (a.StartY + a.EndY) / 2.0;
-            double perpDist = DistancePointToLine(midAx, midAy, b.StartX, b.StartY, b.EndX, b.EndY);
+            double perpDist = BeamPhysicalEnvelope.ComputeCenterlineDistance(a, b);
+            double overlapRatio = BeamPhysicalEnvelope.ComputeOverlapRatio(a, b);
+            double overlapLen = BeamPhysicalEnvelope.ComputeOverlapLength(a, b);
+            bool isContained = BeamPhysicalEnvelope.ComputeIsContained(a, b, opt.ContainmentToleranceMm);
 
-            if (perpDist > opt.CenterlineDistanceToleranceMm)
+            var prioA = priorities.ContainsKey(a) ? priorities[a] : BeamCandidatePriorityCalculator.CalculatePriority(a);
+            var prioB = priorities.ContainsKey(b) ? priorities[b] : BeamCandidatePriorityCalculator.CalculatePriority(b);
+
+            metrics = new BeamOverlapPairMetrics
             {
-                return OverlapDecision.KeepBoth; // Centerline offset > tolerance -> parallel separate physical beams
+                AngularDifferenceDegrees = angleDiffDeg,
+                CenterlineDistanceMm = perpDist,
+                OverlapLengthMm = overlapLen,
+                OverlapRatio = overlapRatio,
+                IsContained = isContained,
+                PriorityScoreA = prioA.FinalPriorityScore,
+                PriorityScoreB = prioB.FinalPriorityScore
+            };
+
+            // 1. Angle check
+            if (angleDiffDeg > opt.AngularToleranceDegrees)
+            {
+                return OverlapDecision.KeepBoth;
             }
 
-            // 3. 1D Interval Overlap Projection
-            double ux = (a.EndX - a.StartX) / lenA;
-            double uy = (a.EndY - a.StartY) / lenA;
+            if (lenA < 1e-3 || lenB < 1e-3)
+            {
+                return OverlapDecision.KeepBoth;
+            }
 
-            double tA_start = a.StartX * ux + a.StartY * uy;
-            double tA_end = a.EndX * ux + a.EndY * uy;
-            double minA = Math.Min(tA_start, tA_end);
-            double maxA = Math.Max(tA_start, tA_end);
+            // RULE C: Keep both if independent evidence of two physical beams exists
+            if (a.HasDimensionText && b.HasDimensionText)
+            {
+                bool sourceLinesDistinct = a.SourceLineIds != null && b.SourceLineIds != null
+                    && !a.SourceLineIds.Overlaps(b.SourceLineIds);
 
-            double tB_start = b.StartX * ux + b.StartY * uy;
-            double tB_end = b.EndX * ux + b.EndY * uy;
-            double minB = Math.Min(tB_start, tB_end);
-            double maxB = Math.Max(tB_start, tB_end);
+                bool textsDistinct = !string.Equals(a.TextContent, b.TextContent, StringComparison.OrdinalIgnoreCase);
 
-            double overlapStart = Math.Max(minA, minB);
-            double overlapEnd = Math.Min(maxA, maxB);
-            double overlapLen = Math.Max(0.0, overlapEnd - overlapStart);
+                if (sourceLinesDistinct || textsDistinct)
+                {
+                    double minCenterlineSeparation = (a.Width + b.Width) / 2.0 - 5.0;
+                    if (perpDist >= minCenterlineSeparation || perpDist > opt.CenterlineDistanceToleranceMm)
+                    {
+                        return OverlapDecision.KeepBoth;
+                    }
+                }
+            }
 
-            double minLen = Math.Min(lenA, lenB);
-            double overlapRatio = minLen > 0 ? overlapLen / minLen : 0;
+            // RULE A: Suppress SingleLineFallback lying inside paired beam envelope
+            if (overlapRatio >= 0.80 || isContained)
+            {
+                if (a.DetectionMethod == BeamDetectionMethod.PairedLines && b.DetectionMethod == BeamDetectionMethod.SingleLineFallback)
+                {
+                    if (a.Width > 0 && perpDist <= (a.Width / 2.0) + 30.0 && (a.HasDimensionText || prioA.WidthAgreement != MeasuredWidthAgreement.Weak || a.MeasuredWidth > 0))
+                    {
+                        suppressionReason = "SingleLineFallbackInsidePairedBeamEnvelope";
+                        return OverlapDecision.SuppressB;
+                    }
+                }
+                if (b.DetectionMethod == BeamDetectionMethod.PairedLines && a.DetectionMethod == BeamDetectionMethod.SingleLineFallback)
+                {
+                    if (b.Width > 0 && perpDist <= (b.Width / 2.0) + 30.0 && (b.HasDimensionText || prioB.WidthAgreement != MeasuredWidthAgreement.Weak || b.MeasuredWidth > 0))
+                    {
+                        suppressionReason = "SingleLineFallbackInsidePairedBeamEnvelope";
+                        return OverlapDecision.SuppressA;
+                    }
+                }
+            }
 
-            bool isContained = (minA >= minB - opt.ContainmentToleranceMm && maxA <= maxB + opt.ContainmentToleranceMm)
-                            || (minB >= minA - opt.ContainmentToleranceMm && maxB <= maxA + opt.ContainmentToleranceMm);
+            // RULE B: Suppress incomplete candidate inside dimensioned beam envelope
+            if (overlapRatio >= 0.80 || isContained)
+            {
+                bool envelopeOverlap = BeamPhysicalEnvelope.IsEnvelopeOverlap(a, b, opt);
+                if (envelopeOverlap)
+                {
+                    bool aDimensionedComplete = a.HasDimensionText && a.Width > 0 && a.Height > 0;
+                    bool bIncomplete = !b.HasDimensionText || b.Height <= 0 || b.Width <= 0;
+
+                    if (aDimensionedComplete && bIncomplete && prioA.EvidenceTier < prioB.EvidenceTier)
+                    {
+                        suppressionReason = "IncompleteCandidateInsideDimensionedBeamEnvelope";
+                        return OverlapDecision.SuppressB;
+                    }
+
+                    bool bDimensionedComplete = b.HasDimensionText && b.Width > 0 && b.Height > 0;
+                    bool aIncomplete = !a.HasDimensionText || a.Height <= 0 || a.Width <= 0;
+
+                    if (bDimensionedComplete && aIncomplete && prioB.EvidenceTier < prioA.EvidenceTier)
+                    {
+                        suppressionReason = "IncompleteCandidateInsideDimensionedBeamEnvelope";
+                        return OverlapDecision.SuppressA;
+                    }
+                }
+            }
+
+            // RULE D: Long incomplete candidate covering dimensioned regions
+            if (overlapRatio >= 0.80 || isContained)
+            {
+                if (lenA >= lenB * 1.25 && !a.HasDimensionText && a.Height <= 0 && b.HasDimensionText && b.Width > 0 && b.Height > 0)
+                {
+                    suppressionReason = "LongIncompleteCandidateCoveredByDimensionedRegions";
+                    return OverlapDecision.SuppressA;
+                }
+                if (lenB >= lenA * 1.25 && !b.HasDimensionText && b.Height <= 0 && a.HasDimensionText && a.Width > 0 && a.Height > 0)
+                {
+                    suppressionReason = "LongIncompleteCandidateCoveredByDimensionedRegions";
+                    return OverlapDecision.SuppressB;
+                }
+            }
+
+            // Check standard centerline tolerance if envelope rules did not match
+            if (perpDist > opt.CenterlineDistanceToleranceMm)
+            {
+                return OverlapDecision.KeepBoth;
+            }
 
             // Check Shared SourceLineIds
             bool sharesSourceLines = a.SourceLineIds != null && b.SourceLineIds != null
@@ -233,9 +337,8 @@ namespace Antigravity.DrawBeams.Services
 
             if (sharesSourceLines && overlapLen > 10.0)
             {
-                double scoreA = GetPriorityScore(a);
-                double scoreB = GetPriorityScore(b);
-                return scoreA >= scoreB ? OverlapDecision.SuppressB : OverlapDecision.SuppressA;
+                suppressionReason = $"SharedSourceLines (A={idA(a)}, B={idA(b)})";
+                return prioA.FinalPriorityScore >= prioB.FinalPriorityScore ? OverlapDecision.SuppressB : OverlapDecision.SuppressA;
             }
 
             if (overlapRatio < 0.05 && !isContained)
@@ -250,34 +353,34 @@ namespace Antigravity.DrawBeams.Services
             {
                 if (overlapRatio >= opt.MinimumOverlapRatio || isContained)
                 {
-                    double scoreA = GetPriorityScore(a);
-                    double scoreB = GetPriorityScore(b);
-                    return scoreA >= scoreB ? OverlapDecision.SuppressB : OverlapDecision.SuppressA;
+                    suppressionReason = $"SameDimensionsOverlap (A={idA(a)}, B={idA(b)})";
+                    return prioA.FinalPriorityScore >= prioB.FinalPriorityScore ? OverlapDecision.SuppressB : OverlapDecision.SuppressA;
                 }
                 return OverlapDecision.KeepBoth;
             }
-            else // Different Dimensions
+            else // Different dimensions
             {
                 if (overlapRatio >= opt.MinimumOverlapRatio || isContained)
                 {
-                    double scoreA = GetPriorityScore(a);
-                    double scoreB = GetPriorityScore(b);
-
-                    // If one beam is a long beam covering smaller region beams, discard the lower confidence long beam
-                    if (lenA > lenB * 1.5 && scoreA < scoreB)
+                    if (lenA > lenB * 1.5 && prioA.FinalPriorityScore < prioB.FinalPriorityScore)
                     {
+                        suppressionReason = "LongerLowerPriorityCandidateSuppressed";
                         return OverlapDecision.SuppressA;
                     }
-                    if (lenB > lenA * 1.5 && scoreB < scoreA)
+                    if (lenB > lenA * 1.5 && prioB.FinalPriorityScore < prioA.FinalPriorityScore)
                     {
+                        suppressionReason = "LongerLowerPriorityCandidateSuppressed";
                         return OverlapDecision.SuppressB;
                     }
 
-                    return scoreA >= scoreB ? OverlapDecision.SuppressB : OverlapDecision.SuppressA;
+                    suppressionReason = $"DifferentDimensionsOverlap (A={idA(a)}, B={idA(b)})";
+                    return prioA.FinalPriorityScore >= prioB.FinalPriorityScore ? OverlapDecision.SuppressB : OverlapDecision.SuppressA;
                 }
 
                 return OverlapDecision.KeepBoth;
             }
+
+            string idA(CadBeamData beam) => GetDiagnosticId(beam);
         }
 
         private CadBeamData CanonicalizeBeam(CadBeamData b)
@@ -305,11 +408,34 @@ namespace Antigravity.DrawBeams.Services
                     SourceLayer = b.SourceLayer,
                     HasDimensionText = b.HasDimensionText,
                     DetectionMethod = b.DetectionMethod,
-                    SourceLineIds = b.SourceLineIds != null ? new HashSet<string>(b.SourceLineIds, StringComparer.OrdinalIgnoreCase) : new HashSet<string>()
+                    SourceLineIds = b.SourceLineIds != null ? new HashSet<string>(b.SourceLineIds, StringComparer.OrdinalIgnoreCase) : new HashSet<string>(),
+                    DiagnosticId = b.DiagnosticId,
+                    ParentDiagnosticIds = b.ParentDiagnosticIds != null ? new List<string>(b.ParentDiagnosticIds) : new List<string>(),
+                    RootRawCandidateIds = GetRootRawCandidateIds(b)
                 };
             }
 
             return b;
+        }
+
+        private string GetDiagnosticId(CadBeamData b)
+        {
+            if (!string.IsNullOrEmpty(b.DiagnosticId)) return b.DiagnosticId;
+            return $"CAND_{Math.Round(b.StartX)}_{Math.Round(b.StartY)}_{Math.Round(b.EndX)}_{Math.Round(b.EndY)}";
+        }
+
+        private List<string> GetRootRawCandidateIds(CadBeamData b)
+        {
+            if (b.RootRawCandidateIds != null && b.RootRawCandidateIds.Count > 0)
+            {
+                return new List<string>(b.RootRawCandidateIds);
+            }
+            if (b.ParentDiagnosticIds != null && b.ParentDiagnosticIds.Count > 0)
+            {
+                return new List<string>(b.ParentDiagnosticIds);
+            }
+            string id = GetDiagnosticId(b);
+            return new List<string> { id };
         }
 
         private double GetBeamLength(CadBeamData b)
@@ -327,17 +453,6 @@ namespace Antigravity.DrawBeams.Services
             while (a < 0) a += Math.PI;
             while (a >= Math.PI) a -= Math.PI;
             return a;
-        }
-
-        private double DistancePointToLine(double px, double py, double lx1, double ly1, double lx2, double ly2)
-        {
-            double dx = lx2 - lx1;
-            double dy = ly2 - ly1;
-            double lenSq = dx * dx + dy * dy;
-            if (lenSq < 1e-9) return Math.Sqrt((px - lx1) * (px - lx1) + (py - ly1) * (py - ly1));
-
-            double cross = Math.Abs((lx2 - lx1) * (ly1 - py) - (lx1 - px) * (ly2 - ly1));
-            return cross / Math.Sqrt(lenSq);
         }
     }
 }
