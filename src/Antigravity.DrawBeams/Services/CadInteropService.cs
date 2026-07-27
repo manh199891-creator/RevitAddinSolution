@@ -518,26 +518,56 @@ namespace Antigravity.DrawBeams.Services
 
                 // ── Bước 6: BeamCadPipeline Integration ──
                 var dimTextDTOs = new List<CadDimensionText>();
+                int skippedTextCount = 0;
+
                 foreach (dynamic txt in allTexts)
                 {
                     try
                     {
-                        double[] p = txt.InsertionPoint;
-                        if (p == null || p.Length < 2) continue;
+                        object rawPoint = txt.InsertionPoint;
+                        double posX = 0, posY = 0;
+                        bool hasValidPoint = false;
+
+                        if (rawPoint is Array arr && arr.Length >= 2)
+                        {
+                            posX = Convert.ToDouble(arr.GetValue(0));
+                            posY = Convert.ToDouble(arr.GetValue(1));
+                            hasValidPoint = true;
+                        }
+
+                        if (!hasValidPoint)
+                        {
+                            skippedTextCount++;
+                            System.Diagnostics.Debug.WriteLine("[DrawBeams Diagnostics] Skipped text entity: InsertionPoint is null or invalid.");
+                            continue;
+                        }
 
                         string content = GetCleanText(txt);
-                        if (string.IsNullOrWhiteSpace(content)) continue;
+                        if (string.IsNullOrWhiteSpace(content))
+                        {
+                            skippedTextCount++;
+                            System.Diagnostics.Debug.WriteLine("[DrawBeams Diagnostics] Skipped text entity: Content is empty.");
+                            continue;
+                        }
 
                         var tempBeam = new CadBeamData { TextContent = content };
                         ParseDimensionsV12(tempBeam);
 
                         double rot = 0;
-                        try { rot = (double)txt.Rotation; } catch { }
+                        try
+                        {
+                            rot = Convert.ToDouble(txt.Rotation);
+                        }
+                        catch (Exception rotEx)
+                        {
+                            rot = 0;
+                            System.Diagnostics.Debug.WriteLine($"[DrawBeams Diagnostics] Optional Rotation read failed for text '{content}': {rotEx.Message}. Defaulted to 0.");
+                        }
 
                         dimTextDTOs.Add(new CadDimensionText
                         {
-                            X = p[0],
-                            Y = p[1],
+                            X = posX,
+                            Y = posY,
                             Rotation = rot,
                             Width = tempBeam.Width,
                             Height = tempBeam.Height,
@@ -545,10 +575,18 @@ namespace Antigravity.DrawBeams.Services
                             Confidence = 500
                         });
                     }
-                    catch
+                    catch (Exception ex)
                     {
-                        // Ignore single bad COM entity
+                        skippedTextCount++;
+                        System.Diagnostics.Debug.WriteLine($"[DrawBeams Diagnostics] Failed to process COM text entity: {ex.Message}");
                     }
+                }
+
+                System.Diagnostics.Debug.WriteLine($"[DrawBeams Diagnostics] Text extraction summary: Total COM texts={allTexts.Count}, Valid DTOs={dimTextDTOs.Count}, Skipped={skippedTextCount}");
+
+                if (allTexts.Count > 0 && dimTextDTOs.Count == 0)
+                {
+                    System.Diagnostics.Debug.WriteLine($"[DrawBeams Diagnostics] Warning: {allTexts.Count} COM text entities were scanned but 0 valid dimension DTOs were produced.");
                 }
 
                 var pipeline = new BeamCadPipeline();
