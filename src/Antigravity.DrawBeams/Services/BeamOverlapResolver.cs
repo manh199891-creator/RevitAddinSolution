@@ -51,6 +51,13 @@ namespace Antigravity.DrawBeams.Services
 
             var suppressed = new HashSet<CadBeamData>();
 
+            int exactDuplicatesCount = 0;
+            int sameCenterlineCount = 0;
+            int boundaryFallbackCount = 0;
+            int envelopeSuppressionsCount = 0;
+            int pairedVsPairedSuppressionsCount = 0;
+            int ambiguousKeptCount = 0;
+
             for (int i = 0; i < sortedCandidates.Count; i++)
             {
                 var beamA = sortedCandidates[i];
@@ -65,7 +72,11 @@ namespace Antigravity.DrawBeams.Services
 
                     string idB = GetDiagnosticId(beamB);
 
-                    var decision = EvaluateOverlapPairInternal(beamA, beamB, opt, candidatePriorities, out string suppressionReason, out BeamOverlapPairMetrics metrics);
+                    var decision = EvaluateOverlapPairInternal(
+                        beamA, beamB, opt, candidatePriorities,
+                        out string suppressionReason, out BeamOverlapPairMetrics metrics,
+                        ref exactDuplicatesCount, ref sameCenterlineCount, ref boundaryFallbackCount,
+                        ref envelopeSuppressionsCount, ref pairedVsPairedSuppressionsCount, ref ambiguousKeptCount);
 
                     if (decision == OverlapDecision.SuppressB)
                     {
@@ -163,9 +174,23 @@ namespace Antigravity.DrawBeams.Services
             var summary = BeamDiagnosticCollector.Instance.CurrentSession?.PipelineSummary;
             if (summary != null)
             {
+                summary.OverlapMode = opt.OverlapMode.ToString();
                 summary.BeforeOverlapCount = sortedCandidates.Count;
                 summary.SuppressedOverlapsCount = suppressed.Count;
                 summary.AfterOverlapCount = activeList.Count;
+
+                summary.ExactDuplicatesSuppressed = exactDuplicatesCount;
+                summary.SameCenterlineSuppressed = sameCenterlineCount;
+                summary.BoundaryFallbackSuppressed = boundaryFallbackCount;
+                summary.EnvelopeSuppressions = envelopeSuppressionsCount;
+                summary.PairedVsPairedSuppressions = pairedVsPairedSuppressionsCount;
+                summary.AmbiguousKept = ambiguousKeptCount;
+            }
+
+            if (opt.OverlapMode == BeamOverlapMode.LegacySafe && pairedVsPairedSuppressionsCount > 0)
+            {
+                BeamDiagnosticCollector.Instance.RecordWarning(
+                    $"LegacySafeWarning: Unexpected PairedVsPairedSuppressions count = {pairedVsPairedSuppressionsCount} in LegacySafe mode.");
             }
 
             return activeList;
@@ -202,7 +227,42 @@ namespace Antigravity.DrawBeams.Services
             BeamOverlapOptions opt,
             Dictionary<CadBeamData, BeamPriorityResult> priorities,
             out string suppressionReason,
-            out BeamOverlapPairMetrics metrics)
+            out BeamOverlapPairMetrics metrics,
+            ref int exactDuplicatesCount,
+            ref int sameCenterlineCount,
+            ref int boundaryFallbackCount,
+            ref int envelopeSuppressionsCount,
+            ref int pairedVsPairedSuppressionsCount,
+            ref int ambiguousKeptCount)
+        {
+            if (opt.OverlapMode == BeamOverlapMode.LegacySafe)
+            {
+                return EvaluateLegacySafePair(
+                    a, b, opt, priorities, out suppressionReason, out metrics,
+                    ref exactDuplicatesCount, ref sameCenterlineCount, ref boundaryFallbackCount,
+                    ref pairedVsPairedSuppressionsCount, ref ambiguousKeptCount);
+            }
+            else
+            {
+                return EvaluateExperimentalEnvelopePair(
+                    a, b, opt, priorities, out suppressionReason, out metrics,
+                    ref exactDuplicatesCount, ref sameCenterlineCount, ref boundaryFallbackCount,
+                    ref envelopeSuppressionsCount, ref pairedVsPairedSuppressionsCount);
+            }
+        }
+
+        private OverlapDecision EvaluateLegacySafePair(
+            CadBeamData a,
+            CadBeamData b,
+            BeamOverlapOptions opt,
+            Dictionary<CadBeamData, BeamPriorityResult> priorities,
+            out string suppressionReason,
+            out BeamOverlapPairMetrics metrics,
+            ref int exactDuplicatesCount,
+            ref int sameCenterlineCount,
+            ref int boundaryFallbackCount,
+            ref int pairedVsPairedSuppressionsCount,
+            ref int ambiguousKeptCount)
         {
             suppressionReason = null;
 
@@ -234,125 +294,187 @@ namespace Antigravity.DrawBeams.Services
                 PriorityScoreB = prioB.FinalPriorityScore
             };
 
-            // 1. Angle check
-            if (angleDiffDeg > opt.AngularToleranceDegrees)
+            if (angleDiffDeg > opt.AngularToleranceDegrees || lenA < 1e-3 || lenB < 1e-3 || (overlapRatio < 0.05 && !isContained))
             {
                 return OverlapDecision.KeepBoth;
             }
 
-            if (lenA < 1e-3 || lenB < 1e-3)
-            {
-                return OverlapDecision.KeepBoth;
-            }
-
-            // If overlap projection is insignificant (< 5%) and not contained, keep both
-            if (overlapRatio < 0.05 && !isContained)
-            {
-                return OverlapDecision.KeepBoth;
-            }
-
-            // RULE A: Suppress SingleLineFallback lying inside paired beam envelope
-            if (overlapRatio >= 0.80 || isContained)
-            {
-                if (a.DetectionMethod == BeamDetectionMethod.PairedLines && b.DetectionMethod == BeamDetectionMethod.SingleLineFallback)
-                {
-                    double halfWidthA = BeamPhysicalEnvelope.GetHalfWidth(a);
-                    if (halfWidthA > 0 && perpDist <= halfWidthA + 30.0)
-                    {
-                        suppressionReason = "SingleLineFallbackInsidePairedBeamEnvelope";
-                        return OverlapDecision.SuppressB;
-                    }
-                }
-                if (b.DetectionMethod == BeamDetectionMethod.PairedLines && a.DetectionMethod == BeamDetectionMethod.SingleLineFallback)
-                {
-                    double halfWidthB = BeamPhysicalEnvelope.GetHalfWidth(b);
-                    if (halfWidthB > 0 && perpDist <= halfWidthB + 30.0)
-                    {
-                        suppressionReason = "SingleLineFallbackInsidePairedBeamEnvelope";
-                        return OverlapDecision.SuppressA;
-                    }
-                }
-            }
-
-            // RULE D & E: Long incomplete SingleLineFallback candidate covering dimensioned regions
-            if (overlapRatio >= 0.80 || isContained)
-            {
-                if (a.DetectionMethod == BeamDetectionMethod.SingleLineFallback && lenA >= lenB * 1.25 && !a.HasDimensionText && a.Height <= 0 && b.HasDimensionText && b.Width > 0 && b.Height > 0)
-                {
-                    suppressionReason = "LongIncompleteCandidateCoveredByDimensionedRegions";
-                    return OverlapDecision.SuppressA;
-                }
-                if (b.DetectionMethod == BeamDetectionMethod.SingleLineFallback && lenB >= lenA * 1.25 && !b.HasDimensionText && b.Height <= 0 && a.HasDimensionText && a.Width > 0 && a.Height > 0)
-                {
-                    suppressionReason = "LongIncompleteCandidateCoveredByDimensionedRegions";
-                    return OverlapDecision.SuppressB;
-                }
-            }
-
-            // STRONG DUPLICATE EVIDENCE CHECK:
-            // Envelope match ONLY triggers evaluation; suppression requires STRONG duplicate evidence!
-
-            bool isEnvelopeMatch = BeamPhysicalEnvelope.IsEnvelopeOverlap(a, b, opt) || (perpDist <= opt.CenterlineDistanceToleranceMm && (overlapRatio >= opt.MinimumOverlapRatio || isContained));
-            if (!isEnvelopeMatch)
-            {
-                return OverlapDecision.KeepBoth;
-            }
-
-            // Evidence 1: Shared SourceLineIds (direct CAD primitive reuse)
-            bool sharesSourceLines = a.SourceLineIds != null && b.SourceLineIds != null
-                && a.SourceLineIds.Overlaps(b.SourceLineIds);
-
-            if (sharesSourceLines && overlapLen > 10.0)
-            {
-                suppressionReason = $"SharedSourceLines (A={idA(a)}, B={idA(b)})";
-                return prioA.FinalPriorityScore >= prioB.FinalPriorityScore ? OverlapDecision.SuppressB : OverlapDecision.SuppressA;
-            }
-
-            // Evidence 2: Shared RootRawCandidateIds / Parent Lineage
-            bool sharesLineage = a.RootRawCandidateIds != null && b.RootRawCandidateIds != null
-                && a.RootRawCandidateIds.Intersect(b.RootRawCandidateIds, StringComparer.OrdinalIgnoreCase).Any();
-
-            if (sharesLineage && (overlapRatio >= opt.MinimumOverlapRatio || isContained))
-            {
-                suppressionReason = $"SharedLineage (A={idA(a)}, B={idA(b)})";
-                return prioA.FinalPriorityScore >= prioB.FinalPriorityScore ? OverlapDecision.SuppressB : OverlapDecision.SuppressA;
-            }
-
-            // Evidence 3: Geometric exact / reversed duplicate (centerline dist <= 10mm and overlap >= 95%)
-            bool isGeometricDuplicate = (overlapRatio >= 0.95 || isContained) && perpDist <= 10.0;
-            if (isGeometricDuplicate)
+            // 1. Exact geometry duplicate (same centerline <= 10mm, overlap >= 95% or contained, same dimensions)
+            bool isExactDup = (overlapRatio >= 0.95 || isContained) && perpDist <= 10.0;
+            if (isExactDup)
             {
                 bool sameDims = Math.Abs(a.Width - b.Width) <= 5.0 && Math.Abs(a.Height - b.Height) <= 5.0;
                 if (sameDims)
                 {
+                    exactDuplicatesCount++;
+                    if (a.DetectionMethod == BeamDetectionMethod.PairedLines && b.DetectionMethod == BeamDetectionMethod.PairedLines)
+                    {
+                        // Exact duplicate paired lines count under exact duplicates
+                    }
                     suppressionReason = $"ExactDuplicateGeometry (A={idA(a)}, B={idA(b)})";
                     return prioA.FinalPriorityScore >= prioB.FinalPriorityScore ? OverlapDecision.SuppressB : OverlapDecision.SuppressA;
                 }
             }
 
-            // Evidence 4: True Incomplete fallback candidate (Width <= 0 or Height <= 0) vs Complete candidate (Width > 0 and Height > 0)
-            bool aTrueIncomplete = (a.Width <= 0 || a.Height <= 0) && !a.HasDimensionText;
-            bool bComplete = b.Width > 0 && b.Height > 0 && b.HasDimensionText;
-            if (aTrueIncomplete && bComplete && (overlapRatio >= 0.80 || isContained))
+            // 2. Shared SourceLineIds or Lineage with near-same centerline (<= 25mm)
+            bool sharesSource = a.SourceLineIds != null && b.SourceLineIds != null && a.SourceLineIds.Overlaps(b.SourceLineIds);
+            bool sharesLineage = a.RootRawCandidateIds != null && b.RootRawCandidateIds != null
+                && a.RootRawCandidateIds.Intersect(b.RootRawCandidateIds, StringComparer.OrdinalIgnoreCase).Any();
+
+            if ((sharesSource || sharesLineage) && perpDist <= opt.CenterlineDistanceToleranceMm && (overlapRatio >= opt.MinimumOverlapRatio || isContained))
             {
-                suppressionReason = "IncompleteCandidateInsideDimensionedBeamEnvelope";
-                return OverlapDecision.SuppressA;
+                sameCenterlineCount++;
+                suppressionReason = sharesSource ? $"SharedSourceLines (A={idA(a)}, B={idA(b)})" : $"SharedLineage (A={idA(a)}, B={idA(b)})";
+                return prioA.FinalPriorityScore >= prioB.FinalPriorityScore ? OverlapDecision.SuppressB : OverlapDecision.SuppressA;
             }
 
-            bool bTrueIncomplete = (b.Width <= 0 || b.Height <= 0) && !b.HasDimensionText;
-            bool aComplete = a.Width > 0 && a.Height > 0 && a.HasDimensionText;
-            if (bTrueIncomplete && aComplete && (overlapRatio >= 0.80 || isContained))
+            // 3. Phase 4 Strict Boundary Fallback Rule
+            bool isFallbackA = a.DetectionMethod == BeamDetectionMethod.SingleLineFallback;
+            bool isFallbackB = b.DetectionMethod == BeamDetectionMethod.SingleLineFallback;
+
+            if ((isFallbackA || isFallbackB) && (overlapRatio >= 0.90 || isContained))
             {
-                suppressionReason = "IncompleteCandidateInsideDimensionedBeamEnvelope";
-                return OverlapDecision.SuppressB;
+                var paired = isFallbackB ? a : b;
+                var fallback = isFallbackB ? b : a;
+
+                bool pairedValid = paired.DetectionMethod == BeamDetectionMethod.PairedLines && paired.Width > 0 && paired.Height > 0 && paired.HasDimensionText;
+                bool fallbackNoText = !fallback.HasDimensionText;
+
+                double halfW = BeamPhysicalEnvelope.GetHalfWidth(paired);
+                bool nearHalfWidth = halfW > 0 && Math.Abs(perpDist - halfW) <= 20.0;
+
+                if (pairedValid && fallbackNoText && nearHalfWidth)
+                {
+                    bool hasSourceLineageEvidence = (fallback.SourceLineIds != null && paired.SourceLineIds != null && fallback.SourceLineIds.Overlaps(paired.SourceLineIds))
+                        || (fallback.RootRawCandidateIds != null && paired.RootRawCandidateIds != null && fallback.RootRawCandidateIds.Intersect(paired.RootRawCandidateIds, StringComparer.OrdinalIgnoreCase).Any());
+
+                    if (hasSourceLineageEvidence)
+                    {
+                        boundaryFallbackCount++;
+                        suppressionReason = "SingleLineFallbackInsidePairedBeamEnvelope";
+                        return isFallbackB ? OverlapDecision.SuppressB : OverlapDecision.SuppressA;
+                    }
+                    else
+                    {
+                        ambiguousKeptCount++;
+                        BeamDiagnosticCollector.Instance.RecordWarning(
+                            $"AmbiguousBoundaryCandidate: Boundary fallback {GetDiagnosticId(fallback)} kept near paired candidate {GetDiagnosticId(paired)} due to missing source/lineage evidence.");
+                        return OverlapDecision.KeepBoth;
+                    }
+                }
             }
 
-            // DEFAULT RULE FOR INDEPENDENT BEAMS:
-            // If candidates have independent SourceLineIds, no shared lineage, and both are valid PairedLines/dimensioned beams,
-            // DO NOT SUPPRESS! They represent separate physical beams (e.g. parallel interior beams, adjacent beams).
+            // 4. Near-Same-Centerline (<= 25mm) for True Incomplete candidates
+            if (perpDist <= opt.CenterlineDistanceToleranceMm && (overlapRatio >= opt.MinimumOverlapRatio || isContained))
+            {
+                // If BOTH are PairedLines, LegacySafe REQUIRES KeepBoth unless exact/shared-source!
+                if (a.DetectionMethod == BeamDetectionMethod.PairedLines && b.DetectionMethod == BeamDetectionMethod.PairedLines)
+                {
+                    return OverlapDecision.KeepBoth;
+                }
+
+                // Check True Incomplete
+                bool aIncomplete = (a.Width <= 0 || a.Height <= 0) && !a.HasDimensionText;
+                bool bComplete = b.Width > 0 && b.Height > 0 && b.HasDimensionText;
+                if (aIncomplete && bComplete)
+                {
+                    sameCenterlineCount++;
+                    suppressionReason = "IncompleteCandidateInsideDimensionedBeamEnvelope";
+                    return OverlapDecision.SuppressA;
+                }
+
+                bool bIncomplete = (b.Width <= 0 || b.Height <= 0) && !b.HasDimensionText;
+                bool aComplete = a.Width > 0 && a.Height > 0 && a.HasDimensionText;
+                if (bIncomplete && aComplete)
+                {
+                    sameCenterlineCount++;
+                    suppressionReason = "IncompleteCandidateInsideDimensionedBeamEnvelope";
+                    return OverlapDecision.SuppressB;
+                }
+            }
+
+            // DEFAULT LEGACY SAFE: KEEP BOTH
             return OverlapDecision.KeepBoth;
 
             string idA(CadBeamData beam) => GetDiagnosticId(beam);
+        }
+
+        private OverlapDecision EvaluateExperimentalEnvelopePair(
+            CadBeamData a,
+            CadBeamData b,
+            BeamOverlapOptions opt,
+            Dictionary<CadBeamData, BeamPriorityResult> priorities,
+            out string suppressionReason,
+            out BeamOverlapPairMetrics metrics,
+            ref int exactDuplicatesCount,
+            ref int sameCenterlineCount,
+            ref int boundaryFallbackCount,
+            ref int envelopeSuppressionsCount,
+            ref int pairedVsPairedSuppressionsCount)
+        {
+            suppressionReason = null;
+
+            double angleA = GetBeamAngle(a);
+            double angleB = GetBeamAngle(b);
+            double angleDiff = Math.Abs(angleA - angleB);
+            if (angleDiff > Math.PI / 2.0) angleDiff = Math.PI - angleDiff;
+            double angleDiffDeg = angleDiff * 180.0 / Math.PI;
+
+            double lenA = GetBeamLength(a);
+            double lenB = GetBeamLength(b);
+
+            double perpDist = BeamPhysicalEnvelope.ComputeCenterlineDistance(a, b);
+            double overlapRatio = BeamPhysicalEnvelope.ComputeOverlapRatio(a, b);
+            double overlapLen = BeamPhysicalEnvelope.ComputeOverlapLength(a, b);
+            bool isContained = BeamPhysicalEnvelope.ComputeIsContained(a, b, opt.ContainmentToleranceMm);
+
+            var prioA = priorities.ContainsKey(a) ? priorities[a] : BeamCandidatePriorityCalculator.CalculatePriority(a);
+            var prioB = priorities.ContainsKey(b) ? priorities[b] : BeamCandidatePriorityCalculator.CalculatePriority(b);
+
+            metrics = new BeamOverlapPairMetrics
+            {
+                AngularDifferenceDegrees = angleDiffDeg,
+                CenterlineDistanceMm = perpDist,
+                OverlapLengthMm = overlapLen,
+                OverlapRatio = overlapRatio,
+                IsContained = isContained,
+                PriorityScoreA = prioA.FinalPriorityScore,
+                PriorityScoreB = prioB.FinalPriorityScore
+            };
+
+            if (angleDiffDeg > opt.AngularToleranceDegrees || lenA < 1e-3 || lenB < 1e-3 || (overlapRatio < 0.05 && !isContained))
+            {
+                return OverlapDecision.KeepBoth;
+            }
+
+            // Experimental physical envelope suppression
+            bool isEnvelopeOverlap = BeamPhysicalEnvelope.IsEnvelopeOverlap(a, b, opt);
+            if (isEnvelopeOverlap)
+            {
+                envelopeSuppressionsCount++;
+                if (a.DetectionMethod == BeamDetectionMethod.PairedLines && b.DetectionMethod == BeamDetectionMethod.SingleLineFallback)
+                {
+                    boundaryFallbackCount++;
+                    suppressionReason = "SingleLineFallbackInsidePairedBeamEnvelope";
+                    return OverlapDecision.SuppressB;
+                }
+                if (b.DetectionMethod == BeamDetectionMethod.PairedLines && a.DetectionMethod == BeamDetectionMethod.SingleLineFallback)
+                {
+                    boundaryFallbackCount++;
+                    suppressionReason = "SingleLineFallbackInsidePairedBeamEnvelope";
+                    return OverlapDecision.SuppressA;
+                }
+
+                if (a.DetectionMethod == BeamDetectionMethod.PairedLines && b.DetectionMethod == BeamDetectionMethod.PairedLines)
+                {
+                    pairedVsPairedSuppressionsCount++;
+                }
+
+                suppressionReason = "ExperimentalEnvelopeOverlap";
+                return prioA.FinalPriorityScore >= prioB.FinalPriorityScore ? OverlapDecision.SuppressB : OverlapDecision.SuppressA;
+            }
+
+            return OverlapDecision.KeepBoth;
         }
 
         private CadBeamData CanonicalizeBeam(CadBeamData b)

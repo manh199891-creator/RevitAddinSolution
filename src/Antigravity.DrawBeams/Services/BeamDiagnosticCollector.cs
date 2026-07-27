@@ -49,23 +49,12 @@ namespace Antigravity.DrawBeams.Services
             {
                 if (options != null) _options = options;
 
-                if (!string.IsNullOrEmpty(sessionId))
+                string id = !string.IsNullOrEmpty(sessionId) ? sessionId : $"{DateTime.Now:yyyyMMdd_HHmmss}_{Guid.NewGuid():N}".Substring(0, 23);
+                _currentSession = new BeamDiagnosticSession
                 {
-                    _currentSession = new BeamDiagnosticSession
-                    {
-                        SessionId = sessionId,
-                        StartTime = DateTime.Now
-                    };
-                }
-                else if (_currentSession == null || _currentSession.EndTime.HasValue)
-                {
-                    string dynamicId = $"{DateTime.Now:yyyyMMdd_HHmmss}_{Guid.NewGuid():N}".Substring(0, 23);
-                    _currentSession = new BeamDiagnosticSession
-                    {
-                        SessionId = dynamicId,
-                        StartTime = DateTime.Now
-                    };
-                }
+                    SessionId = id,
+                    StartTime = DateTime.Now
+                };
 
                 return _currentSession;
             }

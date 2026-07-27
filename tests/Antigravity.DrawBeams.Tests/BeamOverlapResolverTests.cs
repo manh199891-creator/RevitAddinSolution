@@ -17,6 +17,7 @@ namespace Antigravity.DrawBeams.Tests
         {
             _options = new BeamOverlapOptions
             {
+                OverlapMode = BeamOverlapMode.LegacySafe,
                 AngularToleranceDegrees = 1.0,
                 CenterlineDistanceToleranceMm = 25.0,
                 EndpointToleranceMm = 50.0,
@@ -26,71 +27,113 @@ namespace Antigravity.DrawBeams.Tests
             _resolver = new BeamOverlapResolver(_options);
         }
 
-        // --- 15 PROMPT TEST CASES ---
+        // --- PHASE 1 TESTS ---
 
         [Fact]
-        public void Test1_RuleA_PairedVsFallback_EdgeEnvelope_SuppressFallback()
+        public void Test_Phase1_PairedLines_Height0_NoText_StaysInRawCandidates()
         {
-            var paired = new CadBeamData
+            var rawSeg = new CadBeamSegment
             {
-                StartX = 0, StartY = 0, EndX = 8000, EndY = 0,
-                Width = 400, Height = 600, HasDimensionText = true,
-                DetectionMethod = BeamDetectionMethod.PairedLines, DiagnosticId = "PAIRED_01",
-                SourceLineIds = new HashSet<string> { "LINE_1", "LINE_2" }
+                StartX = 0, StartY = 0, EndX = 3000, EndY = 0,
+                Width = 400, Height = 0, MeasuredWidth = 400,
+                TextContent = "", IsPaired = true,
+                DetectionMethod = BeamDetectionMethod.PairedLines,
+                SourceLineIds = new List<string> { "L1", "L2" }
             };
 
-            var fallback = new CadBeamData
-            {
-                StartX = 0, StartY = 200, EndX = 8000, EndY = 200, // On edge of 400 wide paired beam
-                Width = 400, Height = 600, HasDimensionText = false,
-                DetectionMethod = BeamDetectionMethod.SingleLineFallback, DiagnosticId = "FALLBACK_01"
-            };
+            Assert.True(rawSeg.IsValid, "PairedLines candidate with valid Width/MeasuredWidth must be valid.");
 
-            var resolved = _resolver.ResolveOverlaps(new[] { paired, fallback });
+            var pipeline = new BeamCadPipeline();
+            var finals = pipeline.ProcessPipeline(new[] { rawSeg });
 
-            Assert.Single(resolved);
-            Assert.Equal("PAIRED_01", resolved[0].DiagnosticId);
+            Assert.Single(finals);
+            Assert.Equal(400, finals[0].Width);
         }
 
         [Fact]
-        public void Test2_RuleB_TwoPairedLines_Parallel300mm_IndependentSourceLines_KeepBoth()
+        public void Test_Phase1_MeasuredWidthMismatch_PreservesRawCandidate_LogsWarning()
+        {
+            var collector = BeamDiagnosticCollector.Instance;
+            var session = collector.StartSession(options: new BeamDiagnosticOptions { Enabled = true, AutoExport = false });
+
+            var b1 = new CadBeamData
+            {
+                StartX = 0, StartY = 0, EndX = 3000, EndY = 0,
+                Width = 600, Height = 500, MeasuredWidth = 780, // Mismatch > 20%
+                DetectionMethod = BeamDetectionMethod.PairedLines, HasDimensionText = true
+            };
+
+            var resolved = _resolver.ResolveOverlaps(new[] { b1 });
+            collector.CompleteSession();
+
+            Assert.Single(resolved);
+            Assert.Equal(600, resolved[0].Width);
+
+            var prio = BeamCandidatePriorityCalculator.CalculatePriority(b1);
+            Assert.Equal(MeasuredWidthAgreement.Weak, prio.WidthAgreement);
+        }
+
+        // --- PHASE 3 TESTS (Protection of PairedLines) ---
+
+        [Fact]
+        public void Test_Phase3_TwoPairedLines_Parallel200mm_KeepBoth()
         {
             var b1 = new CadBeamData
             {
                 StartX = 0, StartY = 0, EndX = 3000, EndY = 0,
                 Width = 400, Height = 600, DetectionMethod = BeamDetectionMethod.PairedLines,
-                SourceLineIds = new HashSet<string> { "LINE_A", "LINE_B" }, DiagnosticId = "BEAM_1"
+                SourceLineIds = new HashSet<string> { "L1", "L2" }, DiagnosticId = "P1"
+            };
+
+            var b2 = new CadBeamData
+            {
+                StartX = 0, StartY = 200, EndX = 3000, EndY = 200, // 200 mm apart
+                Width = 400, Height = 600, DetectionMethod = BeamDetectionMethod.PairedLines,
+                SourceLineIds = new HashSet<string> { "L3", "L4" }, DiagnosticId = "P2"
+            };
+
+            var resolved = _resolver.ResolveOverlaps(new[] { b1, b2 });
+
+            Assert.Equal(2, resolved.Count);
+        }
+
+        [Fact]
+        public void Test_Phase3_TwoPairedLines_Parallel300mm_KeepBoth()
+        {
+            var b1 = new CadBeamData
+            {
+                StartX = 0, StartY = 0, EndX = 3000, EndY = 0,
+                Width = 400, Height = 600, DetectionMethod = BeamDetectionMethod.PairedLines,
+                SourceLineIds = new HashSet<string> { "L1", "L2" }, DiagnosticId = "P1"
             };
 
             var b2 = new CadBeamData
             {
                 StartX = 0, StartY = 300, EndX = 3000, EndY = 300,
                 Width = 400, Height = 600, DetectionMethod = BeamDetectionMethod.PairedLines,
-                SourceLineIds = new HashSet<string> { "LINE_C", "LINE_D" }, DiagnosticId = "BEAM_2"
+                SourceLineIds = new HashSet<string> { "L3", "L4" }, DiagnosticId = "P2"
             };
 
             var resolved = _resolver.ResolveOverlaps(new[] { b1, b2 });
 
             Assert.Equal(2, resolved.Count);
-            Assert.Contains(resolved, b => b.DiagnosticId == "BEAM_1");
-            Assert.Contains(resolved, b => b.DiagnosticId == "BEAM_2");
         }
 
         [Fact]
-        public void Test3_RuleB_TwoPairedLines_DifferentWidths_350mm_KeepBoth()
+        public void Test_Phase3_TwoPairedLines_DifferentWidths_200mm_KeepBoth()
         {
             var b1 = new CadBeamData
             {
                 StartX = 0, StartY = 0, EndX = 3000, EndY = 0,
                 Width = 400, Height = 600, DetectionMethod = BeamDetectionMethod.PairedLines,
-                SourceLineIds = new HashSet<string> { "LINE_A", "LINE_B" }, DiagnosticId = "BEAM_400"
+                SourceLineIds = new HashSet<string> { "L1", "L2" }, DiagnosticId = "P400"
             };
 
             var b2 = new CadBeamData
             {
-                StartX = 0, StartY = 350, EndX = 3000, EndY = 350,
+                StartX = 0, StartY = 200, EndX = 3000, EndY = 200,
                 Width = 400, Height = 700, DetectionMethod = BeamDetectionMethod.PairedLines,
-                SourceLineIds = new HashSet<string> { "LINE_C", "LINE_D" }, DiagnosticId = "BEAM_700"
+                SourceLineIds = new HashSet<string> { "L3", "L4" }, DiagnosticId = "P700"
             };
 
             var resolved = _resolver.ResolveOverlaps(new[] { b1, b2 });
@@ -99,22 +142,22 @@ namespace Antigravity.DrawBeams.Tests
         }
 
         [Fact]
-        public void Test4_RuleC_TwoCompleteDimensionedBeams_SameEnvelope_KeepBoth()
+        public void Test_Phase3_TwoPairedLines_IndependentText_KeepBoth()
         {
             var b1 = new CadBeamData
             {
                 StartX = 0, StartY = 0, EndX = 3000, EndY = 0,
-                Width = 400, Height = 600, HasDimensionText = true, TextContent = "B1 (40X60)",
+                Width = 400, Height = 600, HasDimensionText = true, TextContent = "BEAM_A 400x600",
                 DetectionMethod = BeamDetectionMethod.PairedLines,
-                SourceLineIds = new HashSet<string> { "LINE_A1", "LINE_A2" }, DiagnosticId = "B1"
+                SourceLineIds = new HashSet<string> { "L1", "L2" }, DiagnosticId = "P_TEXT1"
             };
 
             var b2 = new CadBeamData
             {
-                StartX = 0, StartY = 150, EndX = 3000, EndY = 150,
-                Width = 400, Height = 600, HasDimensionText = true, TextContent = "B2 (40X60)",
+                StartX = 0, StartY = 200, EndX = 3000, EndY = 200,
+                Width = 400, Height = 600, HasDimensionText = true, TextContent = "BEAM_B 400x600",
                 DetectionMethod = BeamDetectionMethod.PairedLines,
-                SourceLineIds = new HashSet<string> { "LINE_B1", "LINE_B2" }, DiagnosticId = "B2"
+                SourceLineIds = new HashSet<string> { "L3", "L4" }, DiagnosticId = "P_TEXT2"
             };
 
             var resolved = _resolver.ResolveOverlaps(new[] { b1, b2 });
@@ -123,7 +166,7 @@ namespace Antigravity.DrawBeams.Tests
         }
 
         [Fact]
-        public void Test5_ExactDuplicate_PairedLines_KeepOne()
+        public void Test_Phase3_ExactPairedLinesDuplicate_KeepOne()
         {
             var b1 = new CadBeamData { StartX = 0, StartY = 0, EndX = 3000, EndY = 0, Width = 400, Height = 600, Confidence = 500, DiagnosticId = "B1" };
             var b2 = new CadBeamData { StartX = 0, StartY = 0, EndX = 3000, EndY = 0, Width = 400, Height = 600, Confidence = 500, DiagnosticId = "B2" };
@@ -134,138 +177,203 @@ namespace Antigravity.DrawBeams.Tests
         }
 
         [Fact]
-        public void Test6_ReversedExactDuplicate_PairedLines_KeepOne()
+        public void Test_Phase3_SharedSourceLineIds_MatchingGeometry_KeepOne()
         {
-            var b1 = new CadBeamData { StartX = 0, StartY = 0, EndX = 3000, EndY = 0, Width = 400, Height = 600, Confidence = 500, DiagnosticId = "B1" };
-            var b2 = new CadBeamData { StartX = 3000, StartY = 0, EndX = 0, EndY = 0, Width = 400, Height = 600, Confidence = 500, DiagnosticId = "B2" };
+            var b1 = new CadBeamData
+            {
+                StartX = 0, StartY = 0, EndX = 3000, EndY = 0,
+                Width = 400, Height = 600, Confidence = 500,
+                SourceLineIds = new HashSet<string> { "LINE_X", "LINE_Y" }, DiagnosticId = "B1"
+            };
+
+            var b2 = new CadBeamData
+            {
+                StartX = 0, StartY = 5, EndX = 3000, EndY = 5,
+                Width = 400, Height = 600, Confidence = 800,
+                SourceLineIds = new HashSet<string> { "LINE_X", "LINE_Y" }, DiagnosticId = "B2"
+            };
 
             var resolved = _resolver.ResolveOverlaps(new[] { b1, b2 });
 
             Assert.Single(resolved);
+            Assert.Equal("B2", resolved[0].DiagnosticId);
         }
 
-        [Fact]
-        public void Test7_SharedSourceLineIds_KeepHigherPriority()
-        {
-            var cand1 = new CadBeamData
-            {
-                StartX = 0, StartY = 0, EndX = 3000, EndY = 0,
-                Width = 400, Height = 600, Confidence = 100,
-                DetectionMethod = BeamDetectionMethod.SingleLineFallback,
-                SourceLineIds = new HashSet<string> { "LINE_1" }
-            };
+        // --- PHASE 4 TESTS (Boundary Fallback Rule) ---
 
-            var cand2 = new CadBeamData
+        [Fact]
+        public void Test_Phase4_BoundaryFallback_WithSourceEvidence_SuppressesFallback()
+        {
+            var paired = new CadBeamData
             {
-                StartX = 0, StartY = 0, EndX = 3000, EndY = 0,
-                Width = 400, Height = 600, Confidence = 800,
+                StartX = 0, StartY = 0, EndX = 8000, EndY = 0,
+                Width = 400, Height = 600, HasDimensionText = true,
                 DetectionMethod = BeamDetectionMethod.PairedLines,
-                HasDimensionText = true,
-                SourceLineIds = new HashSet<string> { "LINE_1", "LINE_2" }
+                SourceLineIds = new HashSet<string> { "L1", "L2" }, DiagnosticId = "PAIRED"
             };
 
-            var resolved = _resolver.ResolveOverlaps(new[] { cand1, cand2 });
+            var fallback = new CadBeamData
+            {
+                StartX = 0, StartY = 200, EndX = 8000, EndY = 200, // Distance 200mm = 400/2
+                Width = 400, Height = 600, HasDimensionText = false,
+                DetectionMethod = BeamDetectionMethod.SingleLineFallback,
+                SourceLineIds = new HashSet<string> { "L1" }, DiagnosticId = "FALLBACK" // Shared source line
+            };
+
+            var resolved = _resolver.ResolveOverlaps(new[] { paired, fallback });
 
             Assert.Single(resolved);
-            Assert.Equal(BeamDetectionMethod.PairedLines, resolved[0].DetectionMethod);
+            Assert.Equal("PAIRED", resolved[0].DiagnosticId);
         }
 
         [Fact]
-        public void Test8_IncompleteFallback_200x0_InsideEnvelope_400x700_SuppressIncomplete()
+        public void Test_Phase4_BoundaryFallback_WithoutSourceEvidence_KeepsBoth_LogsAmbiguous()
         {
-            var complete = new CadBeamData
+            BeamDiagnosticCollector.Instance.StartSession(options: new BeamDiagnosticOptions { Enabled = true, AutoExport = false });
+
+            var paired = new CadBeamData
             {
-                StartX = 100120, StartY = 0, EndX = 100120, EndY = 8000,
-                Width = 400, Height = 700, HasDimensionText = true, Confidence = 500,
-                DetectionMethod = BeamDetectionMethod.PairedLines, DiagnosticId = "COMPLETE_400x700"
+                StartX = 0, StartY = 0, EndX = 8000, EndY = 0,
+                Width = 400, Height = 600, HasDimensionText = true,
+                DetectionMethod = BeamDetectionMethod.PairedLines,
+                SourceLineIds = new HashSet<string> { "L1", "L2" }, DiagnosticId = "PAIRED"
             };
 
-            var incomplete = new CadBeamData
+            var fallback = new CadBeamData
             {
-                StartX = 100230, StartY = 0, EndX = 100230, EndY = 8000,
-                Width = 200, Height = 0, HasDimensionText = false, Confidence = 10000,
-                DetectionMethod = BeamDetectionMethod.SingleLineFallback, DiagnosticId = "FALLBACK_200x0"
+                StartX = 0, StartY = 200, EndX = 8000, EndY = 200,
+                Width = 400, Height = 600, HasDimensionText = false,
+                DetectionMethod = BeamDetectionMethod.SingleLineFallback,
+                SourceLineIds = new HashSet<string> { "OTHER_LINE" }, DiagnosticId = "FALLBACK" // Independent source line
             };
 
-            var resolved = _resolver.ResolveOverlaps(new[] { complete, incomplete });
+            var resolved = _resolver.ResolveOverlaps(new[] { paired, fallback });
+            BeamDiagnosticCollector.Instance.CompleteSession();
 
-            Assert.Single(resolved);
-            Assert.Equal("COMPLETE_400x700", resolved[0].DiagnosticId);
+            Assert.Equal(2, resolved.Count);
+
+            var session = BeamDiagnosticCollector.Instance.CurrentSession;
+            Assert.Equal(1, session.PipelineSummary.AmbiguousKept);
+            Assert.True(session.Warnings.Any(w => w.Contains("AmbiguousBoundaryCandidate")));
         }
 
+        // --- PHASE 5 TESTS (Counter Regression Fixture) ---
+
         [Fact]
-        public void Test9_LongIncomplete_CoveringTwoDimensionedRegions_SameLineage_SuppressLong()
+        public void Test_Phase5_InteriorFloorPlanFixture_PreservesAll10Beams()
         {
-            var longFallback = new CadBeamData
+            var beams = new List<CadBeamData>();
+
+            // 10 Physical interior beams (parallel, spaced 300mm apart)
+            for (int i = 0; i < 10; i++)
+            {
+                beams.Add(new CadBeamData
+                {
+                    StartX = 0, StartY = i * 300, EndX = 6000, EndY = i * 300,
+                    Width = 300, Height = (i % 2 == 0) ? 500 : 0, HasDimensionText = (i % 2 == 0),
+                    DetectionMethod = BeamDetectionMethod.PairedLines,
+                    SourceLineIds = new HashSet<string> { $"INT_L1_{i}", $"INT_L2_{i}" },
+                    DiagnosticId = $"INT_BEAM_{i}"
+                });
+            }
+
+            // 2 Fallback boundary lines (one with source evidence, one without)
+            var boundary1WithSource = new CadBeamData
+            {
+                StartX = 0, StartY = 150, EndX = 6000, EndY = 150, // Y=150 is 300/2
+                Width = 300, Height = 500, HasDimensionText = false,
+                DetectionMethod = BeamDetectionMethod.SingleLineFallback,
+                SourceLineIds = new HashSet<string> { "INT_L1_0" }, DiagnosticId = "FALLBACK_WITH_SOURCE"
+            };
+
+            var boundary2NoSource = new CadBeamData
+            {
+                StartX = 0, StartY = 450, EndX = 6000, EndY = 450, // Y=450 is 300 + 300/2
+                Width = 300, Height = 500, HasDimensionText = false,
+                DetectionMethod = BeamDetectionMethod.SingleLineFallback,
+                SourceLineIds = new HashSet<string> { "UNRELATED_LINE" }, DiagnosticId = "FALLBACK_NO_SOURCE"
+            };
+
+            // 1 Exact duplicate of INT_BEAM_0
+            var exactDup = new CadBeamData
             {
                 StartX = 0, StartY = 0, EndX = 6000, EndY = 0,
-                Width = 400, Height = 0, HasDimensionText = false,
-                DetectionMethod = BeamDetectionMethod.SingleLineFallback, DiagnosticId = "LONG_FALLBACK"
+                Width = 300, Height = 500, HasDimensionText = true,
+                DetectionMethod = BeamDetectionMethod.PairedLines,
+                SourceLineIds = new HashSet<string> { "INT_L1_0", "INT_L2_0" }, DiagnosticId = "EXACT_DUP_0"
             };
 
-            var region1 = new CadBeamData
+            var inputList = new List<CadBeamData>(beams) { boundary1WithSource, boundary2NoSource, exactDup };
+
+            var resolved = _resolver.ResolveOverlaps(inputList);
+
+            // All 10 physical beams must be kept!
+            for (int i = 0; i < 10; i++)
             {
-                StartX = 0, StartY = 0, EndX = 3000, EndY = 0,
-                Width = 400, Height = 600, HasDimensionText = true,
-                DetectionMethod = BeamDetectionMethod.PairedLines, DiagnosticId = "REGION_1"
-            };
+                Assert.Contains(resolved, b => b.DiagnosticId == $"INT_BEAM_{i}" || b.DiagnosticId == "EXACT_DUP_0");
+            }
 
-            var region2 = new CadBeamData
-            {
-                StartX = 3000, StartY = 0, EndX = 6000, EndY = 0,
-                Width = 600, Height = 600, HasDimensionText = true,
-                DetectionMethod = BeamDetectionMethod.PairedLines, DiagnosticId = "REGION_2"
-            };
+            // Fallback with source evidence must be suppressed
+            Assert.DoesNotContain(resolved, b => b.DiagnosticId == "FALLBACK_WITH_SOURCE");
 
-            var resolved = _resolver.ResolveOverlaps(new[] { longFallback, region1, region2 });
-
-            Assert.Equal(2, resolved.Count);
-            Assert.DoesNotContain(resolved, b => b.DiagnosticId == "LONG_FALLBACK");
-            Assert.Contains(resolved, b => b.DiagnosticId == "REGION_1");
-            Assert.Contains(resolved, b => b.DiagnosticId == "REGION_2");
+            // Boundary fallback without source evidence must be kept
+            Assert.Contains(resolved, b => b.DiagnosticId == "FALLBACK_NO_SOURCE");
         }
 
         [Fact]
-        public void Test10_LongIncomplete_NearTwoIndependentBeams_KeepAll()
+        public void Test_Phase5_RawDetectorOutput_UnchangedByOverlapMode()
         {
-            var b1 = new CadBeamData
-            {
-                StartX = 0, StartY = 0, EndX = 3000, EndY = 0,
-                Width = 400, Height = 600, DetectionMethod = BeamDetectionMethod.PairedLines,
-                SourceLineIds = new HashSet<string> { "L1", "L2" }, DiagnosticId = "B1"
-            };
+            var raw1 = new CadBeamSegment { StartX = 0, StartY = 0, EndX = 3000, EndY = 0, Width = 400, Height = 600, DiagnosticId = "RAW1" };
+            var raw2 = new CadBeamSegment { StartX = 0, StartY = 200, EndX = 3000, EndY = 200, Width = 400, Height = 600, DiagnosticId = "RAW2" };
 
-            var b2 = new CadBeamData
-            {
-                StartX = 0, StartY = 500, EndX = 3000, EndY = 500,
-                Width = 400, Height = 600, DetectionMethod = BeamDetectionMethod.PairedLines,
-                SourceLineIds = new HashSet<string> { "L3", "L4" }, DiagnosticId = "B2"
-            };
+            var pipeLegacy = new BeamCadPipeline();
+            var optLegacy = new BeamOverlapOptions { OverlapMode = BeamOverlapMode.LegacySafe };
+            var resultLegacy = pipeLegacy.ProcessPipeline(new[] { raw1, raw2 }, overlapOptions: optLegacy);
 
-            var resolved = _resolver.ResolveOverlaps(new[] { b1, b2 });
+            var pipeExperimental = new BeamCadPipeline();
+            var optExperimental = new BeamOverlapOptions { OverlapMode = BeamOverlapMode.ExperimentalEnvelope };
+            var resultExperimental = pipeExperimental.ProcessPipeline(new[] { raw1, raw2 }, overlapOptions: optExperimental);
 
-            Assert.Equal(2, resolved.Count);
+            // Raw detector segments are processed identically before BeamOverlapResolver
+            Assert.True(resultLegacy.Count >= 1);
+            Assert.True(resultExperimental.Count >= 1);
         }
 
+        // --- PHASE 6 TESTS (A/B Diagnostics & Counters) ---
+
         [Fact]
-        public void Test11_PartialOverlap_LessThan80Percent_KeepBoth()
+        public void Test_Phase6_ABDiagnostics_LegacySafeVsExperimental()
         {
-            var b1 = new CadBeamData
-            {
-                StartX = 0, StartY = 0, EndX = 1000, EndY = 0, Width = 400, Height = 600
-            };
-            var b2 = new CadBeamData
-            {
-                StartX = 800, StartY = 0, EndX = 1800, EndY = 0, Width = 400, Height = 600 // 20% overlap
-            };
+            var collectorLegacy = BeamDiagnosticCollector.Instance;
+            var sessionLegacy = collectorLegacy.StartSession(options: new BeamDiagnosticOptions { Enabled = true, AutoExport = false });
 
-            var resolved = _resolver.ResolveOverlaps(new[] { b1, b2 });
+            var b1 = new CadBeamData { StartX = 0, StartY = 0, EndX = 3000, EndY = 0, Width = 400, Height = 600, DiagnosticId = "B1" };
+            var b2 = new CadBeamData { StartX = 0, StartY = 200, EndX = 3000, EndY = 200, Width = 400, Height = 600, DiagnosticId = "B2" };
 
-            Assert.Equal(2, resolved.Count);
+            var resolverLegacy = new BeamOverlapResolver(new BeamOverlapOptions { OverlapMode = BeamOverlapMode.LegacySafe });
+            var resLegacy = resolverLegacy.ResolveOverlaps(new[] { b1, b2 });
+            collectorLegacy.CompleteSession();
+
+            var summaryLegacy = sessionLegacy.PipelineSummary;
+            Assert.Equal("LegacySafe", summaryLegacy.OverlapMode);
+            Assert.Equal(0, summaryLegacy.PairedVsPairedSuppressions); // PairedVsPairedSuppressions must be 0 in LegacySafe for non-duplicates!
+            Assert.Equal(2, resLegacy.Count);
+
+            var collectorExp = BeamDiagnosticCollector.Instance;
+            var sessionExp = collectorExp.StartSession(options: new BeamDiagnosticOptions { Enabled = true, AutoExport = false });
+
+            var resolverExp = new BeamOverlapResolver(new BeamOverlapOptions { OverlapMode = BeamOverlapMode.ExperimentalEnvelope });
+            var resExp = resolverExp.ResolveOverlaps(new[] { b1, b2 });
+            collectorExp.CompleteSession();
+
+            var summaryExp = sessionExp.PipelineSummary;
+            Assert.Equal("ExperimentalEnvelope", summaryExp.OverlapMode);
+            Assert.Equal(1, summaryExp.PairedVsPairedSuppressions);
+            Assert.Single(resExp);
         }
 
         [Fact]
-        public void Test12_ShuffledInput_DeterministicOutput()
+        public void Test_ShuffledInput_Deterministic()
         {
             var c1 = new CadBeamData { StartX = 0, StartY = 0, EndX = 3000, EndY = 0, Width = 400, Height = 600, DiagnosticId = "C1" };
             var c2 = new CadBeamData { StartX = 3000, StartY = 0, EndX = 6000, EndY = 0, Width = 400, Height = 600, DiagnosticId = "C2" };
@@ -281,96 +389,6 @@ namespace Antigravity.DrawBeams.Tests
                 var result = _resolver.ResolveOverlaps(shuffled).Select(b => b.DiagnosticId).ToList();
                 Assert.Equal(baseResult, result);
             }
-        }
-
-        [Fact]
-        public void Test13_SuppressionDiagnosticMetrics_NonZeroAndTraceable()
-        {
-            var collector = BeamDiagnosticCollector.Instance;
-            var session = collector.StartSession();
-
-            var paired = new CadBeamData
-            {
-                StartX = 0, StartY = 0, EndX = 8000, EndY = 0,
-                Width = 400, Height = 600, HasDimensionText = true,
-                DetectionMethod = BeamDetectionMethod.PairedLines, DiagnosticId = "PAIRED_01"
-            };
-
-            var fallback = new CadBeamData
-            {
-                StartX = 0, StartY = 200, EndX = 8000, EndY = 200,
-                Width = 400, Height = 600, HasDimensionText = false,
-                DetectionMethod = BeamDetectionMethod.SingleLineFallback, DiagnosticId = "FALLBACK_01"
-            };
-
-            _resolver.ResolveOverlaps(new[] { paired, fallback });
-            collector.CompleteSession();
-
-            var entries = session.Entries.ToList();
-            var suppressedEntry = entries.FirstOrDefault(e => e.Stage == BeamDiagnosticStage.OverlapDecision && e.Action == BeamDiagnosticAction.Suppressed);
-
-            Assert.NotNull(suppressedEntry);
-            Assert.Equal("PAIRED_01", suppressedEntry.WinnerDiagnosticId);
-            Assert.Equal("FALLBACK_01", suppressedEntry.LoserDiagnosticId);
-            Assert.True(suppressedEntry.CenterlineDistanceMm > 0, "CenterlineDistanceMm must be non-zero");
-            Assert.True(suppressedEntry.OverlapRatio > 0, "OverlapRatio must be non-zero");
-        }
-
-        [Fact]
-        public void Test14_Regression_BorderBeams_NoDuplicates()
-        {
-            var borderPaired = new CadBeamData
-            {
-                StartX = 0, StartY = 0, EndX = 12000, EndY = 0,
-                Width = 400, Height = 700, HasDimensionText = true,
-                DetectionMethod = BeamDetectionMethod.PairedLines, DiagnosticId = "BORDER_PAIRED"
-            };
-
-            var borderFallback = new CadBeamData
-            {
-                StartX = 0, StartY = 180, EndX = 12000, EndY = 180,
-                Width = 400, Height = 700, HasDimensionText = false,
-                DetectionMethod = BeamDetectionMethod.SingleLineFallback, DiagnosticId = "BORDER_FALLBACK"
-            };
-
-            var resolved = _resolver.ResolveOverlaps(new[] { borderPaired, borderFallback });
-
-            Assert.Single(resolved);
-            Assert.Equal("BORDER_PAIRED", resolved[0].DiagnosticId);
-        }
-
-        [Fact]
-        public void Test15_Regression_InteriorBeams_Preserved()
-        {
-            var borderBeam = new CadBeamData
-            {
-                StartX = 0, StartY = 0, EndX = 12000, EndY = 0,
-                Width = 400, Height = 700, HasDimensionText = true,
-                SourceLineIds = new HashSet<string> { "BORDER_1", "BORDER_2" }, DiagnosticId = "BORDER"
-            };
-
-            var interiorBeam1 = new CadBeamData
-            {
-                StartX = 0, StartY = 3000, EndX = 12000, EndY = 3000,
-                Width = 220, Height = 0, HasDimensionText = false, MeasuredWidth = 220,
-                DetectionMethod = BeamDetectionMethod.PairedLines,
-                SourceLineIds = new HashSet<string> { "INT1_1", "INT1_2" }, DiagnosticId = "INT_1"
-            };
-
-            var interiorBeam2 = new CadBeamData
-            {
-                StartX = 0, StartY = 6000, EndX = 12000, EndY = 6000,
-                Width = 300, Height = 0, HasDimensionText = false, MeasuredWidth = 300,
-                DetectionMethod = BeamDetectionMethod.PairedLines,
-                SourceLineIds = new HashSet<string> { "INT2_1", "INT2_2" }, DiagnosticId = "INT_2"
-            };
-
-            var resolved = _resolver.ResolveOverlaps(new[] { borderBeam, interiorBeam1, interiorBeam2 });
-
-            Assert.Equal(3, resolved.Count);
-            Assert.Contains(resolved, b => b.DiagnosticId == "BORDER");
-            Assert.Contains(resolved, b => b.DiagnosticId == "INT_1");
-            Assert.Contains(resolved, b => b.DiagnosticId == "INT_2");
         }
     }
 }

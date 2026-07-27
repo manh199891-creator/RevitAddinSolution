@@ -452,6 +452,14 @@ namespace Antigravity.DrawBeams.Services
                             }
                         }
 
+                        // Raw candidates MUST NOT be rejected for missing text or height: fallback to measuredWidth
+                        if (expectedB == 0 && measuredWidth >= 50 && measuredWidth <= 2000)
+                        {
+                            expectedB = measuredWidth;
+                            expectedH = 0;
+                            confidence += 50;
+                        }
+
                         if (expectedB > 0)
                         {
                             // Thêm candidate

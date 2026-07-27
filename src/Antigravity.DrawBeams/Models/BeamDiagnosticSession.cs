@@ -24,6 +24,15 @@ namespace Antigravity.DrawBeams.Models
         public int SuppressedOverlapsCount { get; set; }
         public int AfterOverlapCount { get; set; }
         public List<string> SharedDimensionTextWarnings { get; set; } = new List<string>();
+
+        // Phase 6 A/B Diagnostic Counters
+        public string OverlapMode { get; set; } = "LegacySafe";
+        public int ExactDuplicatesSuppressed { get; set; }
+        public int SameCenterlineSuppressed { get; set; }
+        public int BoundaryFallbackSuppressed { get; set; }
+        public int EnvelopeSuppressions { get; set; }
+        public int PairedVsPairedSuppressions { get; set; }
+        public int AmbiguousKept { get; set; }
     }
 
     public class RevitSummary

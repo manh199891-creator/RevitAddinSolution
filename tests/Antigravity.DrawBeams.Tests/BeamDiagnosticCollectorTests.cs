@@ -407,7 +407,8 @@ namespace Antigravity.DrawBeams.Tests
             Assert.Equal(1, session.RevitSummary.ExistingDuplicatesCount);
             Assert.Equal(0, session.RevitSummary.CreatedCount);
             Assert.Equal(1, session.RevitSummary.SkippedCount);
-            Assert.Contains(session.Entries, e => e.Action == BeamDiagnosticAction.SkippedDuplicate);
+            var entries = session.Entries.ToList();
+            Assert.Contains(entries, e => e.Action == BeamDiagnosticAction.SkippedDuplicate);
         }
 
         [Fact]
