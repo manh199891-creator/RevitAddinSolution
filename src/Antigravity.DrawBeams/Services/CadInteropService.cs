@@ -671,20 +671,26 @@ namespace Antigravity.DrawBeams.Services
                     BeamDiagnosticCollector.Instance.RecordWarning($"CAD Line ID '{kvp.Key}' was used by multiple raw candidates: {string.Join(", ", kvp.Value)}");
                 }
 
-                var pipeline = new BeamCadPipeline();
-                var pipelineBeams = pipeline.ProcessPipeline(rawSegments, dimTextDTOs);
+                try
+                {
+                    var pipeline = new BeamCadPipeline();
+                    var pipelineBeams = pipeline.ProcessPipeline(rawSegments, dimTextDTOs);
 
-                beams.Clear();
-                beams.AddRange(pipelineBeams);
+                    beams.Clear();
+                    beams.AddRange(pipelineBeams);
 
-                AssignMarksToBeams(beams, allTexts);
+                    AssignMarksToBeams(beams, allTexts);
 
-                var finalBeams = beams.Where(b => b.IsValid).ToList();
-                foreach (var beam in finalBeams)
-                    NormalizeBeamGeometry(beam);
+                    var finalBeams = beams.Where(b => b.IsValid).ToList();
+                    foreach (var beam in finalBeams)
+                        NormalizeBeamGeometry(beam);
 
-                BeamDiagnosticCollector.Instance.CompleteSession();
-                return finalBeams;
+                    return finalBeams;
+                }
+                finally
+                {
+                    BeamDiagnosticCollector.Instance.CompleteSession();
+                }
             }
             catch (Exception ex)
             {

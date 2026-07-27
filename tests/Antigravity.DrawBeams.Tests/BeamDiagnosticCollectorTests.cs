@@ -317,5 +317,96 @@ namespace Antigravity.DrawBeams.Tests
             Assert.Equal(BeamDiagnosticAction.SkippedDuplicate, session.Entries[0].Action);
             Assert.Equal("123456", session.Entries[0].ExistingRevitElementId);
         }
+
+        [Fact]
+        public void Test13_IntegrationPipeline_PopulatesEntriesAndCsv()
+        {
+            var collector = BeamDiagnosticCollector.Instance;
+            var session = collector.StartSession();
+
+            Assert.NotEqual("TEST_SESSION_09", session.SessionId);
+            Assert.False(string.IsNullOrEmpty(session.SessionId));
+
+            var pipeline = new BeamCadPipeline();
+            var rawSegments = new[]
+            {
+                new CadBeamSegment { StartX = 0, StartY = 0, EndX = 3000, EndY = 0, Width = 400, Height = 600, IsPaired = true, Confidence = 900 },
+                new CadBeamSegment { StartX = 0, StartY = 100, EndX = 3000, EndY = 100, Width = 400, Height = 600, IsPaired = true, Confidence = 900 },
+                new CadBeamSegment { StartX = 3000, StartY = 0, EndX = 6000, EndY = 0, Width = 400, Height = 600, IsPaired = true, Confidence = 900 },
+                new CadBeamSegment { StartX = 6000, StartY = 0, EndX = 9000, EndY = 0, Width = 400, Height = 600, IsPaired = true, Confidence = 900 },
+                new CadBeamSegment { StartX = 9000, StartY = 0, EndX = 12000, EndY = 0, Width = 400, Height = 600, IsPaired = true, Confidence = 900 }
+            };
+
+            // Manually record raw candidates as CadInteropService would
+            int idx = 0;
+            foreach (var seg in rawSegments)
+            {
+                collector.Record(new BeamDiagnosticEntry
+                {
+                    CandidateId = $"RAW_{++idx:D3}",
+                    Stage = BeamDiagnosticStage.RawBeamCandidate,
+                    Action = BeamDiagnosticAction.Kept,
+                    StartX = seg.StartX, StartY = seg.StartY, EndX = seg.EndX, EndY = seg.EndY,
+                    Width = seg.Width, Height = seg.Height, Confidence = seg.Confidence
+                });
+            }
+
+            var output = pipeline.ProcessPipeline(rawSegments);
+            collector.CompleteSession();
+
+            Assert.NotNull(session.EndTime);
+            Assert.True(session.Entries.Count > 0);
+
+            string tempDir = Path.Combine(Path.GetTempPath(), "DrawBeamsIntegrationCsv_" + Guid.NewGuid().ToString("N"));
+            var (success, filePath, warning) = collector.ExportCsv(tempDir);
+
+            Assert.True(success);
+            Assert.NotNull(filePath);
+            Assert.True(File.Exists(filePath));
+
+            string[] lines = File.ReadAllLines(filePath);
+            Assert.True(lines.Length > 1); // Header + data lines
+
+            Assert.Contains(session.Entries, e => e.Stage == BeamDiagnosticStage.RawBeamCandidate);
+            Assert.Contains(session.Entries, e => e.Stage == BeamDiagnosticStage.OverlapResolverOutput);
+
+            // Cleanup
+            if (File.Exists(filePath)) File.Delete(filePath);
+            if (Directory.Exists(tempDir)) Directory.Delete(tempDir, true);
+        }
+
+        [Fact]
+        public void Test14_RevitDuplicateSemanticsCounters()
+        {
+            var collector = BeamDiagnosticCollector.Instance;
+            var session = collector.StartSession();
+
+            // Simulate exact duplicate detection in Revit guard
+            bool isDup = RevitBeamGuardHelper.IsDuplicateRevitBeam(
+                0, 0, 3000, 0, 400, 600,
+                0, 0, 3000, 0, 400, 600);
+
+            if (isDup)
+            {
+                session.RevitSummary.ExistingDuplicatesCount++;
+                session.RevitSummary.SkippedCount++;
+
+                collector.Record(new BeamDiagnosticEntry
+                {
+                    CandidateId = "CAND_DUP_01",
+                    ExistingRevitElementId = "999888",
+                    Stage = BeamDiagnosticStage.RevitGuardCheck,
+                    Action = BeamDiagnosticAction.SkippedDuplicate,
+                    Reason = "Near-duplicate beam exists in Revit model (ElementId: 999888)."
+                });
+            }
+
+            collector.CompleteSession();
+
+            Assert.Equal(1, session.RevitSummary.ExistingDuplicatesCount);
+            Assert.Equal(0, session.RevitSummary.CreatedCount);
+            Assert.Equal(1, session.RevitSummary.SkippedCount);
+            Assert.Contains(session.Entries, e => e.Action == BeamDiagnosticAction.SkippedDuplicate);
+        }
     }
 }

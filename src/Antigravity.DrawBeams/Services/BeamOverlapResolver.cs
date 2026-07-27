@@ -94,6 +94,22 @@ namespace Antigravity.DrawBeams.Services
                 .ThenBy(b => b.EndY)
                 .ToList();
 
+            foreach (var b in activeList)
+            {
+                string id = $"CAND_{Math.Round(b.StartX)}_{Math.Round(b.StartY)}_{Math.Round(b.EndX)}_{Math.Round(b.EndY)}";
+                BeamDiagnosticCollector.Instance.Record(new BeamDiagnosticEntry
+                {
+                    CandidateId = id,
+                    Stage = BeamDiagnosticStage.OverlapResolverOutput,
+                    Action = BeamDiagnosticAction.Kept,
+                    Reason = "Kept by BeamOverlapResolver",
+                    DetectionMethod = b.DetectionMethod,
+                    Confidence = b.Confidence,
+                    StartX = b.StartX, StartY = b.StartY, EndX = b.EndX, EndY = b.EndY,
+                    Width = b.Width, Height = b.Height, Mark = b.Mark
+                });
+            }
+
             var summary = BeamDiagnosticCollector.Instance.CurrentSession?.PipelineSummary;
             if (summary != null)
             {

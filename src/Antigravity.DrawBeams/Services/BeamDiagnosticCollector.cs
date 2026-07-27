@@ -48,15 +48,25 @@ namespace Antigravity.DrawBeams.Services
             lock (_lock)
             {
                 if (options != null) _options = options;
-                string id = !string.IsNullOrEmpty(sessionId)
-                    ? sessionId
-                    : DateTime.Now.ToString("yyyyMMdd_HHmmss_fff", CultureInfo.InvariantCulture);
 
-                _currentSession = new BeamDiagnosticSession
+                // Finding 1 & 2: Reuse active session if unclosed and no explicit new ID requested
+                if (!string.IsNullOrEmpty(sessionId))
                 {
-                    SessionId = id,
-                    StartTime = DateTime.Now
-                };
+                    _currentSession = new BeamDiagnosticSession
+                    {
+                        SessionId = sessionId,
+                        StartTime = DateTime.Now
+                    };
+                }
+                else if (_currentSession == null || _currentSession.EndTime.HasValue)
+                {
+                    string dynamicId = $"{DateTime.Now:yyyyMMdd_HHmmss}_{Guid.NewGuid():N}".Substring(0, 23);
+                    _currentSession = new BeamDiagnosticSession
+                    {
+                        SessionId = dynamicId,
+                        StartTime = DateTime.Now
+                    };
+                }
 
                 return _currentSession;
             }
@@ -74,6 +84,21 @@ namespace Antigravity.DrawBeams.Services
                 if (string.IsNullOrEmpty(entry.SessionId))
                 {
                     entry.SessionId = _currentSession.SessionId;
+                }
+
+                // Automatic geometry length/angle computation if missing
+                if (entry.Length <= 0 && (entry.StartX != 0 || entry.EndX != 0 || entry.StartY != 0 || entry.EndY != 0))
+                {
+                    double dx = entry.EndX - entry.StartX;
+                    double dy = entry.EndY - entry.StartY;
+                    entry.Length = Math.Sqrt(dx * dx + dy * dy);
+                    if (entry.Length > 1e-9)
+                    {
+                        double a = Math.Atan2(dy, dx);
+                        while (a < 0) a += Math.PI;
+                        while (a >= Math.PI) a -= Math.PI;
+                        entry.AngleDegrees = a * 180.0 / Math.PI;
+                    }
                 }
 
                 _currentSession.Entries.Add(entry);
@@ -98,7 +123,12 @@ namespace Antigravity.DrawBeams.Services
             lock (_lock)
             {
                 if (_currentSession == null) return;
-                _currentSession.EndTime = DateTime.Now;
+
+                // Finding 3: Ensure EndTime is non-null
+                if (!_currentSession.EndTime.HasValue)
+                {
+                    _currentSession.EndTime = DateTime.Now;
+                }
 
                 if (_options != null && _options.Enabled && _options.AutoExport)
                 {
@@ -115,6 +145,11 @@ namespace Antigravity.DrawBeams.Services
                 try
                 {
                     if (_currentSession == null) return (false, null, "No active diagnostic session to export.");
+
+                    if (!_currentSession.EndTime.HasValue)
+                    {
+                        _currentSession.EndTime = DateTime.Now;
+                    }
 
                     string targetDir = !string.IsNullOrEmpty(directory)
                         ? directory
@@ -150,6 +185,11 @@ namespace Antigravity.DrawBeams.Services
                 try
                 {
                     if (_currentSession == null) return (false, null, "No active diagnostic session to export.");
+
+                    if (!_currentSession.EndTime.HasValue)
+                    {
+                        _currentSession.EndTime = DateTime.Now;
+                    }
 
                     string targetDir = !string.IsNullOrEmpty(directory)
                         ? directory
@@ -198,6 +238,19 @@ namespace Antigravity.DrawBeams.Services
                 sb.AppendLine("===================================");
                 sb.AppendLine($"Session ID: {session.SessionId}");
                 sb.AppendLine($"Start Time: {session.StartTime:yyyy-MM-dd HH:mm:ss}");
+                if (session.EndTime.HasValue)
+                {
+                    sb.AppendLine($"End Time:   {session.EndTime.Value:yyyy-MM-dd HH:mm:ss}");
+                }
+                sb.AppendLine();
+
+                if (session.Entries.Count == 0 && (pipe.RawCandidatesCount > 0 || cad.TotalEntities > 0))
+                {
+                    sb.AppendLine("WARNING: Beam diagnostic instrumentation failed: candidates were processed but no diagnostic entries were recorded.");
+                    sb.AppendLine();
+                }
+
+                sb.AppendLine($"Entries Recorded: {session.Entries.Count}");
                 sb.AppendLine();
                 sb.AppendLine("CAD Entities:");
                 sb.AppendLine($"  - Total: {cad.TotalEntities}");
