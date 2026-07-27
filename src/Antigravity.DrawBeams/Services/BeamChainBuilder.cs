@@ -149,13 +149,15 @@ namespace Antigravity.DrawBeams.Services
             }
 
             double len = Math.Sqrt(sumX * sumX + sumY * sumY);
-            if (len < 1e-9)
-            {
-                return (refUx, refUy, refSeg.Angle);
-            }
+            double ux = (len < 1e-9) ? refUx : sumX / len;
+            double uy = (len < 1e-9) ? refUy : sumY / len;
 
-            double ux = sumX / len;
-            double uy = sumY / len;
+            // MINOR 1: Enforce Canonical Axis Direction (ux > 0, or if |ux| <= 1e-9 then uy > 0)
+            if (ux < -1e-9 || (Math.Abs(ux) <= 1e-9 && uy < -1e-9))
+            {
+                ux = -ux;
+                uy = -uy;
+            }
 
             double theta = Math.Atan2(uy, ux);
             while (theta < 0) theta += Math.PI;
@@ -250,17 +252,14 @@ namespace Antigravity.DrawBeams.Services
                     return true;
                 }
 
-                // Full containment / duplicate check
-                double len1 = max1 - min1;
-                double len2 = max2 - min2;
-                double minLen = Math.Min(len1, len2);
-                if (overlap >= minLen - 1e-3)
+                // MAJOR 1: True geometric duplicate check (min, max, and length match within tolerance)
+                bool isDuplicate = Math.Abs(min1 - min2) <= 1e-3 && Math.Abs(max1 - max2) <= 1e-3;
+                if (isDuplicate)
                 {
-                    // Duplicate or full containment
                     return true;
                 }
 
-                // Partial overlap check: must meet MinimumOverlapMm
+                // Containment (non-duplicate) and partial overlap MUST satisfy MinimumOverlapMm
                 return overlap >= _options.MinimumOverlapMm;
             }
         }

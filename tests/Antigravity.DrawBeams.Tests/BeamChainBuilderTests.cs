@@ -1,5 +1,6 @@
 using Antigravity.DrawBeams.Models;
 using Antigravity.DrawBeams.Services;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using Xunit;
@@ -22,6 +23,63 @@ namespace Antigravity.DrawBeams.Tests
                 MinimumOverlapMm = 200
             };
             _builder = new BeamChainBuilder(_options);
+        }
+
+        // ==========================================
+        // MAJOR 1: CONTAINMENT VS DUPLICATE TESTS
+        // ==========================================
+
+        [Fact]
+        public void Major1_ContainedShortSegment_OverlapLessThanMinimumOverlap_ReturnsTwoChains()
+        {
+            // Segment A: 0-5000, Segment B: 200-300 (Overlap = 100mm < MinimumOverlapMm 200mm)
+            var segA = new CadBeamSegment { StartX = 0, StartY = 0, EndX = 5000, EndY = 0, Width = 400, Height = 600 };
+            var segB = new CadBeamSegment { StartX = 200, StartY = 0, EndX = 300, EndY = 0, Width = 400, Height = 600 };
+
+            var chains = _builder.BuildChains(new[] { segA, segB });
+
+            Assert.Equal(2, chains.Count);
+        }
+
+        [Fact]
+        public void Major1_Regression_ExactDuplicateSegments_ReturnsOneChain()
+        {
+            // Segment A: 0-1000, Segment B: 0-1000 (True geometric duplicates)
+            var segA = new CadBeamSegment { StartX = 0, StartY = 0, EndX = 1000, EndY = 0, Width = 400, Height = 600 };
+            var segB = new CadBeamSegment { StartX = 0, StartY = 0, EndX = 1000, EndY = 0, Width = 400, Height = 600 };
+
+            var chains = _builder.BuildChains(new[] { segA, segB });
+
+            Assert.Single(chains);
+            Assert.Equal(0, chains[0].StartX);
+            Assert.Equal(1000, chains[0].EndX);
+            Assert.Equal(2, chains[0].Segments.Count);
+        }
+
+        // ==========================================
+        // MINOR 1: CANONICAL CHAIN AXIS & REVERSED SEGMENTS
+        // ==========================================
+
+        [Fact]
+        public void Minor1_AllReversedRightToLeftSegments_FormsCanonicalChain()
+        {
+            // 3 consecutive segments all drawn Right-to-Left (larger X -> smaller X)
+            var seg1 = new CadBeamSegment { StartX = 3000, StartY = 0, EndX = 2000, EndY = 0, Width = 400, Height = 600 };
+            var seg2 = new CadBeamSegment { StartX = 2000, StartY = 0, EndX = 1000, EndY = 0, Width = 400, Height = 600 };
+            var seg3 = new CadBeamSegment { StartX = 1000, StartY = 0, EndX = 0, EndY = 0, Width = 400, Height = 600 };
+
+            var chains = _builder.BuildChains(new[] { seg1, seg2, seg3 });
+
+            Assert.Single(chains);
+            // Canonical direction forces StartX = min X (0) and EndX = max X (3000)
+            Assert.Equal(0, chains[0].StartX);
+            Assert.Equal(3000, chains[0].EndX);
+
+            // Segments ordered from Start to End along canonical axis
+            Assert.Equal(3, chains[0].Segments.Count);
+            Assert.Equal(0, Math.Min(chains[0].Segments[0].StartX, chains[0].Segments[0].EndX));
+            Assert.Equal(1000, Math.Min(chains[0].Segments[1].StartX, chains[0].Segments[1].EndX));
+            Assert.Equal(2000, Math.Min(chains[0].Segments[2].StartX, chains[0].Segments[2].EndX));
         }
 
         // ==========================================
@@ -91,14 +149,11 @@ namespace Antigravity.DrawBeams.Tests
         {
             // Seg1 at 0°, Seg2 at 2°, Seg3 at 4° (Total drift 4° > 2.5° tolerance)
             var seg1 = new CadBeamSegment { StartX = 0, StartY = 0, EndX = 1000, EndY = 0, Width = 400, Height = 600 };
-            // 2° angle: dx=1000, dy=34.92
             var seg2 = new CadBeamSegment { StartX = 1000, StartY = 0, EndX = 2000, EndY = 34.92, Width = 400, Height = 600 };
-            // 4° angle: dx=1000, dy=69.92
             var seg3 = new CadBeamSegment { StartX = 2000, StartY = 34.92, EndX = 3000, EndY = 104.84, Width = 400, Height = 600 };
 
             var chains = _builder.BuildChains(new[] { seg1, seg2, seg3 });
 
-            // Must split because 0° and 4° differ by 4° > 2.5°
             Assert.True(chains.Count > 1);
         }
 
@@ -112,14 +167,12 @@ namespace Antigravity.DrawBeams.Tests
 
             var chains = _builder.BuildChains(new[] { seg1, seg2, seg3 });
 
-            // Must split because y=0 and y=50 differ by 50mm > 30mm
             Assert.True(chains.Count > 1);
         }
 
         [Fact]
         public void Finding2_Diagonal45Deg_ThreeStraightSegments_FormsSingleChain()
         {
-            // 3 truly straight segments along 45° line: (0,0)->(1000,1000)->(2000,2000)->(3000,3000)
             var seg1 = new CadBeamSegment { StartX = 0, StartY = 0, EndX = 1000, EndY = 1000, Width = 400, Height = 600 };
             var seg2 = new CadBeamSegment { StartX = 1000, StartY = 1000, EndX = 2000, EndY = 2000, Width = 400, Height = 600 };
             var seg3 = new CadBeamSegment { StartX = 2000, StartY = 2000, EndX = 3000, EndY = 3000, Width = 400, Height = 600 };
@@ -162,7 +215,6 @@ namespace Antigravity.DrawBeams.Tests
             Assert.Equal(run1[0].EndX, run3[0].EndX);
             Assert.Equal(run1[0].Mark, run3[0].Mark);
 
-            // Ordered segments in chain must be strictly sorted by projection
             Assert.Equal(seg1.StartX, run1[0].Segments[0].StartX);
             Assert.Equal(seg2.StartX, run1[0].Segments[1].StartX);
             Assert.Equal(seg3.StartX, run1[0].Segments[2].StartX);
@@ -193,7 +245,6 @@ namespace Antigravity.DrawBeams.Tests
         [Fact]
         public void Additional_BranchingCandidate_DoesNotMergePerpendicularBranch()
         {
-            // Main beam S1 + S2, perpendicular branch S3 at T-junction (x=1000)
             var seg1 = new CadBeamSegment { StartX = 0, StartY = 0, EndX = 1000, EndY = 0, Width = 400, Height = 600 };
             var seg2 = new CadBeamSegment { StartX = 1000, StartY = 0, EndX = 2000, EndY = 0, Width = 400, Height = 600 };
             var segBranch = new CadBeamSegment { StartX = 1000, StartY = 0, EndX = 1000, EndY = 1000, Width = 400, Height = 600 };
@@ -213,7 +264,6 @@ namespace Antigravity.DrawBeams.Tests
         [Fact]
         public void Additional_Diagonal30DegChain_FormsOneChain()
         {
-            // 30° angle: cos(30°)=0.866025, sin(30°)=0.500000
             var seg1 = new CadBeamSegment { StartX = 0, StartY = 0, EndX = 866.025, EndY = 500, Width = 400, Height = 600 };
             var seg2 = new CadBeamSegment { StartX = 866.025, StartY = 500, EndX = 1732.05, EndY = 1000, Width = 400, Height = 600 };
 
@@ -229,7 +279,6 @@ namespace Antigravity.DrawBeams.Tests
         [Fact]
         public void Additional_ReversedEndpoints_FormsOneChainCorrectly()
         {
-            // Seg2 has reversed Start/End points (StartX=2000, EndX=1000)
             var seg1 = new CadBeamSegment { StartX = 0, StartY = 0, EndX = 1000, EndY = 0, Width = 400, Height = 600 };
             var seg2 = new CadBeamSegment { StartX = 2000, StartY = 0, EndX = 1000, EndY = 0, Width = 400, Height = 600 };
 
