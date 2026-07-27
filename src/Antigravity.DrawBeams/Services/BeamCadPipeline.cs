@@ -30,6 +30,12 @@ namespace Antigravity.DrawBeams.Services
             var chainBuilder = new BeamChainBuilder(opt);
             var initialChains = chainBuilder.BuildChains(rawSegments);
 
+            var summary = BeamDiagnosticCollector.Instance.CurrentSession?.PipelineSummary;
+            if (summary != null)
+            {
+                summary.ContinuityChainsCount = initialChains.Count;
+            }
+
             // Step 2: Dimension Resolver & Splitting along Chains using opt
             var resolvedChains = ResolveDimensionsAndSplitChains(initialChains, textList, opt);
 
@@ -43,6 +49,11 @@ namespace Antigravity.DrawBeams.Services
                 {
                     result.Add(beamData);
                 }
+            }
+
+            if (summary != null)
+            {
+                summary.BeforeOverlapCount = result.Count;
             }
 
             // Step 4: Overlap Suppression using BeamOverlapResolver

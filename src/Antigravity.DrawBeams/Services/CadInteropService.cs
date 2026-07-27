@@ -178,6 +178,12 @@ namespace Antigravity.DrawBeams.Services
                 utility.Prompt("\nV12: Quét chọn vùng dầm cần vẽ... ");
                 sset.SelectOnScreen();
 
+                // ── Bước 0: Thống kê & Khởi tạo Diagnostics Session ──
+                BeamDiagnosticCollector.Instance.StartSession();
+                var diagSession = BeamDiagnosticCollector.Instance.CurrentSession;
+                var cadSummary = diagSession.CadSelectionSummary;
+                cadSummary.TotalEntities = sset.Count;
+
                 // ── Bước 1: Thu thập TẤT CẢ đối tượng ──
                 List<CadLineSegment> allSegments = new List<CadLineSegment>();
                 List<dynamic> allTexts = new List<dynamic>();
@@ -195,6 +201,7 @@ namespace Antigravity.DrawBeams.Services
 
                     if (objName == "AcDbLine")
                     {
+                        cadSummary.LineCount++;
                         allSegments.Add(new CadLineSegment
                         {
                             StartPoint = entity.StartPoint,
@@ -206,6 +213,7 @@ namespace Antigravity.DrawBeams.Services
                     }
                     else if (objName == "AcDbPolyline" || objName == "AcDb2dPolyline")
                     {
+                        cadSummary.PolylineCount++;
                         var segments = ExtractSegmentsFromPolyline(entity);
                         allSegments.AddRange(segments);
                     }
@@ -216,10 +224,27 @@ namespace Antigravity.DrawBeams.Services
                     }
                     else if (objName == "AcDbText" || objName == "AcDbMText")
                     {
+                        if (objName == "AcDbText") cadSummary.TextCount++;
+                        else cadSummary.MTextCount++;
+
                         if (activeTextLayers.Count == 0 || activeTextLayers.Contains(entLayer))
                         {
                             allTexts.Add(entity);
                         }
+                        else
+                        {
+                            cadSummary.SkippedCount++;
+                            string reasonKey = $"TextLayerNotActive:{entLayer}";
+                            if (!cadSummary.SkippedReasons.ContainsKey(reasonKey)) cadSummary.SkippedReasons[reasonKey] = 0;
+                            cadSummary.SkippedReasons[reasonKey]++;
+                        }
+                    }
+                    else
+                    {
+                        cadSummary.SkippedCount++;
+                        string reasonKey = $"UnsupportedType:{objName}";
+                        if (!cadSummary.SkippedReasons.ContainsKey(reasonKey)) cadSummary.SkippedReasons[reasonKey] = 0;
+                        cadSummary.SkippedReasons[reasonKey]++;
                     }
                 }
 
@@ -589,7 +614,61 @@ namespace Antigravity.DrawBeams.Services
 
                 if (allTexts.Count > 0 && dimTextDTOs.Count == 0)
                 {
+                    BeamDiagnosticCollector.Instance.RecordWarning($"{allTexts.Count} COM text entities were scanned but 0 valid dimension DTOs were produced.");
                     System.Diagnostics.Debug.WriteLine($"[DrawBeams Diagnostics] Warning: {allTexts.Count} COM text entities were scanned but 0 valid dimension DTOs were produced.");
+                }
+
+                // Record Raw Candidates in Diagnostic Collector
+                diagSession.PipelineSummary.RawCandidatesCount = rawSegments.Count;
+                int candIdx = 0;
+                var lineUsage = new Dictionary<string, List<string>>(StringComparer.OrdinalIgnoreCase);
+
+                foreach (var seg in rawSegments)
+                {
+                    string candId = $"RAW_{++candIdx:D3}";
+                    BeamDiagnosticCollector.Instance.Record(new BeamDiagnosticEntry
+                    {
+                        CandidateId = candId,
+                        Stage = BeamDiagnosticStage.RawBeamCandidate,
+                        Action = BeamDiagnosticAction.Kept,
+                        Reason = $"Extracted via {seg.DetectionMethod}",
+                        DetectionMethod = seg.DetectionMethod,
+                        Confidence = seg.Confidence,
+                        StartX = seg.StartX,
+                        StartY = seg.StartY,
+                        EndX = seg.EndX,
+                        EndY = seg.EndY,
+                        Length = seg.Length,
+                        AngleDegrees = seg.Angle * 180.0 / Math.PI,
+                        Width = seg.Width,
+                        Height = seg.Height,
+                        MeasuredWidth = seg.MeasuredWidth,
+                        Mark = seg.Mark,
+                        TextContent = seg.TextContent,
+                        HasDimensionText = seg.HasDimensionText,
+                        SourceLayer = seg.Layer,
+                        SourceLineIds = seg.SourceLineIds != null ? new List<string>(seg.SourceLineIds) : new List<string>(),
+                        IsPaired = seg.IsPaired
+                    });
+
+                    if (seg.SourceLineIds != null)
+                    {
+                        foreach (var lid in seg.SourceLineIds)
+                        {
+                            if (string.IsNullOrEmpty(lid)) continue;
+                            if (!lineUsage.TryGetValue(lid, out var list))
+                            {
+                                list = new List<string>();
+                                lineUsage[lid] = list;
+                            }
+                            list.Add(candId);
+                        }
+                    }
+                }
+
+                foreach (var kvp in lineUsage.Where(k => k.Value.Count > 1))
+                {
+                    BeamDiagnosticCollector.Instance.RecordWarning($"CAD Line ID '{kvp.Key}' was used by multiple raw candidates: {string.Join(", ", kvp.Value)}");
                 }
 
                 var pipeline = new BeamCadPipeline();
@@ -604,6 +683,7 @@ namespace Antigravity.DrawBeams.Services
                 foreach (var beam in finalBeams)
                     NormalizeBeamGeometry(beam);
 
+                BeamDiagnosticCollector.Instance.CompleteSession();
                 return finalBeams;
             }
             catch (Exception ex)

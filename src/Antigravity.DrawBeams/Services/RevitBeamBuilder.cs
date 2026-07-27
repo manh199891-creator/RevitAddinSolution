@@ -124,9 +124,28 @@ namespace Antigravity.DrawBeams.Services
             Curve curve, FamilySymbol symbol, Level level, double offsetMm, int justification,
             double widthMm, double heightMm, string mark = null, BeamOverlapOptions options = null)
         {
+            var revSummary = BeamDiagnosticCollector.Instance.CurrentSession?.RevitSummary;
+
             ElementId existingId = FindOverlappingExistingBeam(curve, level, widthMm, heightMm, options);
             if (existingId != ElementId.InvalidElementId)
             {
+                if (revSummary != null)
+                {
+                    revSummary.ExistingDuplicatesCount++;
+                    revSummary.SkippedCount++;
+                }
+
+                BeamDiagnosticCollector.Instance.Record(new BeamDiagnosticEntry
+                {
+                    Stage = BeamDiagnosticStage.RevitGuardCheck,
+                    Action = BeamDiagnosticAction.SkippedDuplicate,
+                    ExistingRevitElementId = existingId.ToString(),
+                    Reason = $"Near-duplicate beam exists in Revit model (ElementId: {existingId}).",
+                    Width = widthMm,
+                    Height = heightMm,
+                    Mark = mark
+                });
+
                 return new BeamCreateResult
                 {
                     Status = BeamCreateStatus.SkippedDuplicate,
@@ -138,6 +157,23 @@ namespace Antigravity.DrawBeams.Services
             try
             {
                 FamilyInstance instance = CreateBeam(curve, symbol, level, offsetMm, justification, mark);
+
+                if (revSummary != null)
+                {
+                    revSummary.CreatedCount++;
+                }
+
+                BeamDiagnosticCollector.Instance.Record(new BeamDiagnosticEntry
+                {
+                    Stage = BeamDiagnosticStage.RevitCreateResult,
+                    Action = BeamDiagnosticAction.Created,
+                    ExistingRevitElementId = instance?.Id.ToString(),
+                    Reason = "Successfully created new Revit beam.",
+                    Width = widthMm,
+                    Height = heightMm,
+                    Mark = mark
+                });
+
                 return new BeamCreateResult
                 {
                     Status = BeamCreateStatus.Created,
@@ -147,6 +183,23 @@ namespace Antigravity.DrawBeams.Services
             }
             catch (Exception ex)
             {
+                if (revSummary != null)
+                {
+                    revSummary.FailedCount++;
+                }
+
+                BeamDiagnosticCollector.Instance.Record(new BeamDiagnosticEntry
+                {
+                    Stage = BeamDiagnosticStage.RevitCreateResult,
+                    Action = BeamDiagnosticAction.Failed,
+                    ExceptionType = ex.GetType().FullName,
+                    ExceptionMessage = ex.Message,
+                    Reason = $"Revit beam creation failed: {ex.Message}",
+                    Width = widthMm,
+                    Height = heightMm,
+                    Mark = mark
+                });
+
                 return new BeamCreateResult
                 {
                     Status = BeamCreateStatus.Failed,

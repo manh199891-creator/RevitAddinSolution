@@ -40,32 +40,69 @@ namespace Antigravity.DrawBeams.Services
                 var beamA = sortedCandidates[i];
                 if (suppressed.Contains(beamA)) continue;
 
+                string idA = $"CAND_{Math.Round(beamA.StartX)}_{Math.Round(beamA.StartY)}_{Math.Round(beamA.EndX)}_{Math.Round(beamA.EndY)}";
+
                 for (int j = i + 1; j < sortedCandidates.Count; j++)
                 {
                     var beamB = sortedCandidates[j];
                     if (suppressed.Contains(beamB)) continue;
 
+                    string idB = $"CAND_{Math.Round(beamB.StartX)}_{Math.Round(beamB.StartY)}_{Math.Round(beamB.EndX)}_{Math.Round(beamB.EndY)}";
+
                     var decision = EvaluateOverlapPair(beamA, beamB, opt);
                     if (decision == OverlapDecision.SuppressB)
                     {
                         suppressed.Add(beamB);
+                        BeamDiagnosticCollector.Instance.Record(new BeamDiagnosticEntry
+                        {
+                            CandidateId = idB,
+                            RelatedCandidateId = idA,
+                            Stage = BeamDiagnosticStage.OverlapResolverOutput,
+                            Action = BeamDiagnosticAction.Suppressed,
+                            Reason = $"Suppressed by higher priority candidate {idA}",
+                            DetectionMethod = beamB.DetectionMethod,
+                            Confidence = beamB.Confidence,
+                            StartX = beamB.StartX, StartY = beamB.StartY, EndX = beamB.EndX, EndY = beamB.EndY,
+                            Width = beamB.Width, Height = beamB.Height, Mark = beamB.Mark
+                        });
                     }
                     else if (decision == OverlapDecision.SuppressA)
                     {
                         suppressed.Add(beamA);
+                        BeamDiagnosticCollector.Instance.Record(new BeamDiagnosticEntry
+                        {
+                            CandidateId = idA,
+                            RelatedCandidateId = idB,
+                            Stage = BeamDiagnosticStage.OverlapResolverOutput,
+                            Action = BeamDiagnosticAction.Suppressed,
+                            Reason = $"Suppressed by higher priority candidate {idB}",
+                            DetectionMethod = beamA.DetectionMethod,
+                            Confidence = beamA.Confidence,
+                            StartX = beamA.StartX, StartY = beamA.StartY, EndX = beamA.EndX, EndY = beamA.EndY,
+                            Width = beamA.Width, Height = beamA.Height, Mark = beamA.Mark
+                        });
                         break;
                     }
                 }
             }
 
-            // Step 3: Return active beams deterministically sorted by StartX, StartY, EndX, EndY
-            return sortedCandidates
+            var activeList = sortedCandidates
                 .Where(b => !suppressed.Contains(b))
                 .OrderBy(b => b.StartX)
                 .ThenBy(b => b.StartY)
                 .ThenBy(b => b.EndX)
                 .ThenBy(b => b.EndY)
                 .ToList();
+
+            var summary = BeamDiagnosticCollector.Instance.CurrentSession?.PipelineSummary;
+            if (summary != null)
+            {
+                summary.BeforeOverlapCount = sortedCandidates.Count;
+                summary.SuppressedOverlapsCount = suppressed.Count;
+                summary.AfterOverlapCount = activeList.Count;
+            }
+
+            return activeList;
         }
 
         public static double GetPriorityScore(CadBeamData b)
