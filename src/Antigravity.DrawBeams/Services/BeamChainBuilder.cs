@@ -14,9 +14,23 @@ namespace Antigravity.DrawBeams.Services
         public double EndX { get; set; }
         public double EndY { get; set; }
 
-        public double Width => Segments.FirstOrDefault(s => s.Width > 0)?.Width ?? 0;
-        public double Height => Segments.FirstOrDefault(s => s.Height > 0)?.Height ?? 0;
-        public string Mark => Segments.FirstOrDefault(s => !string.IsNullOrEmpty(s.Mark))?.Mark;
+        public double Width => Segments
+            .Where(s => s.Width > 0)
+            .OrderByDescending(s => s.Confidence)
+            .ThenByDescending(s => s.Length)
+            .FirstOrDefault()?.Width ?? 0;
+
+        public double Height => Segments
+            .Where(s => s.Height > 0)
+            .OrderByDescending(s => s.Confidence)
+            .ThenByDescending(s => s.Length)
+            .FirstOrDefault()?.Height ?? 0;
+
+        public string Mark => Segments
+            .Where(s => !string.IsNullOrEmpty(s.Mark))
+            .OrderByDescending(s => s.Confidence)
+            .ThenByDescending(s => s.Length)
+            .FirstOrDefault()?.Mark;
     }
 
     public class BeamChainBuilder
@@ -32,96 +46,181 @@ namespace Antigravity.DrawBeams.Services
         {
             if (segments == null) return new List<BeamChain>();
 
-            var list = segments.Where(s => s != null && s.Length > 1e-3).ToList();
-            if (list.Count == 0) return new List<BeamChain>();
+            // 1. Filter out null or zero-length segments
+            var validSegments = segments
+                .Where(s => s != null && s.Length > 1e-3)
+                .ToList();
 
-            int n = list.Count;
-            var parent = new int[n];
-            for (int i = 0; i < n; i++) parent[i] = i;
+            if (validSegments.Count == 0) return new List<BeamChain>();
 
-            int Find(int i)
-            {
-                if (parent[i] == i) return i;
-                return parent[i] = Find(parent[i]);
-            }
+            // 2. Deterministic initial ordering of input segments to eliminate input-order dependence
+            var sortedInput = validSegments
+                .OrderByDescending(s => s.Length)
+                .ThenBy(s => s.StartX)
+                .ThenBy(s => s.StartY)
+                .ThenBy(s => s.EndX)
+                .ThenBy(s => s.EndY)
+                .ThenBy(s => s.Layer ?? "")
+                .ToList();
 
-            void Union(int i, int j)
-            {
-                int rootI = Find(i);
-                int rootJ = Find(j);
-                if (rootI != rootJ)
-                {
-                    parent[rootI] = rootJ;
-                }
-            }
-
-            for (int i = 0; i < n; i++)
-            {
-                for (int j = i + 1; j < n; j++)
-                {
-                    if (AreSegmentsContinuous(list[i], list[j]))
-                    {
-                        Union(i, j);
-                    }
-                }
-            }
-
-            var groups = new Dictionary<int, List<CadBeamSegment>>();
-            for (int i = 0; i < n; i++)
-            {
-                int root = Find(i);
-                if (!groups.ContainsKey(root))
-                {
-                    groups[root] = new List<CadBeamSegment>();
-                }
-                groups[root].Add(list[i]);
-            }
-
+            var unassigned = new HashSet<CadBeamSegment>(sortedInput);
             var chains = new List<BeamChain>();
-            foreach (var kvp in groups)
+
+            while (unassigned.Count > 0)
             {
-                var chainSegments = kvp.Value;
-                var chain = CreateChainFromSegments(chainSegments);
+                // Pick longest remaining unassigned segment as seed
+                var seed = sortedInput.First(s => unassigned.Contains(s));
+                var currentChainSegments = new List<CadBeamSegment> { seed };
+                unassigned.Remove(seed);
+
+                bool addedAny;
+                do
+                {
+                    addedAny = false;
+
+                    // Compute current chain axis from current chain segments
+                    var (ux, uy, theta) = ComputeChainAxis(currentChainSegments);
+                    double nx = -uy;
+                    double ny = ux;
+
+                    // Search unassigned candidates that are compatible with chain axis and all existing segments
+                    CadBeamSegment bestCandidate = null;
+                    double minDistance = double.MaxValue;
+
+                    foreach (var candidate in sortedInput.Where(s => unassigned.Contains(s)))
+                    {
+                        if (IsSegmentCompatibleWithChain(candidate, currentChainSegments, ux, uy, theta, nx, ny))
+                        {
+                            double dist = ComputeDistanceToChain(candidate, currentChainSegments, ux, uy);
+                            if (dist < minDistance)
+                            {
+                                minDistance = dist;
+                                bestCandidate = candidate;
+                            }
+                        }
+                    }
+
+                    if (bestCandidate != null)
+                    {
+                        currentChainSegments.Add(bestCandidate);
+                        unassigned.Remove(bestCandidate);
+                        addedAny = true;
+                    }
+
+                } while (addedAny);
+
+                var chain = FinalizeChain(currentChainSegments);
                 chains.Add(chain);
             }
 
-            return chains;
+            // Sort final chains deterministically
+            return chains
+                .OrderBy(c => c.StartX)
+                .ThenBy(c => c.StartY)
+                .ThenBy(c => c.EndX)
+                .ThenBy(c => c.EndY)
+                .ToList();
         }
 
-        private bool AreSegmentsContinuous(CadBeamSegment s1, CadBeamSegment s2)
+        private (double ux, double uy, double theta) ComputeChainAxis(List<CadBeamSegment> segments)
         {
-            // 1. Check Angular Tolerance
-            double angleDiff = Math.Abs(s1.Angle - s2.Angle);
-            if (angleDiff > Math.PI / 2.0) angleDiff = Math.PI - angleDiff;
-            double angleDiffDeg = angleDiff * 180.0 / Math.PI;
-            if (angleDiffDeg > _options.AngularToleranceDegrees) return false;
+            // Reference direction from longest segment
+            var refSeg = segments.OrderByDescending(s => s.Length).First();
+            double refUx = refSeg.DirectionX / refSeg.Length;
+            double refUy = refSeg.DirectionY / refSeg.Length;
 
-            // 2. Check Width Tolerance
-            if (s1.Width > 0 && s2.Width > 0)
+            double sumX = 0;
+            double sumY = 0;
+
+            foreach (var s in segments)
             {
-                double maxW = Math.Max(s1.Width, s2.Width);
-                double diffW = Math.Abs(s1.Width - s2.Width);
-                if (diffW / maxW > _options.WidthToleranceRatio && diffW > 5.0)
+                double segUx = s.DirectionX / s.Length;
+                double segUy = s.DirectionY / s.Length;
+
+                // Handle reversed direction segments by flipping vector if dot product < 0
+                if (segUx * refUx + segUy * refUy < 0)
                 {
-                    return false;
+                    segUx = -segUx;
+                    segUy = -segUy;
+                }
+
+                sumX += s.Length * segUx;
+                sumY += s.Length * segUy;
+            }
+
+            double len = Math.Sqrt(sumX * sumX + sumY * sumY);
+            if (len < 1e-9)
+            {
+                return (refUx, refUy, refSeg.Angle);
+            }
+
+            double ux = sumX / len;
+            double uy = sumY / len;
+
+            double theta = Math.Atan2(uy, ux);
+            while (theta < 0) theta += Math.PI;
+            while (theta >= Math.PI) theta -= Math.PI;
+
+            return (ux, uy, theta);
+        }
+
+        private bool IsSegmentCompatibleWithChain(
+            CadBeamSegment candidate,
+            List<CadBeamSegment> chainSegments,
+            double ux, double uy, double theta,
+            double nx, double ny)
+        {
+            // 1. Angular Check against chain axis
+            double candidateAngleDiff = Math.Abs(candidate.Angle - theta);
+            if (candidateAngleDiff > Math.PI / 2.0) candidateAngleDiff = Math.PI - candidateAngleDiff;
+            if (candidateAngleDiff * 180.0 / Math.PI > _options.AngularToleranceDegrees) return false;
+
+            // 2. Check against ALL existing segments in chain to prevent cumulative drift
+            foreach (var s in chainSegments)
+            {
+                double pairAngleDiff = Math.Abs(candidate.Angle - s.Angle);
+                if (pairAngleDiff > Math.PI / 2.0) pairAngleDiff = Math.PI - pairAngleDiff;
+                if (pairAngleDiff * 180.0 / Math.PI > _options.AngularToleranceDegrees) return false;
+
+                if (candidate.Width > 0 && s.Width > 0)
+                {
+                    double maxW = Math.Max(candidate.Width, s.Width);
+                    double diffW = Math.Abs(candidate.Width - s.Width);
+                    if (diffW / maxW > _options.WidthToleranceRatio && diffW > 5.0) return false;
                 }
             }
 
-            // 3. Check Direction and Axis
-            double ux = Math.Cos(s1.Angle);
-            double uy = Math.Sin(s1.Angle);
-            double nx = -uy;
-            double ny = ux;
+            // 3. Lateral Offset Check against chain axis
+            var allSegments = chainSegments.Concat(new[] { candidate });
+            double minLateral = double.MaxValue;
+            double maxLateral = double.MinValue;
 
-            // Lateral distance from s2 mid & endpoints to s1 axis
-            double distStart = Math.Abs((s2.StartX - s1.StartX) * nx + (s2.StartY - s1.StartY) * ny);
-            double distEnd = Math.Abs((s2.EndX - s1.StartX) * nx + (s2.EndY - s1.StartY) * ny);
-            if (distStart > _options.LateralOffsetToleranceMm || distEnd > _options.LateralOffsetToleranceMm)
+            foreach (var s in allSegments)
             {
-                return false;
+                double lat1 = s.StartX * nx + s.StartY * ny;
+                double lat2 = s.EndX * nx + s.EndY * ny;
+                minLateral = Math.Min(minLateral, Math.Min(lat1, lat2));
+                maxLateral = Math.Max(maxLateral, Math.Max(lat1, lat2));
             }
 
-            // 4. Longitudinal Gap / Overlap Check
+            if ((maxLateral - minLateral) > _options.LateralOffsetToleranceMm) return false;
+
+            // 4. Longitudinal Gap / Overlap Check against closest adjacent segment in chain
+            bool connectsToAny = false;
+            foreach (var s in chainSegments)
+            {
+                if (AreTwoSegmentsAdjacent(candidate, s, ux, uy))
+                {
+                    connectsToAny = true;
+                    break;
+                }
+            }
+
+            return connectsToAny;
+        }
+
+        private bool AreTwoSegmentsAdjacent(CadBeamSegment s1, CadBeamSegment s2, double ux, double uy)
+        {
             double t1_1 = s1.StartX * ux + s1.StartY * uy;
             double t1_2 = s1.EndX * ux + s1.EndY * uy;
             double min1 = Math.Min(t1_1, t1_2);
@@ -132,66 +231,116 @@ namespace Antigravity.DrawBeams.Services
             double min2 = Math.Min(t2_1, t2_2);
             double max2 = Math.Max(t2_1, t2_2);
 
-            double gap;
-            if (max1 < min2)
+            if (max1 < min2 - 1e-4) // s1 strictly before s2
             {
-                gap = min2 - max1;
+                double gap = min2 - max1;
+                return gap <= _options.EndpointGapToleranceMm;
             }
-            else if (max2 < min1)
+            else if (max2 < min1 - 1e-4) // s2 strictly before s1
             {
-                gap = min1 - max2;
+                double gap = min1 - max2;
+                return gap <= _options.EndpointGapToleranceMm;
             }
-            else
+            else // Overlapping or touching
             {
-                gap = 0; // Overlapping or touching
-            }
+                double overlap = Math.Min(max1, max2) - Math.Max(min1, min2);
+                if (overlap <= 1e-4)
+                {
+                    // Touching at endpoint (zero overlap)
+                    return true;
+                }
 
-            return gap <= _options.EndpointGapToleranceMm;
+                // Full containment / duplicate check
+                double len1 = max1 - min1;
+                double len2 = max2 - min2;
+                double minLen = Math.Min(len1, len2);
+                if (overlap >= minLen - 1e-3)
+                {
+                    // Duplicate or full containment
+                    return true;
+                }
+
+                // Partial overlap check: must meet MinimumOverlapMm
+                return overlap >= _options.MinimumOverlapMm;
+            }
         }
 
-        private BeamChain CreateChainFromSegments(List<CadBeamSegment> segments)
+        private double ComputeDistanceToChain(CadBeamSegment candidate, List<CadBeamSegment> chainSegments, double ux, double uy)
         {
-            var chain = new BeamChain { Segments = segments };
-            if (segments.Count == 1)
+            double candT1 = candidate.StartX * ux + candidate.StartY * uy;
+            double candT2 = candidate.EndX * ux + candidate.EndY * uy;
+            double candMin = Math.Min(candT1, candT2);
+            double candMax = Math.Max(candT1, candT2);
+
+            double minDistance = double.MaxValue;
+            foreach (var s in chainSegments)
             {
-                var s = segments[0];
-                chain.StartX = s.StartX;
-                chain.StartY = s.StartY;
-                chain.EndX = s.EndX;
-                chain.EndY = s.EndY;
-                return chain;
+                double sT1 = s.StartX * ux + s.StartY * uy;
+                double sT2 = s.EndX * ux + s.EndY * uy;
+                double sMin = Math.Min(sT1, sT2);
+                double sMax = Math.Max(sT1, sT2);
+
+                double dist;
+                if (candMax < sMin) dist = sMin - candMax;
+                else if (sMax < candMin) dist = candMin - sMax;
+                else dist = 0;
+
+                if (dist < minDistance) minDistance = dist;
             }
 
-            // Calculate overall direction vector using average angle
-            double avgAngle = segments[0].Angle;
-            double ux = Math.Cos(avgAngle);
-            double uy = Math.Sin(avgAngle);
+            return minDistance;
+        }
+
+        private BeamChain FinalizeChain(List<CadBeamSegment> segments)
+        {
+            var (ux, uy, theta) = ComputeChainAxis(segments);
             double nx = -uy;
             double ny = ux;
 
-            // Project all endpoints onto the principal axis (ux, uy)
-            var points = new List<Tuple<double, double, double>>(); // (t, x, y)
+            var projected = segments.Select(s =>
+            {
+                double tStart = s.StartX * ux + s.StartY * uy;
+                double tEnd = s.EndX * ux + s.EndY * uy;
+                double minT = Math.Min(tStart, tEnd);
+                double maxT = Math.Max(tStart, tEnd);
+                return new { Segment = s, MinT = minT, MaxT = maxT };
+            })
+            .OrderBy(p => p.MinT)
+            .ThenByDescending(p => p.MaxT)
+            .ThenBy(p => p.Segment.StartX)
+            .ThenBy(p => p.Segment.StartY)
+            .ToList();
+
+            var orderedSegments = projected.Select(p => p.Segment).ToList();
+
+            var allPoints = new List<Tuple<double, double, double>>();
             foreach (var s in segments)
             {
                 double tStart = s.StartX * ux + s.StartY * uy;
                 double tEnd = s.EndX * ux + s.EndY * uy;
-                points.Add(Tuple.Create(tStart, s.StartX, s.StartY));
-                points.Add(Tuple.Create(tEnd, s.EndX, s.EndY));
+                allPoints.Add(Tuple.Create(tStart, s.StartX, s.StartY));
+                allPoints.Add(Tuple.Create(tEnd, s.EndX, s.EndY));
             }
 
-            points = points.OrderBy(p => p.Item1).ToList();
-            var minPt = points.First();
-            var maxPt = points.Last();
+            allPoints = allPoints.OrderBy(p => p.Item1).ToList();
+            var minPt = allPoints.First();
+            var maxPt = allPoints.Last();
 
-            // Calculate average lateral offset to align chain center
-            double avgOffset = points.Average(p => p.Item2 * nx + p.Item3 * ny);
+            double avgOffset = allPoints.Average(p => p.Item2 * nx + p.Item3 * ny);
 
-            chain.StartX = Math.Round(minPt.Item1 * ux + avgOffset * nx, 4);
-            chain.StartY = Math.Round(minPt.Item1 * uy + avgOffset * ny, 4);
-            chain.EndX = Math.Round(maxPt.Item1 * ux + avgOffset * nx, 4);
-            chain.EndY = Math.Round(maxPt.Item1 * uy + avgOffset * ny, 4);
+            double startX = Math.Round(minPt.Item1 * ux + avgOffset * nx, 4);
+            double startY = Math.Round(minPt.Item1 * uy + avgOffset * ny, 4);
+            double endX = Math.Round(maxPt.Item1 * ux + avgOffset * nx, 4);
+            double endY = Math.Round(maxPt.Item1 * uy + avgOffset * ny, 4);
 
-            return chain;
+            return new BeamChain
+            {
+                Segments = orderedSegments,
+                StartX = startX,
+                StartY = startY,
+                EndX = endX,
+                EndY = endY
+            };
         }
     }
 }
