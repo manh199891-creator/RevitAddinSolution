@@ -492,7 +492,11 @@ namespace Antigravity.DrawBeams.Tests
 
             collector.CompleteSession();
 
-            var entries = session.Entries.ToList();
+            List<BeamDiagnosticEntry> entries;
+            lock (collector)
+            {
+                entries = session.Entries.ToList();
+            }
             Assert.Contains(entries, e => e.Action == BeamDiagnosticAction.Warning && e.Reason.Contains("DiagnosticCounterInvariantFailed"));
         }
 

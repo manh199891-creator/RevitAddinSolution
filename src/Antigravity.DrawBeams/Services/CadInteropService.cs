@@ -117,44 +117,7 @@ namespace Antigravity.DrawBeams.Services
             public string TextContent { get; set; }         // Nội dung text gốc
             public double OverlapLength { get; set; }       // Chiều dài chồng lấn
             public double Confidence { get; set; }          // Điểm tin cậy
-        }
-
-        private class CadLineSegment
-        {
-            public double[] StartPoint { get; set; }
-            public double[] EndPoint { get; set; }
-            public string Id { get; set; }
-            public string Layer { get; set; }
-            public int Color { get; set; } = -1;
-            /// <summary>Bề dày polyline (mm). 0 = Line thường hoặc Polyline không có width.</summary>
-            public double PolylineWidth { get; set; } = 0;
-            /// <summary>ID nhóm cặp song song (cho Closed Polyline hình chữ nhật).</summary>
-            public string GroupId { get; set; } = null;
-
-            // Vector hướng chuẩn hóa
-            public double DirectionX => EndPoint[0] - StartPoint[0];
-            public double DirectionY => EndPoint[1] - StartPoint[1];
-            public double Length => Math.Sqrt(DirectionX * DirectionX + DirectionY * DirectionY);
-
-            // Trung điểm
-            public double MidX => (StartPoint[0] + EndPoint[0]) / 2.0;
-            public double MidY => (StartPoint[1] + EndPoint[1]) / 2.0;
-
-            // Góc hướng chuẩn hóa [0, π)
-            public double Angle
-            {
-                get
-                {
-                    double a = Math.Atan2(DirectionY, DirectionX);
-                    while (a < 0) a += Math.PI;
-                    while (a >= Math.PI) a -= Math.PI;
-                    return a;
-                }
-            }
-
-            // Vector pháp tuyến (vuông góc với hướng)
-            public double NormalX => -DirectionY / Length;
-            public double NormalY => DirectionX / Length;
+            public BeamPairCorridor Corridor { get; set; }  // Gated pair corridor model
         }
 
         // ================================================================
@@ -279,8 +242,40 @@ namespace Antigravity.DrawBeams.Services
                 // ── Bước 3: Duyệt từng Anchor Line → Tìm Text → Tìm Partner ──
                 HashSet<string> usedIds = new HashSet<string>();
                 var confirmedCandidates = new List<BeamCandidate>();
-                var commonWidths = GetCommonBeamWidths(allTexts);
                 var rawSegments = new List<CadBeamSegment>();
+
+                // Precompute nearest partners map for nearest-neighbor gating
+                var nearestMap = new Dictionary<string, List<(CadLineSegment Partner, double Distance)>>(StringComparer.OrdinalIgnoreCase);
+                foreach (var line in anchorLines)
+                {
+                    var list = new List<(CadLineSegment Partner, double Distance)>();
+                    foreach (var other in potentialPartners)
+                    {
+                        if (other.Id == line.Id || other.Length < 200) continue;
+                        double dot = Math.Abs((line.DirectionX * other.DirectionX + line.DirectionY * other.DirectionY) / (line.Length * other.Length));
+                        if (dot < 0.999) continue;
+
+                        double ov = GetSegmentOverlapLength(line, other);
+                        if (ov < 150.0) continue;
+
+                        double dist = GetPerpendicularDistance(line.StartPoint, line.EndPoint, other.StartPoint);
+                        if (dist >= 50.0 && dist <= 2000.0)
+                        {
+                            list.Add((other, dist));
+                        }
+                    }
+                    nearestMap[line.Id] = list.OrderBy(x => x.Distance).ToList();
+                }
+
+                var pairOptions = new BeamPairOptions();
+
+                int pairCandidatesGenerated = 0;
+                int corridorValidatedPairs = 0;
+                int rejectedInterveningLine = 0;
+                int rejectedTextOutsideCorridor = 0;
+                int rejectedNonMutualPair = 0;
+                int selectedPairs = 0;
+                int skippedByUsedIds = 0;
 
                 foreach (var anchor in anchorLines)
                 {
@@ -379,110 +374,106 @@ namespace Antigravity.DrawBeams.Services
                         continue;
                     }
 
-                    // 3. Tìm tất cả nét song song tiềm năng (đã lọc length > 200)
+                    // 3. Gated Pair Corridor Evaluation
                     foreach (var partner in potentialPartners)
                     {
                         if (partner.Id == anchor.Id || usedIds.Contains(partner.Id)) continue;
                         
-                        // Kiểm tra góc song song
                         double anchorDx = anchor.DirectionX, anchorDy = anchor.DirectionY, anchorLen = anchor.Length;
                         double partnerDx = partner.DirectionX, partnerDy = partner.DirectionY, partnerLen = partner.Length;
                         if (partnerLen < 200) continue;
 
                         double dot = Math.Abs((anchorDx * partnerDx + anchorDy * partnerDy) / (anchorLen * partnerLen));
-                        if (dot < 0.999) continue; // Phải song song
+                        if (dot < 0.999) continue;
 
-                        // Kiểm tra khoảng cách đo được hợp lý (50mm - 2000mm)
                         double measuredWidth = GetPerpendicularDistance(anchor.StartPoint, anchor.EndPoint, partner.StartPoint);
                         if (measuredWidth < 50 || measuredWidth > 2000) continue;
 
-                        // Kiểm tra overlap
                         double overlapLen = GetSegmentOverlapLength(anchor, partner);
                         if (overlapLen < 200) continue;
-                        
-                        // Anti-False-Positive: Dầm không được dài ngắn hơn rộng (trừ khi overlap rất lớn)
-                        if (anchor.Length < measuredWidth * 1.2 && overlapLen < measuredWidth * 1.5) continue;
 
-                        // TẠO BOUNDING BOX và QUÉT TEXT
-                        var textsInBox = FindTextsInBeamBoundingBox(anchor, partner, allTexts);
+                        pairCandidatesGenerated++;
 
-                        double expectedB = 0, expectedH = 0;
-                        string textContent = "";
-                        double confidence = overlapLen;
-                        
-                        if (textsInBox.Count > 0)
+                        var corridor = BeamPairCorridorService.EvaluatePairCorridor(
+                            anchor, partner, allSegments, allTexts, pairOptions, nearestMap);
+
+                        BeamDiagnosticCollector.Instance.Record(new BeamDiagnosticEntry
                         {
-                            // Lọc ra text kích thước và ưu tiên text có Width gần với measuredWidth nhất
-                            var dimTexts = textsInBox
-                                .Where(t => t.Width > 0 && t.Height > 0)
-                                .OrderBy(t => Math.Abs(t.Width - measuredWidth))
-                                .ToList();
+                            CandidateId = $"PAIR_{anchor.Id}_{partner.Id}",
+                            DiagnosticId = $"PAIR_{anchor.Id}_{partner.Id}",
+                            ObjectType = "PairCorridorCandidate",
+                            Stage = BeamDiagnosticStage.RawBeamCandidate,
+                            Action = corridor.Decision.ToString().StartsWith("Accepted") ? BeamDiagnosticAction.Created : BeamDiagnosticAction.Suppressed,
+                            Reason = $"{corridor.Decision}: {corridor.DecisionReasonText}",
+                            PriorityScore = corridor.Score,
+                            OverlapLengthMm = corridor.OverlapLength,
+                            OverlapRatio = corridor.OverlapRatio,
+                            CenterlineDistanceMm = corridor.MeasuredWidth
+                        });
 
-                            if (dimTexts.Count > 0)
-                            {
-                                expectedB = dimTexts[0].Width;
-                                expectedH = dimTexts[0].Height;
-                                textContent = dimTexts[0].Content;
-                                confidence += 500; // Ưu tiên có text
-                            }
+                        if (corridor.Decision == BeamPairDecisionReason.RejectedInterveningParallelLine)
+                        {
+                            rejectedInterveningLine++;
+                            continue;
+                        }
+                        if (corridor.Decision == BeamPairDecisionReason.RejectedTextOutsideCorridor)
+                        {
+                            rejectedTextOutsideCorridor++;
+                            continue;
+                        }
+                        if (corridor.Decision == BeamPairDecisionReason.RejectedNonMutualPair)
+                        {
+                            rejectedNonMutualPair++;
+                            continue;
+                        }
+                        if (corridor.Decision == BeamPairDecisionReason.RejectedWidthMismatch || corridor.Decision == BeamPairDecisionReason.RejectedLowOverlap)
+                        {
+                            continue;
                         }
 
-                        // VALIDATION: Reject nếu text nói B = 500 nhưng đo thực tế = 300 (lệch > 30%)
-                        // (Nghĩa là bắt nhầm text của dầm bên cạnh)
-                        if (expectedB > 0 && Math.Abs(expectedB - measuredWidth) / expectedB > 0.30)
-                        {
-                            expectedB = 0;
-                            expectedH = 0;
-                            textContent = "";
-                            confidence -= 500;
-                        }
+                        corridorValidatedPairs++;
 
-                        // Nếu không có text -> fallback check commonWidths
-                        if (expectedB == 0 && commonWidths.Count > 0)
-                        {
-                            double matchedWidth = commonWidths
-                                .Where(w => Math.Abs(w - measuredWidth) / w < 0.30)
-                                .OrderBy(w => Math.Abs(w - measuredWidth))
-                                .FirstOrDefault();
-                            if (matchedWidth > 0)
-                            {
-                                expectedB = matchedWidth;
-                                expectedH = 0; // Để trống Height để AssignMarksToBeams tự điền
-                                confidence += 100;
-                            }
-                        }
+                        double expectedB = corridor.HasStrongCorridorText ? corridor.AcceptedCorridorTexts[0].Width : measuredWidth;
+                        double expectedH = corridor.HasStrongCorridorText ? corridor.AcceptedCorridorTexts[0].Height : 0;
+                        string textContent = corridor.HasStrongCorridorText ? corridor.AcceptedCorridorTexts[0].Content : "";
 
-                        // Raw candidates MUST NOT be rejected for missing text or height: fallback to measuredWidth
-                        if (expectedB == 0 && measuredWidth >= 50 && measuredWidth <= 2000)
+                        confirmedCandidates.Add(new BeamCandidate
                         {
-                            expectedB = measuredWidth;
-                            expectedH = 0;
-                            confidence += 50;
-                        }
-
-                        if (expectedB > 0)
-                        {
-                            // Thêm candidate
-                            confirmedCandidates.Add(new BeamCandidate
-                            {
-                                MainLine = anchor,
-                                SubLine = partner,
-                                MeasuredWidth = measuredWidth,
-                                TextWidth = expectedB,
-                                TextHeight = expectedH,
-                                TextContent = textContent,
-                                OverlapLength = overlapLen,
-                                Confidence = confidence + (string.Equals(anchor.Layer, partner.Layer, StringComparison.OrdinalIgnoreCase) ? 200 : 0)
-                            });
-                        }
+                            MainLine = anchor,
+                            SubLine = partner,
+                            MeasuredWidth = measuredWidth,
+                            TextWidth = expectedB,
+                            TextHeight = expectedH,
+                            TextContent = textContent,
+                            OverlapLength = overlapLen,
+                            Confidence = corridor.Score,
+                            Corridor = corridor
+                        });
                     }
                 }
 
-                // ── Bước 4: Xử lý & loại trùng ──
-                foreach (var candidate in confirmedCandidates.OrderByDescending(c => c.Confidence))
+                // ── Bước 4: Xử lý & loại trùng (Greedy selection with diagnostics) ──
+                foreach (var candidate in confirmedCandidates
+                    .OrderByDescending(c => c.Confidence)
+                    .ThenBy(c => c.MainLine.Id)
+                    .ThenBy(c => c.SubLine.Id))
                 {
-                    if (usedIds.Contains(candidate.MainLine.Id) || usedIds.Contains(candidate.SubLine.Id)) continue;
+                    if (usedIds.Contains(candidate.MainLine.Id) || usedIds.Contains(candidate.SubLine.Id))
+                    {
+                        skippedByUsedIds++;
+                        BeamDiagnosticCollector.Instance.Record(new BeamDiagnosticEntry
+                        {
+                            CandidateId = $"PAIR_{candidate.MainLine.Id}_{candidate.SubLine.Id}",
+                            DiagnosticId = $"PAIR_{candidate.MainLine.Id}_{candidate.SubLine.Id}",
+                            ObjectType = "SkippedPairCandidate",
+                            Stage = BeamDiagnosticStage.RawBeamCandidate,
+                            Action = BeamDiagnosticAction.Suppressed,
+                            Reason = BeamPairDecisionReason.SkippedSourceLineAlreadyUsed.ToString()
+                        });
+                        continue;
+                    }
 
+                    selectedPairs++;
                     var tempBeam = new CadBeamData();
                     tempBeam.TextContent = candidate.TextContent;
                     SetupBeamCenterline(tempBeam, candidate.MainLine, candidate.SubLine);
@@ -508,6 +499,19 @@ namespace Antigravity.DrawBeams.Services
 
                     usedIds.Add(candidate.MainLine.Id);
                     usedIds.Add(candidate.SubLine.Id);
+                }
+
+                // Update Session Summary counters
+                var pSummary = BeamDiagnosticCollector.Instance.CurrentSession?.PipelineSummary;
+                if (pSummary != null)
+                {
+                    pSummary.PairCandidatesGenerated = pairCandidatesGenerated;
+                    pSummary.CorridorValidatedPairs = corridorValidatedPairs;
+                    pSummary.RejectedInterveningLine = rejectedInterveningLine;
+                    pSummary.RejectedTextOutsideCorridor = rejectedTextOutsideCorridor;
+                    pSummary.RejectedNonMutualPair = rejectedNonMutualPair;
+                    pSummary.SelectedPairs = selectedPairs;
+                    pSummary.SkippedByUsedIds = skippedByUsedIds;
                 }
 
                 // ── Bước 5 (Fallback): Xử lý nét Anchor chưa có partner ──

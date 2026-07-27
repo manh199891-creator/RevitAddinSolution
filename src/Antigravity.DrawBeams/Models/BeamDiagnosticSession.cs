@@ -33,6 +33,15 @@ namespace Antigravity.DrawBeams.Models
         public int EnvelopeSuppressions { get; set; }
         public int PairedVsPairedSuppressions { get; set; }
         public int AmbiguousKept { get; set; }
+
+        // Phase 7 Pair Detection Counters
+        public int PairCandidatesGenerated { get; set; }
+        public int CorridorValidatedPairs { get; set; }
+        public int RejectedInterveningLine { get; set; }
+        public int RejectedTextOutsideCorridor { get; set; }
+        public int RejectedNonMutualPair { get; set; }
+        public int SelectedPairs { get; set; }
+        public int SkippedByUsedIds { get; set; }
     }
 
     public class RevitSummary
