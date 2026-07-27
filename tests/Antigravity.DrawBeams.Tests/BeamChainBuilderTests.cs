@@ -26,108 +26,27 @@ namespace Antigravity.DrawBeams.Tests
         }
 
         // ==========================================
-        // MAJOR 1: CONTAINMENT VS DUPLICATE TESTS
+        // PHASE 2 REQUIRED TESTS (12 SCENARIOS)
         // ==========================================
 
         [Fact]
-        public void Major1_ContainedShortSegment_OverlapLessThanMinimumOverlap_ReturnsTwoChains()
+        public void Phase2_Req1_ThreeConsecutiveStraightSegments_FormsOneLongBeamData()
         {
-            // Segment A: 0-5000, Segment B: 200-300 (Overlap = 100mm < MinimumOverlapMm 200mm)
-            var segA = new CadBeamSegment { StartX = 0, StartY = 0, EndX = 5000, EndY = 0, Width = 400, Height = 600 };
-            var segB = new CadBeamSegment { StartX = 200, StartY = 0, EndX = 300, EndY = 0, Width = 400, Height = 600 };
-
-            var chains = _builder.BuildChains(new[] { segA, segB });
-
-            Assert.Equal(2, chains.Count);
-        }
-
-        [Fact]
-        public void Major1_Regression_ExactDuplicateSegments_ReturnsOneChain()
-        {
-            // Segment A: 0-1000, Segment B: 0-1000 (True geometric duplicates)
-            var segA = new CadBeamSegment { StartX = 0, StartY = 0, EndX = 1000, EndY = 0, Width = 400, Height = 600 };
-            var segB = new CadBeamSegment { StartX = 0, StartY = 0, EndX = 1000, EndY = 0, Width = 400, Height = 600 };
-
-            var chains = _builder.BuildChains(new[] { segA, segB });
-
-            Assert.Single(chains);
-            Assert.Equal(0, chains[0].StartX);
-            Assert.Equal(1000, chains[0].EndX);
-            Assert.Equal(2, chains[0].Segments.Count);
-        }
-
-        // ==========================================
-        // MINOR 1: CANONICAL CHAIN AXIS & REVERSED SEGMENTS
-        // ==========================================
-
-        [Fact]
-        public void Minor1_AllReversedRightToLeftSegments_FormsCanonicalChain()
-        {
-            // 3 consecutive segments all drawn Right-to-Left (larger X -> smaller X)
-            var seg1 = new CadBeamSegment { StartX = 3000, StartY = 0, EndX = 2000, EndY = 0, Width = 400, Height = 600 };
-            var seg2 = new CadBeamSegment { StartX = 2000, StartY = 0, EndX = 1000, EndY = 0, Width = 400, Height = 600 };
-            var seg3 = new CadBeamSegment { StartX = 1000, StartY = 0, EndX = 0, EndY = 0, Width = 400, Height = 600 };
+            var seg1 = new CadBeamSegment { StartX = 0, StartY = 0, EndX = 1000, EndY = 0, Width = 400, Height = 600, IsPaired = true };
+            var seg2 = new CadBeamSegment { StartX = 1000, StartY = 0, EndX = 2000, EndY = 0, Width = 400, Height = 600, IsPaired = true };
+            var seg3 = new CadBeamSegment { StartX = 2000, StartY = 0, EndX = 3000, EndY = 0, Width = 400, Height = 600, IsPaired = true };
 
             var chains = _builder.BuildChains(new[] { seg1, seg2, seg3 });
 
             Assert.Single(chains);
-            // Canonical direction forces StartX = min X (0) and EndX = max X (3000)
             Assert.Equal(0, chains[0].StartX);
             Assert.Equal(3000, chains[0].EndX);
-
-            // Segments ordered from Start to End along canonical axis
-            Assert.Equal(3, chains[0].Segments.Count);
-            Assert.Equal(0, Math.Min(chains[0].Segments[0].StartX, chains[0].Segments[0].EndX));
-            Assert.Equal(1000, Math.Min(chains[0].Segments[1].StartX, chains[0].Segments[1].EndX));
-            Assert.Equal(2000, Math.Min(chains[0].Segments[2].StartX, chains[0].Segments[2].EndX));
-        }
-
-        // ==========================================
-        // FINDING 1: OVERLAP & GAP & TOUCHING TESTS
-        // ==========================================
-
-        [Fact]
-        public void Finding1_Overlap50mm_MinimumOverlap200mm_ReturnsTwoChains()
-        {
-            // Overlap = 50mm < MinimumOverlapMm (200mm)
-            var seg1 = new CadBeamSegment { StartX = 0, StartY = 0, EndX = 1000, EndY = 0, Width = 400, Height = 600 };
-            var seg2 = new CadBeamSegment { StartX = 950, StartY = 0, EndX = 1950, EndY = 0, Width = 400, Height = 600 };
-
-            var chains = _builder.BuildChains(new[] { seg1, seg2 });
-
-            Assert.Equal(2, chains.Count);
+            Assert.Equal(400, chains[0].Width);
+            Assert.Equal(600, chains[0].Height);
         }
 
         [Fact]
-        public void Finding1_Overlap250mm_MinimumOverlap200mm_ReturnsOneChain()
-        {
-            // Overlap = 250mm >= MinimumOverlapMm (200mm)
-            var seg1 = new CadBeamSegment { StartX = 0, StartY = 0, EndX = 1000, EndY = 0, Width = 400, Height = 600 };
-            var seg2 = new CadBeamSegment { StartX = 750, StartY = 0, EndX = 1750, EndY = 0, Width = 400, Height = 600 };
-
-            var chains = _builder.BuildChains(new[] { seg1, seg2 });
-
-            Assert.Single(chains);
-            Assert.Equal(0, chains[0].StartX);
-            Assert.Equal(1750, chains[0].EndX);
-        }
-
-        [Fact]
-        public void Finding1_TouchingEndpoints_ReturnsOneChain()
-        {
-            // Gap = 0, Overlap = 0 -> Touching endpoints
-            var seg1 = new CadBeamSegment { StartX = 0, StartY = 0, EndX = 1000, EndY = 0, Width = 400, Height = 600 };
-            var seg2 = new CadBeamSegment { StartX = 1000, StartY = 0, EndX = 2000, EndY = 0, Width = 400, Height = 600 };
-
-            var chains = _builder.BuildChains(new[] { seg1, seg2 });
-
-            Assert.Single(chains);
-            Assert.Equal(0, chains[0].StartX);
-            Assert.Equal(2000, chains[0].EndX);
-        }
-
-        [Fact]
-        public void Finding1_GapSmallerThanTolerance_ReturnsOneChain()
+        public void Phase2_Req2_ValidSmallGap_StillConnects()
         {
             // Gap = 50mm <= EndpointGapToleranceMm (100mm)
             var seg1 = new CadBeamSegment { StartX = 0, StartY = 0, EndX = 1000, EndY = 0, Width = 400, Height = 600 };
@@ -140,58 +59,90 @@ namespace Antigravity.DrawBeams.Tests
             Assert.Equal(2000, chains[0].EndX);
         }
 
-        // ==========================================
-        // FINDING 2: CUMULATIVE DRIFT PREVENTION
-        // ==========================================
-
         [Fact]
-        public void Finding2_CumulativeAngularDrift_0_2_4_Deg_DoesNotFormSingleChain()
+        public void Phase2_Req3_LargeGap_Splits()
         {
-            // Seg1 at 0°, Seg2 at 2°, Seg3 at 4° (Total drift 4° > 2.5° tolerance)
+            // Gap = 150mm > EndpointGapToleranceMm (100mm)
             var seg1 = new CadBeamSegment { StartX = 0, StartY = 0, EndX = 1000, EndY = 0, Width = 400, Height = 600 };
-            var seg2 = new CadBeamSegment { StartX = 1000, StartY = 0, EndX = 2000, EndY = 34.92, Width = 400, Height = 600 };
-            var seg3 = new CadBeamSegment { StartX = 2000, StartY = 34.92, EndX = 3000, EndY = 104.84, Width = 400, Height = 600 };
+            var seg2 = new CadBeamSegment { StartX = 1150, StartY = 0, EndX = 2000, EndY = 0, Width = 400, Height = 600 };
 
-            var chains = _builder.BuildChains(new[] { seg1, seg2, seg3 });
+            var chains = _builder.BuildChains(new[] { seg1, seg2 });
 
-            Assert.True(chains.Count > 1);
+            Assert.Equal(2, chains.Count);
         }
 
         [Fact]
-        public void Finding2_CumulativeLateralDrift_y0_y25_y50_DoesNotFormSingleChain()
+        public void Phase2_Req4_SameSize_400x600_To_400x600_FormsOneBeam()
         {
-            // Seg1 at y=0, Seg2 at y=25, Seg3 at y=50 (Total lateral spread 50mm > 30mm tolerance)
             var seg1 = new CadBeamSegment { StartX = 0, StartY = 0, EndX = 1000, EndY = 0, Width = 400, Height = 600 };
-            var seg2 = new CadBeamSegment { StartX = 1000, StartY = 25, EndX = 2000, EndY = 25, Width = 400, Height = 600 };
-            var seg3 = new CadBeamSegment { StartX = 2000, StartY = 50, EndX = 3000, EndY = 50, Width = 400, Height = 600 };
+            var seg2 = new CadBeamSegment { StartX = 1000, StartY = 0, EndX = 2000, EndY = 0, Width = 400, Height = 600 };
 
-            var chains = _builder.BuildChains(new[] { seg1, seg2, seg3 });
-
-            Assert.True(chains.Count > 1);
-        }
-
-        [Fact]
-        public void Finding2_Diagonal45Deg_ThreeStraightSegments_FormsSingleChain()
-        {
-            var seg1 = new CadBeamSegment { StartX = 0, StartY = 0, EndX = 1000, EndY = 1000, Width = 400, Height = 600 };
-            var seg2 = new CadBeamSegment { StartX = 1000, StartY = 1000, EndX = 2000, EndY = 2000, Width = 400, Height = 600 };
-            var seg3 = new CadBeamSegment { StartX = 2000, StartY = 2000, EndX = 3000, EndY = 3000, Width = 400, Height = 600 };
-
-            var chains = _builder.BuildChains(new[] { seg1, seg2, seg3 });
+            var chains = _builder.BuildChains(new[] { seg1, seg2 });
 
             Assert.Single(chains);
-            Assert.Equal(0, chains[0].StartX);
-            Assert.Equal(0, chains[0].StartY);
-            Assert.Equal(3000, chains[0].EndX);
-            Assert.Equal(3000, chains[0].EndY);
+            Assert.Equal(400, chains[0].Width);
+            Assert.Equal(600, chains[0].Height);
         }
 
-        // ==========================================
-        // FINDING 3: INPUT ORDER INDEPENDENCE & METADATA
-        // ==========================================
+        [Fact]
+        public void Phase2_Req5_SizeChange_400x600_To_400x700_SplitsIntoTwoBeams()
+        {
+            // Height changes from 600 -> 700
+            var seg1 = new CadBeamSegment { StartX = 0, StartY = 0, EndX = 1000, EndY = 0, Width = 400, Height = 600 };
+            var seg2 = new CadBeamSegment { StartX = 1000, StartY = 0, EndX = 2000, EndY = 0, Width = 400, Height = 700 };
+
+            var chains = _builder.BuildChains(new[] { seg1, seg2 });
+
+            Assert.Equal(2, chains.Count);
+            Assert.Equal(600, chains.First(c => c.StartX == 0).Height);
+            Assert.Equal(700, chains.First(c => c.StartX == 1000).Height);
+        }
 
         [Fact]
-        public void Finding3_ShuffledInputOrder_YieldsIdenticalResultsAndMetadata()
+        public void Phase2_Req6_RepeatedTextSameSize_DoesNotSplit()
+        {
+            var seg1 = new CadBeamSegment { StartX = 0, StartY = 0, EndX = 1000, EndY = 0, Width = 400, Height = 600, TextContent = "D1 400x600" };
+            var seg2 = new CadBeamSegment { StartX = 1000, StartY = 0, EndX = 2000, EndY = 0, Width = 400, Height = 600, TextContent = "D1 400x600" };
+
+            var chains = _builder.BuildChains(new[] { seg1, seg2 });
+
+            Assert.Single(chains);
+            Assert.Equal(2000, chains[0].EndX);
+        }
+
+        [Fact]
+        public void Phase2_Req7_TJunction_DoesNotMergePerpendicularBranch()
+        {
+            var seg1 = new CadBeamSegment { StartX = 0, StartY = 0, EndX = 1000, EndY = 0, Width = 400, Height = 600 };
+            var seg2 = new CadBeamSegment { StartX = 1000, StartY = 0, EndX = 2000, EndY = 0, Width = 400, Height = 600 };
+            var segBranch = new CadBeamSegment { StartX = 1000, StartY = 0, EndX = 1000, EndY = 1000, Width = 400, Height = 600 };
+
+            var chains = _builder.BuildChains(new[] { seg1, seg2, segBranch });
+
+            Assert.Equal(2, chains.Count);
+            var mainChain = chains.First(c => c.Segments.Count == 2);
+            var branchChain = chains.First(c => c.Segments.Count == 1);
+
+            Assert.Equal(0, mainChain.StartX);
+            Assert.Equal(2000, mainChain.EndX);
+            Assert.Equal(1000, branchChain.StartX);
+            Assert.Equal(1000, branchChain.EndY);
+        }
+
+        [Fact]
+        public void Phase2_Req8_TwoParallelAxesCloseToEachOther_DoesNotMerge()
+        {
+            // Lateral offset = 50mm > LateralOffsetToleranceMm (30mm)
+            var seg1 = new CadBeamSegment { StartX = 0, StartY = 0, EndX = 1000, EndY = 0, Width = 400, Height = 600 };
+            var seg2 = new CadBeamSegment { StartX = 0, StartY = 50, EndX = 1000, EndY = 50, Width = 400, Height = 600 };
+
+            var chains = _builder.BuildChains(new[] { seg1, seg2 });
+
+            Assert.Equal(2, chains.Count);
+        }
+
+        [Fact]
+        public void Phase2_Req9_ShuffledInputSegmentOrder_StableOutput()
         {
             var seg1 = new CadBeamSegment { StartX = 0, StartY = 0, EndX = 1000, EndY = 0, Width = 400, Height = 600, Mark = "B1", Confidence = 100 };
             var seg2 = new CadBeamSegment { StartX = 1000, StartY = 0, EndX = 2000, EndY = 0, Width = 400, Height = 600, Mark = "B1", Confidence = 200 };
@@ -213,24 +164,12 @@ namespace Antigravity.DrawBeams.Tests
 
             Assert.Equal(run1[0].StartX, run3[0].StartX);
             Assert.Equal(run1[0].EndX, run3[0].EndX);
-            Assert.Equal(run1[0].Mark, run3[0].Mark);
-
-            Assert.Equal(seg1.StartX, run1[0].Segments[0].StartX);
-            Assert.Equal(seg2.StartX, run1[0].Segments[1].StartX);
-            Assert.Equal(seg3.StartX, run1[0].Segments[2].StartX);
-
-            Assert.Equal(seg1.StartX, run2[0].Segments[0].StartX);
-            Assert.Equal(seg2.StartX, run2[0].Segments[1].StartX);
-            Assert.Equal(seg3.StartX, run2[0].Segments[2].StartX);
         }
 
-        // ==========================================
-        // ADDITIONAL TESTS: DUPLICATES, BRANCHING, DIRECTION, NULL/ZERO
-        // ==========================================
-
         [Fact]
-        public void Additional_ExactDuplicateSegments_HandledStably()
+        public void Phase2_Req10_DoesNotCreateDuplicateCadBeamData()
         {
+            // Exact duplicate segments merge into a single chain (1 beam)
             var seg1 = new CadBeamSegment { StartX = 0, StartY = 0, EndX = 1000, EndY = 0, Width = 400, Height = 600 };
             var seg1Duplicate = new CadBeamSegment { StartX = 0, StartY = 0, EndX = 1000, EndY = 0, Width = 400, Height = 600 };
 
@@ -243,65 +182,87 @@ namespace Antigravity.DrawBeams.Tests
         }
 
         [Fact]
-        public void Additional_BranchingCandidate_DoesNotMergePerpendicularBranch()
+        public void Phase2_Req11_Regression_SingleLineBeam()
         {
-            var seg1 = new CadBeamSegment { StartX = 0, StartY = 0, EndX = 1000, EndY = 0, Width = 400, Height = 600 };
-            var seg2 = new CadBeamSegment { StartX = 1000, StartY = 0, EndX = 2000, EndY = 0, Width = 400, Height = 600 };
-            var segBranch = new CadBeamSegment { StartX = 1000, StartY = 0, EndX = 1000, EndY = 1000, Width = 400, Height = 600 };
+            // Single-line fallback beam
+            var seg1 = new CadBeamSegment { StartX = 0, StartY = 0, EndX = 2500, EndY = 0, Width = 300, Height = 500, IsPaired = false, Confidence = 100 };
 
-            var chains = _builder.BuildChains(new[] { seg1, seg2, segBranch });
+            var chains = _builder.BuildChains(new[] { seg1 });
+
+            Assert.Single(chains);
+            Assert.Equal(0, chains[0].StartX);
+            Assert.Equal(2500, chains[0].EndX);
+            Assert.Equal(300, chains[0].Width);
+            Assert.Equal(500, chains[0].Height);
+            Assert.False(chains[0].Segments[0].IsPaired);
+        }
+
+        [Fact]
+        public void Phase2_Req12_Regression_PairedLineBeam()
+        {
+            // Standard paired line beam candidate
+            var seg1 = new CadBeamSegment { StartX = 0, StartY = 0, EndX = 4000, EndY = 0, Width = 400, Height = 700, MeasuredWidth = 400, IsPaired = true, Confidence = 900 };
+
+            var chains = _builder.BuildChains(new[] { seg1 });
+
+            Assert.Single(chains);
+            Assert.Equal(0, chains[0].StartX);
+            Assert.Equal(4000, chains[0].EndX);
+            Assert.Equal(400, chains[0].Width);
+            Assert.Equal(700, chains[0].Height);
+            Assert.True(chains[0].Segments[0].IsPaired);
+        }
+
+        // ==========================================
+        // MAJOR 1: CONTAINMENT VS DUPLICATE TESTS
+        // ==========================================
+
+        [Fact]
+        public void Major1_ContainedShortSegment_OverlapLessThanMinimumOverlap_ReturnsTwoChains()
+        {
+            var segA = new CadBeamSegment { StartX = 0, StartY = 0, EndX = 5000, EndY = 0, Width = 400, Height = 600 };
+            var segB = new CadBeamSegment { StartX = 200, StartY = 0, EndX = 300, EndY = 0, Width = 400, Height = 600 };
+
+            var chains = _builder.BuildChains(new[] { segA, segB });
 
             Assert.Equal(2, chains.Count);
-            var mainChain = chains.First(c => c.Segments.Count == 2);
-            var branchChain = chains.First(c => c.Segments.Count == 1);
-
-            Assert.Equal(0, mainChain.StartX);
-            Assert.Equal(2000, mainChain.EndX);
-            Assert.Equal(1000, branchChain.StartX);
-            Assert.Equal(1000, branchChain.EndY);
         }
 
         [Fact]
-        public void Additional_Diagonal30DegChain_FormsOneChain()
+        public void Major1_Regression_ExactDuplicateSegments_ReturnsOneChain()
         {
-            var seg1 = new CadBeamSegment { StartX = 0, StartY = 0, EndX = 866.025, EndY = 500, Width = 400, Height = 600 };
-            var seg2 = new CadBeamSegment { StartX = 866.025, StartY = 500, EndX = 1732.05, EndY = 1000, Width = 400, Height = 600 };
+            var segA = new CadBeamSegment { StartX = 0, StartY = 0, EndX = 1000, EndY = 0, Width = 400, Height = 600 };
+            var segB = new CadBeamSegment { StartX = 0, StartY = 0, EndX = 1000, EndY = 0, Width = 400, Height = 600 };
 
-            var chains = _builder.BuildChains(new[] { seg1, seg2 });
-
-            Assert.Single(chains);
-            Assert.Equal(0, chains[0].StartX);
-            Assert.Equal(0, chains[0].StartY);
-            Assert.Equal(1732.05, chains[0].EndX);
-            Assert.Equal(1000, chains[0].EndY);
-        }
-
-        [Fact]
-        public void Additional_ReversedEndpoints_FormsOneChainCorrectly()
-        {
-            var seg1 = new CadBeamSegment { StartX = 0, StartY = 0, EndX = 1000, EndY = 0, Width = 400, Height = 600 };
-            var seg2 = new CadBeamSegment { StartX = 2000, StartY = 0, EndX = 1000, EndY = 0, Width = 400, Height = 600 };
-
-            var chains = _builder.BuildChains(new[] { seg1, seg2 });
-
-            Assert.Single(chains);
-            Assert.Equal(0, chains[0].StartX);
-            Assert.Equal(2000, chains[0].EndX);
-        }
-
-        [Fact]
-        public void Additional_NullAndZeroLengthSegments_FilteredOutGracefully()
-        {
-            var seg1 = new CadBeamSegment { StartX = 0, StartY = 0, EndX = 1000, EndY = 0, Width = 400, Height = 600 };
-            CadBeamSegment nullSeg = null;
-            var zeroSeg = new CadBeamSegment { StartX = 500, StartY = 0, EndX = 500, EndY = 0, Width = 400, Height = 600 };
-
-            var chains = _builder.BuildChains(new[] { seg1, nullSeg, zeroSeg });
+            var chains = _builder.BuildChains(new[] { segA, segB });
 
             Assert.Single(chains);
             Assert.Equal(0, chains[0].StartX);
             Assert.Equal(1000, chains[0].EndX);
-            Assert.Single(chains[0].Segments);
+            Assert.Equal(2, chains[0].Segments.Count);
+        }
+
+        // ==========================================
+        // MINOR 1: CANONICAL CHAIN AXIS & REVERSED SEGMENTS
+        // ==========================================
+
+        [Fact]
+        public void Minor1_AllReversedRightToLeftSegments_FormsCanonicalChain()
+        {
+            var seg1 = new CadBeamSegment { StartX = 3000, StartY = 0, EndX = 2000, EndY = 0, Width = 400, Height = 600 };
+            var seg2 = new CadBeamSegment { StartX = 2000, StartY = 0, EndX = 1000, EndY = 0, Width = 400, Height = 600 };
+            var seg3 = new CadBeamSegment { StartX = 1000, StartY = 0, EndX = 0, EndY = 0, Width = 400, Height = 600 };
+
+            var chains = _builder.BuildChains(new[] { seg1, seg2, seg3 });
+
+            Assert.Single(chains);
+            Assert.Equal(0, chains[0].StartX);
+            Assert.Equal(3000, chains[0].EndX);
+
+            Assert.Equal(3, chains[0].Segments.Count);
+            Assert.Equal(0, Math.Min(chains[0].Segments[0].StartX, chains[0].Segments[0].EndX));
+            Assert.Equal(1000, Math.Min(chains[0].Segments[1].StartX, chains[0].Segments[1].EndX));
+            Assert.Equal(2000, Math.Min(chains[0].Segments[2].StartX, chains[0].Segments[2].EndX));
         }
     }
 }

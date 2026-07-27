@@ -152,7 +152,7 @@ namespace Antigravity.DrawBeams.Services
             double ux = (len < 1e-9) ? refUx : sumX / len;
             double uy = (len < 1e-9) ? refUy : sumY / len;
 
-            // MINOR 1: Enforce Canonical Axis Direction (ux > 0, or if |ux| <= 1e-9 then uy > 0)
+            // Enforce Canonical Axis Direction (ux > 0, or if |ux| <= 1e-9 then uy > 0)
             if (ux < -1e-9 || (Math.Abs(ux) <= 1e-9 && uy < -1e-9))
             {
                 ux = -ux;
@@ -177,18 +177,26 @@ namespace Antigravity.DrawBeams.Services
             if (candidateAngleDiff > Math.PI / 2.0) candidateAngleDiff = Math.PI - candidateAngleDiff;
             if (candidateAngleDiff * 180.0 / Math.PI > _options.AngularToleranceDegrees) return false;
 
-            // 2. Check against ALL existing segments in chain to prevent cumulative drift
+            // 2. Check against ALL existing segments in chain to prevent cumulative drift & dimension changes
             foreach (var s in chainSegments)
             {
                 double pairAngleDiff = Math.Abs(candidate.Angle - s.Angle);
                 if (pairAngleDiff > Math.PI / 2.0) pairAngleDiff = Math.PI - pairAngleDiff;
                 if (pairAngleDiff * 180.0 / Math.PI > _options.AngularToleranceDegrees) return false;
 
+                // Dimension Change Check (Width B and Height H)
                 if (candidate.Width > 0 && s.Width > 0)
                 {
                     double maxW = Math.Max(candidate.Width, s.Width);
                     double diffW = Math.Abs(candidate.Width - s.Width);
-                    if (diffW / maxW > _options.WidthToleranceRatio && diffW > 5.0) return false;
+                    if (diffW > 5.0 && (diffW / maxW > _options.WidthToleranceRatio || diffW >= 20.0)) return false;
+                }
+
+                if (candidate.Height > 0 && s.Height > 0)
+                {
+                    double maxH = Math.Max(candidate.Height, s.Height);
+                    double diffH = Math.Abs(candidate.Height - s.Height);
+                    if (diffH > 5.0 && (diffH / maxH > _options.WidthToleranceRatio || diffH >= 20.0)) return false;
                 }
             }
 
@@ -252,7 +260,7 @@ namespace Antigravity.DrawBeams.Services
                     return true;
                 }
 
-                // MAJOR 1: True geometric duplicate check (min, max, and length match within tolerance)
+                // True geometric duplicate check (min and max match within tolerance)
                 bool isDuplicate = Math.Abs(min1 - min2) <= 1e-3 && Math.Abs(max1 - max2) <= 1e-3;
                 if (isDuplicate)
                 {

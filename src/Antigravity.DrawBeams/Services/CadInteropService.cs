@@ -255,6 +255,7 @@ namespace Antigravity.DrawBeams.Services
                 HashSet<string> usedIds = new HashSet<string>();
                 var confirmedCandidates = new List<BeamCandidate>();
                 var commonWidths = GetCommonBeamWidths(allTexts);
+                var rawSegments = new List<CadBeamSegment>();
 
                 foreach (var anchor in anchorLines)
                 {
@@ -274,7 +275,9 @@ namespace Antigravity.DrawBeams.Services
                             beamH = plTexts[0].Height;
                             beamContent = plTexts[0].Content;
                         }
-                        var plBeam = new CadBeamData
+                        var tempBeam = new CadBeamData { TextContent = beamContent };
+                        ExtractMark(tempBeam);
+                        rawSegments.Add(new CadBeamSegment
                         {
                             StartX = anchor.StartPoint[0],
                             StartY = anchor.StartPoint[1],
@@ -282,15 +285,15 @@ namespace Antigravity.DrawBeams.Services
                             EndY = anchor.EndPoint[1],
                             Width = beamB,
                             Height = beamH,
+                            MeasuredWidth = anchor.PolylineWidth,
+                            Mark = tempBeam.Mark,
                             TextContent = beamContent,
-                            IsPaired = false
-                        };
-                        ExtractMark(plBeam);
-                        if (plBeam.IsValid)
-                        {
-                            beams.Add(plBeam);
-                            usedIds.Add(anchor.Id);
-                        }
+                            IsPaired = false,
+                            SourceLineIds = new List<string> { anchor.Id },
+                            Confidence = 900,
+                            Layer = anchor.Layer
+                        });
+                        usedIds.Add(anchor.Id);
                         continue;
                     }
 
@@ -446,25 +449,30 @@ namespace Antigravity.DrawBeams.Services
                 {
                     if (usedIds.Contains(candidate.MainLine.Id) || usedIds.Contains(candidate.SubLine.Id)) continue;
 
-                    var beam = new CadBeamData();
-                    beam.TextContent = candidate.TextContent;
-                    beam.Width = candidate.TextWidth;   // ƯU TIÊN TEXT
-                    beam.Height = candidate.TextHeight;
-                    beam.IsPaired = true;
+                    var tempBeam = new CadBeamData();
+                    tempBeam.TextContent = candidate.TextContent;
+                    SetupBeamCenterline(tempBeam, candidate.MainLine, candidate.SubLine);
+                    ExtractMark(tempBeam);
 
-                    // Tính đường tâm dầm (midpoint của 2 nét)
-                    SetupBeamCenterline(beam, candidate.MainLine, candidate.SubLine);
-                    beam.MeasuredWidth = candidate.MeasuredWidth; // Fix Low: Gán giá trị đo được thực tế
-
-                    // Parse Mark từ text
-                    ExtractMark(beam);
-
-                    if (beam.IsValid)
+                    rawSegments.Add(new CadBeamSegment
                     {
-                        beams.Add(beam);
-                        usedIds.Add(candidate.MainLine.Id);
-                        usedIds.Add(candidate.SubLine.Id);
-                    }
+                        StartX = tempBeam.StartX,
+                        StartY = tempBeam.StartY,
+                        EndX = tempBeam.EndX,
+                        EndY = tempBeam.EndY,
+                        Width = candidate.TextWidth,
+                        Height = candidate.TextHeight,
+                        MeasuredWidth = candidate.MeasuredWidth,
+                        Mark = tempBeam.Mark,
+                        TextContent = candidate.TextContent,
+                        IsPaired = true,
+                        SourceLineIds = new List<string> { candidate.MainLine.Id, candidate.SubLine.Id },
+                        Confidence = candidate.Confidence,
+                        Layer = candidate.MainLine.Layer
+                    });
+
+                    usedIds.Add(candidate.MainLine.Id);
+                    usedIds.Add(candidate.SubLine.Id);
                 }
 
                 // ── Bước 5 (Fallback): Xử lý nét Anchor chưa có partner ──
@@ -481,33 +489,63 @@ namespace Antigravity.DrawBeams.Services
                         if (nearbyTexts.Count > 0)
                         {
                             var bestText = nearbyTexts.First();
-                            var beam = new CadBeamData();
-                            beam.TextContent = bestText.Content;
-                            beam.Width = bestText.Width;
-                            beam.Height = bestText.Height;
-                            beam.StartX = anchor.StartPoint[0];
-                            beam.StartY = anchor.StartPoint[1];
-                            beam.EndX = anchor.EndPoint[0];
-                            beam.EndY = anchor.EndPoint[1];
-                            beam.IsPaired = false;
-                            ExtractMark(beam);
+                            var tempBeam = new CadBeamData { TextContent = bestText.Content };
+                            ExtractMark(tempBeam);
 
-                            if (beam.IsValid)
+                            rawSegments.Add(new CadBeamSegment
                             {
-                                beams.Add(beam);
-                                usedIds.Add(anchor.Id);
-                            }
+                                StartX = anchor.StartPoint[0],
+                                StartY = anchor.StartPoint[1],
+                                EndX = anchor.EndPoint[0],
+                                EndY = anchor.EndPoint[1],
+                                Width = bestText.Width,
+                                Height = bestText.Height,
+                                MeasuredWidth = 0,
+                                Mark = tempBeam.Mark,
+                                TextContent = bestText.Content,
+                                IsPaired = false,
+                                SourceLineIds = new List<string> { anchor.Id },
+                                Confidence = 100,
+                                Layer = anchor.Layer
+                            });
+
+                            usedIds.Add(anchor.Id);
                         }
                     }
                 }
 
                 sset.Delete();
 
-                var mergedBeams = MergeCollinearBeams(beams);
-                AssignMarksToBeams(mergedBeams, allTexts);
-                foreach (var beam in mergedBeams)
+                // ── Bước 6: BeamChainBuilder Integration ──
+                var chainBuilder = new BeamChainBuilder();
+                var chains = chainBuilder.BuildChains(rawSegments);
+
+                beams.Clear();
+                foreach (var chain in chains)
+                {
+                    var beam = new CadBeamData
+                    {
+                        StartX = chain.StartX,
+                        StartY = chain.StartY,
+                        EndX = chain.EndX,
+                        EndY = chain.EndY,
+                        Width = chain.Width,
+                        Height = chain.Height,
+                        Mark = chain.Mark,
+                        TextContent = chain.Segments.FirstOrDefault(s => !string.IsNullOrEmpty(s.TextContent))?.TextContent,
+                        IsPaired = chain.Segments.Any(s => s.IsPaired),
+                        MeasuredWidth = chain.Segments.FirstOrDefault(s => s.MeasuredWidth > 0)?.MeasuredWidth ?? 0
+                    };
+                    beams.Add(beam);
+                }
+
+                AssignMarksToBeams(beams, allTexts);
+
+                var finalBeams = beams.Where(b => b.IsValid).ToList();
+                foreach (var beam in finalBeams)
                     NormalizeBeamGeometry(beam);
-                return mergedBeams;
+
+                return finalBeams;
             }
             catch (Exception ex)
             {
