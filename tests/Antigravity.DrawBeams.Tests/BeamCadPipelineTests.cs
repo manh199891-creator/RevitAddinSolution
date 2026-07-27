@@ -30,6 +30,41 @@ namespace Antigravity.DrawBeams.Tests
         // ==========================================
 
         [Fact]
+        public void Pipeline_SplitRegions_DimensionTextOverridesOldMetadata()
+        {
+            var rawSeg = new CadBeamSegment
+            {
+                StartX = 0, StartY = 0, EndX = 3000, EndY = 0,
+                Width = 400, Height = 600, TextContent = "D1 400x600", Mark = "D1",
+                MeasuredWidth = 400, IsPaired = true, Confidence = 500
+            };
+
+            var text1 = new CadDimensionText { X = 500, Y = 0, Content = "D1 400x600", Width = 400, Height = 600 };
+            var text2 = new CadDimensionText { X = 2500, Y = 0, Content = "D2 400x700", Width = 400, Height = 700 };
+
+            var beams = _pipeline.ProcessPipeline(new[] { rawSeg }, new[] { text1, text2 });
+
+            Assert.Equal(2, beams.Count);
+
+            var beam1 = beams.First(b => Math.Abs(b.StartX - 0) < 1e-3);
+            var beam2 = beams.First(b => Math.Abs(b.EndX - 3000) < 1e-3);
+
+            Assert.Equal(0, beam1.StartX, 2);
+            Assert.Equal(1500, beam1.EndX, 2);
+            Assert.Equal(400, beam1.Width);
+            Assert.Equal(600, beam1.Height);
+            Assert.Equal("D1", beam1.Mark);
+            Assert.Equal("D1 400x600", beam1.TextContent);
+
+            Assert.Equal(1500, beam2.StartX, 2);
+            Assert.Equal(3000, beam2.EndX, 2);
+            Assert.Equal(400, beam2.Width);
+            Assert.Equal(700, beam2.Height);
+            Assert.Equal("D2", beam2.Mark);
+            Assert.Equal("D2 400x700", beam2.TextContent);
+        }
+
+        [Fact]
         public void Pipeline_SingleLongSegment_CrossesDimensionBoundary_CutsSegmentExactlyAtSplitPoint()
         {
             // Single long horizontal segment 0 -> 3000

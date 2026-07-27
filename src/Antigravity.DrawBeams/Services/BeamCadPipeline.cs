@@ -299,9 +299,10 @@ namespace Antigravity.DrawBeams.Services
             {
                 foreach (var s in subChain.Segments)
                 {
-                    if (s.Width <= 0) s.Width = closestText.Width;
-                    if (s.Height <= 0) s.Height = closestText.Height;
-                    if (string.IsNullOrEmpty(s.TextContent)) s.TextContent = closestText.Content;
+                    s.Width = closestText.Width;
+                    s.Height = closestText.Height;
+                    s.TextContent = closestText.Content;
+                    s.Mark = null;
                 }
             }
 
