@@ -517,16 +517,39 @@ namespace Antigravity.DrawBeams.Services
                 sset.Delete();
 
                 // ── Bước 6: BeamCadPipeline Integration ──
-                var dimTextDTOs = allTexts.Select(t => new CadDimensionText
+                var dimTextDTOs = new List<CadDimensionText>();
+                foreach (dynamic txt in allTexts)
                 {
-                    X = t.InsertionPoint != null && t.InsertionPoint.Length >= 2 ? t.InsertionPoint[0] : 0,
-                    Y = t.InsertionPoint != null && t.InsertionPoint.Length >= 2 ? t.InsertionPoint[1] : 0,
-                    Rotation = t.Rotation,
-                    Width = t.Width,
-                    Height = t.Height,
-                    Content = t.Content,
-                    Confidence = 500
-                }).ToList();
+                    try
+                    {
+                        double[] p = txt.InsertionPoint;
+                        if (p == null || p.Length < 2) continue;
+
+                        string content = GetCleanText(txt);
+                        if (string.IsNullOrWhiteSpace(content)) continue;
+
+                        var tempBeam = new CadBeamData { TextContent = content };
+                        ParseDimensionsV12(tempBeam);
+
+                        double rot = 0;
+                        try { rot = (double)txt.Rotation; } catch { }
+
+                        dimTextDTOs.Add(new CadDimensionText
+                        {
+                            X = p[0],
+                            Y = p[1],
+                            Rotation = rot,
+                            Width = tempBeam.Width,
+                            Height = tempBeam.Height,
+                            Content = content,
+                            Confidence = 500
+                        });
+                    }
+                    catch
+                    {
+                        // Ignore single bad COM entity
+                    }
+                }
 
                 var pipeline = new BeamCadPipeline();
                 var pipelineBeams = pipeline.ProcessPipeline(rawSegments, dimTextDTOs);
