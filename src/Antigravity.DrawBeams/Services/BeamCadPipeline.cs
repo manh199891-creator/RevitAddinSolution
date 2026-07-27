@@ -18,7 +18,8 @@ namespace Antigravity.DrawBeams.Services
         public List<CadBeamData> ProcessPipeline(
             IEnumerable<CadBeamSegment> rawSegments,
             IEnumerable<CadDimensionText> dimensionTexts = null,
-            BeamContinuityOptions options = null)
+            BeamContinuityOptions options = null,
+            BeamOverlapOptions overlapOptions = null)
         {
             var opt = options ?? _options;
             if (rawSegments == null) return new List<CadBeamData>();
@@ -44,8 +45,12 @@ namespace Antigravity.DrawBeams.Services
                 }
             }
 
-            // Deduplicate CadBeamData output by direction-independent geometry
-            return DeduplicateBeamData(result);
+            // Step 4: Overlap Suppression using BeamOverlapResolver
+            var overlapResolver = new BeamOverlapResolver(overlapOptions);
+            var resolvedBeams = overlapResolver.ResolveOverlaps(result);
+
+            // Step 5: Deduplicate CadBeamData output by direction-independent geometry
+            return DeduplicateBeamData(resolvedBeams);
         }
 
         private List<BeamChain> ResolveDimensionsAndSplitChains(
@@ -165,7 +170,7 @@ namespace Antigravity.DrawBeams.Services
 
             if (splitProjections.Count == 0) return new List<BeamChain> { chain };
 
-            // MAJOR 1: Cut any segment that crosses a split projection point into two exact sub-segments
+            // Cut any segment that crosses a split projection point into two exact sub-segments
             var cutSegments = CutSegmentsAtProjections(chain.Segments, splitProjections, ux, uy);
 
             // Group cut segments into sub-chains bounded by splitProjections
@@ -223,14 +228,12 @@ namespace Antigravity.DrawBeams.Services
                     // Check if splitT is strictly inside segment projection interval
                     if (splitT > tMin + 1e-3 && splitT < tMax - 1e-3)
                     {
-                        // Interpolate exact split coordinate on segment line
                         double fraction = (t1 != t2) ? (splitT - t1) / (t2 - t1) : 0.5;
                         fraction = Math.Max(0.0, Math.Min(1.0, fraction));
 
                         double splitX = seg.StartX + fraction * (seg.EndX - seg.StartX);
                         double splitY = seg.StartY + fraction * (seg.EndY - seg.StartY);
 
-                        // Piece 1: Start to Split
                         var piece1 = new CadBeamSegment
                         {
                             StartX = seg.StartX,
@@ -245,10 +248,10 @@ namespace Antigravity.DrawBeams.Services
                             IsPaired = seg.IsPaired,
                             Confidence = seg.Confidence,
                             Layer = seg.Layer,
+                            DetectionMethod = BeamDetectionMethod.DimensionSplit,
                             SourceLineIds = seg.SourceLineIds != null ? new List<string>(seg.SourceLineIds) : new List<string>()
                         };
 
-                        // Piece 2: Split to End
                         var piece2 = new CadBeamSegment
                         {
                             StartX = splitX,
@@ -263,6 +266,7 @@ namespace Antigravity.DrawBeams.Services
                             IsPaired = seg.IsPaired,
                             Confidence = seg.Confidence,
                             Layer = seg.Layer,
+                            DetectionMethod = BeamDetectionMethod.DimensionSplit,
                             SourceLineIds = seg.SourceLineIds != null ? new List<string>(seg.SourceLineIds) : new List<string>()
                         };
 
@@ -283,12 +287,10 @@ namespace Antigravity.DrawBeams.Services
 
         private BeamChain FinalizeSubChain(List<CadBeamSegment> segments, List<CadDimensionText> texts, double ux, double uy, BeamContinuityOptions opt)
         {
-            // MAJOR 3: Propagate opt override to BeamChainBuilder
             var builder = new BeamChainBuilder(opt);
             var subChains = builder.BuildChains(segments);
             var subChain = subChains.FirstOrDefault() ?? new BeamChain { Segments = segments };
 
-            // Find closest matching text for this sub-chain
             double midT = ((subChain.StartX + subChain.EndX) / 2.0) * ux + ((subChain.StartY + subChain.EndY) / 2.0) * uy;
             var closestText = texts
                 .Where(t => t.Width > 0)
@@ -313,13 +315,16 @@ namespace Antigravity.DrawBeams.Services
         {
             if (chain == null || chain.Segments == null || chain.Segments.Count == 0) return null;
 
-            // MAJOR 2: Select primarySeg strictly by Confidence descending, then Length descending
             var primarySeg = chain.Segments
-                .OrderByDescending(s => s.Confidence)
+                .OrderByDescending(s => BeamOverlapResolver.GetPriorityScore(new CadBeamData
+                {
+                    Confidence = s.Confidence,
+                    HasDimensionText = s.HasDimensionText,
+                    DetectionMethod = s.DetectionMethod
+                }))
                 .ThenByDescending(s => s.Length)
                 .First();
 
-            // All metadata taken consistently from primarySeg; fallback to chain only if primarySeg value is missing
             double width = primarySeg.Width > 0 ? primarySeg.Width : chain.Width;
             double height = primarySeg.Height > 0 ? primarySeg.Height : chain.Height;
 
@@ -333,6 +338,18 @@ namespace Antigravity.DrawBeams.Services
                 ? primarySeg.MeasuredWidth
                 : (chain.Segments.FirstOrDefault(s => s.MeasuredWidth > 0)?.MeasuredWidth ?? 0);
 
+            var sourceLineIds = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+            foreach (var s in chain.Segments)
+            {
+                if (s.SourceLineIds != null)
+                {
+                    foreach (var id in s.SourceLineIds)
+                    {
+                        if (!string.IsNullOrEmpty(id)) sourceLineIds.Add(id);
+                    }
+                }
+            }
+
             var beam = new CadBeamData
             {
                 StartX = chain.StartX,
@@ -344,7 +361,12 @@ namespace Antigravity.DrawBeams.Services
                 TextContent = textContent,
                 Mark = mark,
                 IsPaired = chain.Segments.Any(s => s.IsPaired),
-                MeasuredWidth = measuredW
+                MeasuredWidth = measuredW,
+                Confidence = primarySeg.Confidence,
+                SourceLayer = primarySeg.Layer,
+                HasDimensionText = primarySeg.HasDimensionText || !string.IsNullOrEmpty(textContent),
+                DetectionMethod = primarySeg.DetectionMethod,
+                SourceLineIds = sourceLineIds
             };
 
             if (string.IsNullOrEmpty(beam.Mark))
@@ -371,7 +393,6 @@ namespace Antigravity.DrawBeams.Services
             var result = new List<CadBeamData>();
             foreach (var b in beams)
             {
-                // MINOR 2: Direction-independent deduplication (Forward or Reverse match)
                 bool isDup = result.Any(existing =>
                 {
                     bool sameDims = Math.Abs(existing.Width - b.Width) < 1e-3 &&

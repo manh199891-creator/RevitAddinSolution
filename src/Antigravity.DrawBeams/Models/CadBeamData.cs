@@ -9,17 +9,23 @@ namespace Antigravity.DrawBeams.Models
         public double StartY { get; set; }
         public double EndX { get; set; }
         public double EndY { get; set; }
-        
+
         public string TextContent { get; set; }
         public double Width { get; set; }
         public double Height { get; set; }
         public string Mark { get; set; }
-        
-        // V3: Measured data from parallel lines
+
+        // Measured data from parallel lines
         public double MeasuredWidth { get; set; }
         public bool IsPaired { get; set; }
 
-        // Cho phép Height = 0 để AssignMarksToBeams có thể tìm lại
+        // Provenance properties
+        public double Confidence { get; set; }
+        public HashSet<string> SourceLineIds { get; set; } = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        public string SourceLayer { get; set; }
+        public bool HasDimensionText { get; set; }
+        public BeamDetectionMethod DetectionMethod { get; set; } = BeamDetectionMethod.PairedLines;
+
         public bool IsValid => (Width > 0) || (IsPaired && MeasuredWidth > 0);
     }
 }

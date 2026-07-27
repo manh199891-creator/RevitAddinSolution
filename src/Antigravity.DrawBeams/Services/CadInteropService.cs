@@ -291,7 +291,8 @@ namespace Antigravity.DrawBeams.Services
                             IsPaired = false,
                             SourceLineIds = new List<string> { anchor.Id },
                             Confidence = 900,
-                            Layer = anchor.Layer
+                            Layer = anchor.Layer,
+                            DetectionMethod = BeamDetectionMethod.PolylineWidth
                         });
                         usedIds.Add(anchor.Id);
                         continue;
@@ -468,7 +469,8 @@ namespace Antigravity.DrawBeams.Services
                         IsPaired = true,
                         SourceLineIds = new List<string> { candidate.MainLine.Id, candidate.SubLine.Id },
                         Confidence = candidate.Confidence,
-                        Layer = candidate.MainLine.Layer
+                        Layer = candidate.MainLine.Layer,
+                        DetectionMethod = BeamDetectionMethod.PairedLines
                     });
 
                     usedIds.Add(candidate.MainLine.Id);
@@ -506,7 +508,8 @@ namespace Antigravity.DrawBeams.Services
                                 IsPaired = false,
                                 SourceLineIds = new List<string> { anchor.Id },
                                 Confidence = 100,
-                                Layer = anchor.Layer
+                                Layer = anchor.Layer,
+                                DetectionMethod = BeamDetectionMethod.SingleLineFallback
                             });
 
                             usedIds.Add(anchor.Id);

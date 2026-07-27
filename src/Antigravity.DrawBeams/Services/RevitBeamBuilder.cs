@@ -7,9 +7,24 @@ using System.Linq;
 
 namespace Antigravity.DrawBeams.Services
 {
+    public enum BeamCreateStatus
+    {
+        Created,
+        SkippedDuplicate,
+        Failed
+    }
+
+    public class BeamCreateResult
+    {
+        public BeamCreateStatus Status { get; set; }
+        public ElementId ExistingElementId { get; set; }
+        public string Reason { get; set; }
+        public FamilyInstance Instance { get; set; }
+    }
+
     public class RevitBeamBuilder
     {
-        private Document _doc;
+        private readonly Document _doc;
 
         public RevitBeamBuilder(Document doc)
         {
@@ -46,6 +61,97 @@ namespace Antigravity.DrawBeams.Services
                 // In Revit 2024, we convert from Millimeters to Feet (Internal)
                 double internalValue = UnitUtils.Convert(valueMm, UnitTypeId.Millimeters, UnitTypeId.Feet);
                 p.Set(internalValue);
+            }
+        }
+
+        public ElementId FindOverlappingExistingBeam(
+            Curve candidateCurve,
+            Level level,
+            double widthMm,
+            double heightMm,
+            BeamOverlapOptions options = null)
+        {
+            if (_doc == null || candidateCurve == null || level == null) return ElementId.InvalidElementId;
+
+            var collector = new FilteredElementCollector(_doc)
+                .OfCategory(BuiltInCategory.OST_StructuralFraming)
+                .WhereElementIsNotElementType();
+
+            XYZ p1 = candidateCurve.GetEndPoint(0);
+            XYZ p2 = candidateCurve.GetEndPoint(1);
+
+            double candStartX = UnitUtils.Convert(p1.X, UnitTypeId.Feet, UnitTypeId.Millimeters);
+            double candStartY = UnitUtils.Convert(p1.Y, UnitTypeId.Feet, UnitTypeId.Millimeters);
+            double candEndX = UnitUtils.Convert(p2.X, UnitTypeId.Feet, UnitTypeId.Millimeters);
+            double candEndY = UnitUtils.Convert(p2.Y, UnitTypeId.Feet, UnitTypeId.Millimeters);
+
+            foreach (FamilyInstance existing in collector.OfType<FamilyInstance>())
+            {
+                if (existing.LevelId != level.Id) continue;
+                if (!(existing.Location is LocationCurve locCurve) || !(locCurve.Curve is Line existLine)) continue;
+
+                XYZ ep1 = existLine.GetEndPoint(0);
+                XYZ ep2 = existLine.GetEndPoint(1);
+
+                double existStartX = UnitUtils.Convert(ep1.X, UnitTypeId.Feet, UnitTypeId.Millimeters);
+                double existStartY = UnitUtils.Convert(ep1.Y, UnitTypeId.Feet, UnitTypeId.Millimeters);
+                double existEndX = UnitUtils.Convert(ep2.X, UnitTypeId.Feet, UnitTypeId.Millimeters);
+                double existEndY = UnitUtils.Convert(ep2.Y, UnitTypeId.Feet, UnitTypeId.Millimeters);
+
+                double existWidth = 0, existHeight = 0;
+                var symbol = existing.Symbol;
+                if (symbol != null)
+                {
+                    Parameter pB = symbol.LookupParameter("b") ?? symbol.LookupParameter("Width") ?? symbol.LookupParameter("B");
+                    Parameter pH = symbol.LookupParameter("h") ?? symbol.LookupParameter("Height") ?? symbol.LookupParameter("H");
+                    if (pB != null && pB.HasValue) existWidth = UnitUtils.Convert(pB.AsDouble(), UnitTypeId.Feet, UnitTypeId.Millimeters);
+                    if (pH != null && pH.HasValue) existHeight = UnitUtils.Convert(pH.AsDouble(), UnitTypeId.Feet, UnitTypeId.Millimeters);
+                }
+
+                if (RevitBeamGuardHelper.IsDuplicateRevitBeam(
+                    candStartX, candStartY, candEndX, candEndY, widthMm, heightMm,
+                    existStartX, existStartY, existEndX, existEndY, existWidth, existHeight,
+                    options))
+                {
+                    return existing.Id;
+                }
+            }
+
+            return ElementId.InvalidElementId;
+        }
+
+        public BeamCreateResult CreateBeamWithDuplicateGuard(
+            Curve curve, FamilySymbol symbol, Level level, double offsetMm, int justification,
+            double widthMm, double heightMm, string mark = null, BeamOverlapOptions options = null)
+        {
+            ElementId existingId = FindOverlappingExistingBeam(curve, level, widthMm, heightMm, options);
+            if (existingId != ElementId.InvalidElementId)
+            {
+                return new BeamCreateResult
+                {
+                    Status = BeamCreateStatus.SkippedDuplicate,
+                    ExistingElementId = existingId,
+                    Reason = $"Near-duplicate beam exists in Revit model (ElementId: {existingId})."
+                };
+            }
+
+            try
+            {
+                FamilyInstance instance = CreateBeam(curve, symbol, level, offsetMm, justification, mark);
+                return new BeamCreateResult
+                {
+                    Status = BeamCreateStatus.Created,
+                    Instance = instance,
+                    Reason = "Successfully created new Revit beam."
+                };
+            }
+            catch (Exception ex)
+            {
+                return new BeamCreateResult
+                {
+                    Status = BeamCreateStatus.Failed,
+                    Reason = ex.Message
+                };
             }
         }
 

@@ -22,6 +22,9 @@ namespace Antigravity.DrawBeams.Models
         public double Confidence { get; set; }
         public string Layer { get; set; }
 
+        public BeamDetectionMethod DetectionMethod { get; set; } = BeamDetectionMethod.PairedLines;
+        public bool HasDimensionText => !string.IsNullOrEmpty(TextContent) || (Width > 0 && Height > 0);
+
         public double DirectionX => EndX - StartX;
         public double DirectionY => EndY - StartY;
 
