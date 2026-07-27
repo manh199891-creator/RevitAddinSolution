@@ -61,7 +61,43 @@ namespace Antigravity.DrawBeams.Services
             var resolvedBeams = overlapResolver.ResolveOverlaps(result);
 
             // Step 5: Deduplicate CadBeamData output by direction-independent geometry
-            return DeduplicateBeamData(resolvedBeams);
+            var finalBeams = DeduplicateBeamData(resolvedBeams);
+
+            int finalIdx = 0;
+            foreach (var beam in finalBeams)
+            {
+                string parentId = beam.DiagnosticId;
+                string finalId = $"FINAL_{++finalIdx:D4}";
+                beam.DiagnosticId = finalId;
+
+                var parentIds = !string.IsNullOrEmpty(parentId) ? new List<string> { parentId } : (beam.ParentDiagnosticIds ?? new List<string>());
+
+                BeamDiagnosticCollector.Instance.Record(new BeamDiagnosticEntry
+                {
+                    CandidateId = finalId,
+                    DiagnosticId = finalId,
+                    ObjectType = "FinalCandidate",
+                    ParentDiagnosticIds = parentIds,
+                    RootRawCandidateIds = beam.RootRawCandidateIds ?? new List<string>(),
+                    Stage = BeamDiagnosticStage.FinalCandidate,
+                    Action = BeamDiagnosticAction.Kept,
+                    Reason = "Final candidate kept after overlap resolution and deduplication.",
+                    DetectionMethod = beam.DetectionMethod,
+                    Confidence = beam.Confidence,
+                    StartX = beam.StartX, StartY = beam.StartY, EndX = beam.EndX, EndY = beam.EndY,
+                    Width = beam.Width, Height = beam.Height, MeasuredWidth = beam.MeasuredWidth,
+                    Mark = beam.Mark, TextContent = beam.TextContent, HasDimensionText = beam.HasDimensionText,
+                    SourceLayer = beam.SourceLayer, SourceLineIds = beam.SourceLineIds != null ? beam.SourceLineIds.ToList() : new List<string>(),
+                    IsPaired = beam.IsPaired
+                });
+            }
+
+            if (summary != null)
+            {
+                summary.AfterOverlapCount = finalBeams.Count;
+            }
+
+            return finalBeams;
         }
 
         private List<BeamChain> ResolveDimensionsAndSplitChains(
@@ -218,7 +254,40 @@ namespace Antigravity.DrawBeams.Services
                 subChains.Add(subChain);
             }
 
-            return subChains.Count > 0 ? subChains : new List<BeamChain> { chain };
+            if (subChains.Count > 0)
+            {
+                var summary = BeamDiagnosticCollector.Instance.CurrentSession?.PipelineSummary;
+                if (summary != null)
+                {
+                    summary.DimensionSplitsCount++;
+                }
+
+                int dSplitIdx = summary != null ? summary.DimensionSplitsCount : 1;
+                int subIdx = 0;
+                foreach (var sub in subChains)
+                {
+                    sub.DiagnosticId = $"DSPLIT_{dSplitIdx:D4}_{(char)('A' + subIdx++)}";
+                    sub.ParentDiagnosticIds = !string.IsNullOrEmpty(chain.DiagnosticId) ? new List<string> { chain.DiagnosticId } : (chain.ParentDiagnosticIds ?? new List<string>());
+                    sub.RootRawCandidateIds = chain.RootRawCandidateIds != null ? new List<string>(chain.RootRawCandidateIds) : new List<string>();
+                }
+
+                BeamDiagnosticCollector.Instance.Record(new BeamDiagnosticEntry
+                {
+                    DiagnosticId = chain.DiagnosticId ?? "",
+                    ObjectType = "DimensionSplitParent",
+                    ParentDiagnosticIds = chain.ParentDiagnosticIds,
+                    RootRawCandidateIds = chain.RootRawCandidateIds,
+                    OutputDiagnosticIds = subChains.Select(s => s.DiagnosticId).ToList(),
+                    Stage = BeamDiagnosticStage.DimensionSplit,
+                    Action = BeamDiagnosticAction.Split,
+                    Reason = $"Split chain into {subChains.Count} sub-chains due to dimension changes along axis.",
+                    StartX = chain.StartX, StartY = chain.StartY, EndX = chain.EndX, EndY = chain.EndY
+                });
+
+                return subChains;
+            }
+
+            return new List<BeamChain> { chain };
         }
 
         private List<CadBeamSegment> CutSegmentsAtProjections(List<CadBeamSegment> segments, List<double> splitProjections, double ux, double uy)
@@ -377,7 +446,10 @@ namespace Antigravity.DrawBeams.Services
                 SourceLayer = primarySeg.Layer,
                 HasDimensionText = primarySeg.HasDimensionText || !string.IsNullOrEmpty(textContent),
                 DetectionMethod = primarySeg.DetectionMethod,
-                SourceLineIds = sourceLineIds
+                SourceLineIds = sourceLineIds,
+                DiagnosticId = !string.IsNullOrEmpty(chain.DiagnosticId) ? chain.DiagnosticId : $"SEG_{Math.Round(chain.StartX)}_{Math.Round(chain.StartY)}_{Math.Round(chain.EndX)}_{Math.Round(chain.EndY)}",
+                ParentDiagnosticIds = chain.ParentDiagnosticIds != null ? new List<string>(chain.ParentDiagnosticIds) : new List<string>(),
+                RootRawCandidateIds = chain.RootRawCandidateIds != null ? new List<string>(chain.RootRawCandidateIds) : new List<string>()
             };
 
             if (string.IsNullOrEmpty(beam.Mark))

@@ -594,6 +594,7 @@ namespace Antigravity.DrawBeams.Services
 
                         dimTextDTOs.Add(new CadDimensionText
                         {
+                            DimensionTextId = $"TEXT_{dimTextDTOs.Count + 1:D4}",
                             X = posX,
                             Y = posY,
                             Rotation = rot,
@@ -625,10 +626,19 @@ namespace Antigravity.DrawBeams.Services
 
                 foreach (var seg in rawSegments)
                 {
-                    string candId = $"RAW_{++candIdx:D3}";
+                    string candId = $"RAW_{++candIdx:D4}";
+                    seg.DiagnosticId = candId;
+                    seg.ParentDiagnosticIds = seg.SourceLineIds != null ? new List<string>(seg.SourceLineIds) : new List<string>();
+                    seg.RootRawCandidateIds = new List<string> { candId };
+
                     BeamDiagnosticCollector.Instance.Record(new BeamDiagnosticEntry
                     {
                         CandidateId = candId,
+                        DiagnosticId = candId,
+                        ObjectType = "RawBeamCandidate",
+                        ParentCandidateIds = seg.ParentDiagnosticIds,
+                        ParentDiagnosticIds = seg.ParentDiagnosticIds,
+                        RootRawCandidateIds = seg.RootRawCandidateIds,
                         Stage = BeamDiagnosticStage.RawBeamCandidate,
                         Action = BeamDiagnosticAction.Kept,
                         Reason = $"Extracted via {seg.DetectionMethod}",
@@ -668,7 +678,13 @@ namespace Antigravity.DrawBeams.Services
 
                 foreach (var kvp in lineUsage.Where(k => k.Value.Count > 1))
                 {
-                    BeamDiagnosticCollector.Instance.RecordWarning($"CAD Line ID '{kvp.Key}' was used by multiple raw candidates: {string.Join(", ", kvp.Value)}");
+                    BeamDiagnosticCollector.Instance.Record(new BeamDiagnosticEntry
+                    {
+                        Stage = BeamDiagnosticStage.RawBeamCandidate,
+                        Action = BeamDiagnosticAction.Warning,
+                        Reason = $"SourceLineUsedByMultipleCandidates: CAD Line ID '{kvp.Key}' used by raw candidates: {string.Join(", ", kvp.Value)}"
+                    });
+                    BeamDiagnosticCollector.Instance.RecordWarning($"SourceLineUsedByMultipleCandidates: CAD Line ID '{kvp.Key}' was used by multiple raw candidates: {string.Join(", ", kvp.Value)}");
                 }
 
                 try

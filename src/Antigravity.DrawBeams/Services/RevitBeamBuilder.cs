@@ -126,6 +126,16 @@ namespace Antigravity.DrawBeams.Services
         {
             var revSummary = BeamDiagnosticCollector.Instance.CurrentSession?.RevitSummary;
 
+            BeamDiagnosticCollector.Instance.Record(new BeamDiagnosticEntry
+            {
+                Stage = BeamDiagnosticStage.RevitGuardEvaluation,
+                Action = BeamDiagnosticAction.Evaluated,
+                Reason = "Evaluating existing Revit model beams for duplicate guard.",
+                Width = widthMm,
+                Height = heightMm,
+                Mark = mark
+            });
+
             ElementId existingId = FindOverlappingExistingBeam(curve, level, widthMm, heightMm, options);
             if (existingId != ElementId.InvalidElementId)
             {
@@ -137,7 +147,7 @@ namespace Antigravity.DrawBeams.Services
 
                 BeamDiagnosticCollector.Instance.Record(new BeamDiagnosticEntry
                 {
-                    Stage = BeamDiagnosticStage.RevitGuardCheck,
+                    Stage = BeamDiagnosticStage.RevitGuardDecision,
                     Action = BeamDiagnosticAction.SkippedDuplicate,
                     ExistingRevitElementId = existingId.ToString(),
                     Reason = $"Near-duplicate beam exists in Revit model (ElementId: {existingId}).",

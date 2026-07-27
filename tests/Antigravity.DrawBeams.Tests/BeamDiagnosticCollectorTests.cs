@@ -368,7 +368,7 @@ namespace Antigravity.DrawBeams.Tests
             Assert.True(lines.Length > 1); // Header + data lines
 
             Assert.Contains(session.Entries, e => e.Stage == BeamDiagnosticStage.RawBeamCandidate);
-            Assert.Contains(session.Entries, e => e.Stage == BeamDiagnosticStage.OverlapResolverOutput);
+            Assert.Contains(session.Entries, e => e.Stage == BeamDiagnosticStage.OverlapDecision || e.Stage == BeamDiagnosticStage.OverlapResolverOutput);
 
             // Cleanup
             if (File.Exists(filePath)) File.Delete(filePath);
@@ -407,6 +407,101 @@ namespace Antigravity.DrawBeams.Tests
             Assert.Equal(0, session.RevitSummary.CreatedCount);
             Assert.Equal(1, session.RevitSummary.SkippedCount);
             Assert.Contains(session.Entries, e => e.Action == BeamDiagnosticAction.SkippedDuplicate);
+        }
+
+        [Fact]
+        public void Test15_ExportLineageCsv_ValidFileHeaderAndRows()
+        {
+            var collector = BeamDiagnosticCollector.Instance;
+            var session = collector.StartSession();
+
+            collector.Record(new BeamDiagnosticEntry
+            {
+                DiagnosticId = "FINAL_0001",
+                ObjectType = "FinalCandidate",
+                ParentDiagnosticIds = new List<string> { "CHAIN_0001" },
+                RootRawCandidateIds = new List<string> { "RAW_0001", "RAW_0002" },
+                Stage = BeamDiagnosticStage.FinalCandidate,
+                Action = BeamDiagnosticAction.Kept,
+                Reason = "Test final candidate"
+            });
+
+            string tempDir = Path.Combine(Path.GetTempPath(), "DrawBeamsLineageCsv_" + Guid.NewGuid().ToString("N"));
+            var (success, filePath, warning) = collector.ExportLineageCsv(tempDir);
+
+            Assert.True(success);
+            Assert.NotNull(filePath);
+            Assert.True(File.Exists(filePath));
+            Assert.Null(warning);
+
+            string[] lines = File.ReadAllLines(filePath);
+            Assert.True(lines.Length >= 2);
+            Assert.Contains("DiagnosticId,ObjectType,ParentDiagnosticIds,RootRawCandidateIds", lines[0]);
+            Assert.Contains("FINAL_0001", lines[1]);
+            Assert.Contains("RAW_0001;RAW_0002", lines[1]);
+
+            // Cleanup
+            if (File.Exists(filePath)) File.Delete(filePath);
+            if (Directory.Exists(tempDir)) Directory.Delete(tempDir, true);
+        }
+
+        [Fact]
+        public void Test16_FullLineageTrace_FinalToChainToRaw()
+        {
+            var collector = BeamDiagnosticCollector.Instance;
+            var session = collector.StartSession();
+
+            var raw1 = new CadBeamSegment { StartX = 0, StartY = 0, EndX = 3000, EndY = 0, Width = 400, Height = 600, IsPaired = true, DiagnosticId = "RAW_0001", RootRawCandidateIds = new List<string> { "RAW_0001" } };
+            var raw2 = new CadBeamSegment { StartX = 3000, StartY = 0, EndX = 6000, EndY = 0, Width = 400, Height = 600, IsPaired = true, DiagnosticId = "RAW_0002", RootRawCandidateIds = new List<string> { "RAW_0002" } };
+
+            collector.Record(new BeamDiagnosticEntry { DiagnosticId = "RAW_0001", Stage = BeamDiagnosticStage.RawBeamCandidate, Action = BeamDiagnosticAction.Kept });
+            collector.Record(new BeamDiagnosticEntry { DiagnosticId = "RAW_0002", Stage = BeamDiagnosticStage.RawBeamCandidate, Action = BeamDiagnosticAction.Kept });
+
+            var pipeline = new BeamCadPipeline();
+            var finals = pipeline.ProcessPipeline(new[] { raw1, raw2 });
+
+            collector.CompleteSession();
+
+            Assert.Single(finals);
+            var finalBeam = finals[0];
+
+            Assert.StartsWith("FINAL_", finalBeam.DiagnosticId);
+            Assert.NotNull(finalBeam.RootRawCandidateIds);
+            Assert.Contains("RAW_0001", finalBeam.RootRawCandidateIds);
+            Assert.Contains("RAW_0002", finalBeam.RootRawCandidateIds);
+
+            var finalEntry = session.Entries.FirstOrDefault(e => e.Stage == BeamDiagnosticStage.FinalCandidate);
+            Assert.NotNull(finalEntry);
+            Assert.Contains("RAW_0001", finalEntry.RootRawCandidateIds);
+            Assert.Contains("RAW_0002", finalEntry.RootRawCandidateIds);
+        }
+
+        [Fact]
+        public void Test17_CounterInvariantMismatch_ProducesWarning()
+        {
+            var collector = BeamDiagnosticCollector.Instance;
+            var session = collector.StartSession();
+
+            // Intentionally set mismatched summary counts
+            session.PipelineSummary.RawCandidatesCount = 100;
+            session.PipelineSummary.ContinuityChainsCount = 50;
+
+            collector.Record(new BeamDiagnosticEntry { DiagnosticId = "RAW_0001", Stage = BeamDiagnosticStage.RawBeamCandidate, Action = BeamDiagnosticAction.Kept });
+
+            collector.CompleteSession();
+
+            Assert.Contains(session.Entries, e => e.Action == BeamDiagnosticAction.Warning && e.Reason.Contains("DiagnosticCounterInvariantFailed"));
+        }
+
+        [Fact]
+        public void Test18_DisabledOptions_DoesNotRecordOrAffectPipeline()
+        {
+            var collector = new BeamDiagnosticCollector(new BeamDiagnosticOptions { Enabled = false });
+            collector.StartSession();
+
+            collector.Record(new BeamDiagnosticEntry { DiagnosticId = "RAW_9999", Stage = BeamDiagnosticStage.RawBeamCandidate });
+
+            Assert.Empty(collector.CurrentSession.Entries);
         }
     }
 }

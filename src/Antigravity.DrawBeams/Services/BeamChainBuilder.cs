@@ -31,6 +31,11 @@ namespace Antigravity.DrawBeams.Services
             .OrderByDescending(s => s.Confidence)
             .ThenByDescending(s => s.Length)
             .FirstOrDefault()?.Mark;
+
+        // Lineage & Traceability Properties
+        public string DiagnosticId { get; set; }
+        public List<string> ParentDiagnosticIds { get; set; } = new List<string>();
+        public List<string> RootRawCandidateIds { get; set; } = new List<string>();
     }
 
     public class BeamChainBuilder
@@ -53,6 +58,14 @@ namespace Antigravity.DrawBeams.Services
 
             if (validSegments.Count == 0) return new List<BeamChain>();
 
+            BeamDiagnosticCollector.Instance.Record(new BeamDiagnosticEntry
+            {
+                Stage = BeamDiagnosticStage.ContinuityEvaluation,
+                Action = BeamDiagnosticAction.Evaluated,
+                Reason = $"Continuity evaluation started with {validSegments.Count} valid segments.",
+                InputDiagnosticIds = validSegments.Select(s => s.DiagnosticId ?? "").Where(id => !string.IsNullOrEmpty(id)).ToList()
+            });
+
             // 2. Pre-process segments: Split long segments at non-collinear intersections (junctions)
             var preprocessedSegments = PreprocessSegmentJunctionSplits(validSegments);
 
@@ -68,6 +81,7 @@ namespace Antigravity.DrawBeams.Services
 
             var unassigned = new HashSet<CadBeamSegment>(sortedInput);
             var chains = new List<BeamChain>();
+            int chainIdx = 0;
 
             while (unassigned.Count > 0)
             {
@@ -109,7 +123,32 @@ namespace Antigravity.DrawBeams.Services
                 } while (addedAny);
 
                 var chain = FinalizeChain(currentChainSegments);
+
+                chain.DiagnosticId = $"CHAIN_{++chainIdx:D4}";
+                chain.ParentDiagnosticIds = currentChainSegments.Select(s => s.DiagnosticId ?? "").Where(id => !string.IsNullOrEmpty(id)).Distinct().ToList();
+                chain.RootRawCandidateIds = currentChainSegments.SelectMany(s => s.RootRawCandidateIds ?? new List<string>()).Distinct().ToList();
+
+                BeamDiagnosticCollector.Instance.Record(new BeamDiagnosticEntry
+                {
+                    CandidateId = chain.DiagnosticId,
+                    DiagnosticId = chain.DiagnosticId,
+                    ObjectType = "ContinuityChain",
+                    ParentDiagnosticIds = chain.ParentDiagnosticIds,
+                    RootRawCandidateIds = chain.RootRawCandidateIds,
+                    Stage = BeamDiagnosticStage.ContinuityChainCreated,
+                    Action = BeamDiagnosticAction.Created,
+                    Reason = $"Created chain from {currentChainSegments.Count} segment(s).",
+                    StartX = chain.StartX, StartY = chain.StartY, EndX = chain.EndX, EndY = chain.EndY,
+                    Width = chain.Width, Height = chain.Height, Mark = chain.Mark
+                });
+
                 chains.Add(chain);
+            }
+
+            var summary = BeamDiagnosticCollector.Instance.CurrentSession?.PipelineSummary;
+            if (summary != null)
+            {
+                summary.ContinuityChainsCount = chains.Count;
             }
 
             return chains
@@ -123,6 +162,7 @@ namespace Antigravity.DrawBeams.Services
         private List<CadBeamSegment> PreprocessSegmentJunctionSplits(List<CadBeamSegment> segments)
         {
             var result = new List<CadBeamSegment>();
+            int jsplitIdx = 0;
 
             foreach (var seg in segments)
             {
@@ -157,19 +197,48 @@ namespace Antigravity.DrawBeams.Services
                 {
                     splitPoints = splitPoints.Distinct().OrderBy(t => t).ToList();
                     double currentT = 0;
+                    jsplitIdx++;
+
+                    var children = new List<CadBeamSegment>();
+                    int childSubIdx = 0;
 
                     foreach (double t in splitPoints)
                     {
                         if (t - currentT > 1e-3)
                         {
-                            result.Add(CreateSubSegment(seg, currentT, t));
+                            var sub = CreateSubSegment(seg, currentT, t);
+                            sub.DiagnosticId = $"JSPLIT_{jsplitIdx:D4}_{(char)('A' + childSubIdx++)}";
+                            children.Add(sub);
                             currentT = t;
                         }
                     }
                     if (1.0 - currentT > 1e-3)
                     {
-                        result.Add(CreateSubSegment(seg, currentT, 1.0));
+                        var sub = CreateSubSegment(seg, currentT, 1.0);
+                        sub.DiagnosticId = $"JSPLIT_{jsplitIdx:D4}_{(char)('A' + childSubIdx++)}";
+                        children.Add(sub);
                     }
+
+                    var summary = BeamDiagnosticCollector.Instance.CurrentSession?.PipelineSummary;
+                    if (summary != null)
+                    {
+                        summary.JunctionSplitsCount++;
+                    }
+
+                    BeamDiagnosticCollector.Instance.Record(new BeamDiagnosticEntry
+                    {
+                        DiagnosticId = seg.DiagnosticId ?? "",
+                        ObjectType = "JunctionSplitParent",
+                        ParentDiagnosticIds = seg.ParentDiagnosticIds,
+                        RootRawCandidateIds = seg.RootRawCandidateIds,
+                        OutputDiagnosticIds = children.Select(c => c.DiagnosticId).ToList(),
+                        Stage = BeamDiagnosticStage.JunctionSplit,
+                        Action = BeamDiagnosticAction.Split,
+                        Reason = $"Junction split into {children.Count} sub-segments at intersection points.",
+                        StartX = seg.StartX, StartY = seg.StartY, EndX = seg.EndX, EndY = seg.EndY
+                    });
+
+                    result.AddRange(children);
                 }
             }
 

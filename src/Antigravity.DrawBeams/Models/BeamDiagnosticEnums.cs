@@ -5,13 +5,23 @@ namespace Antigravity.DrawBeams.Models
         RawCadEntity,
         RawBeamCandidate,
         ContinuityInput,
+        ContinuityEvaluation,
         ContinuityOutput,
+        ContinuityChainCreated,
+        JunctionEvaluation,
         JunctionSplit,
         DimensionAssignment,
+        DimensionTextEvaluation,
+        DimensionTextAssigned,
         DimensionSplit,
         OverlapResolverInput,
         OverlapResolverOutput,
+        OverlapEvaluation,
+        OverlapDecision,
+        FinalCandidate,
         RevitGuardCheck,
+        RevitGuardEvaluation,
+        RevitGuardDecision,
         RevitCreateResult
     }
 
@@ -21,9 +31,12 @@ namespace Antigravity.DrawBeams.Models
         Kept,
         Merged,
         Split,
+        Assigned,
         Suppressed,
         SkippedDuplicate,
         Rejected,
+        Evaluated,
+        Warning,
         Failed
     }
 }

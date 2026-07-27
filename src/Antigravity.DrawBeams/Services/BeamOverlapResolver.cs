@@ -40,14 +40,17 @@ namespace Antigravity.DrawBeams.Services
                 var beamA = sortedCandidates[i];
                 if (suppressed.Contains(beamA)) continue;
 
-                string idA = $"CAND_{Math.Round(beamA.StartX)}_{Math.Round(beamA.StartY)}_{Math.Round(beamA.EndX)}_{Math.Round(beamA.EndY)}";
+                string idA = !string.IsNullOrEmpty(beamA.DiagnosticId) ? beamA.DiagnosticId : $"CAND_{Math.Round(beamA.StartX)}_{Math.Round(beamA.StartY)}_{Math.Round(beamA.EndX)}_{Math.Round(beamA.EndY)}";
 
                 for (int j = i + 1; j < sortedCandidates.Count; j++)
                 {
                     var beamB = sortedCandidates[j];
                     if (suppressed.Contains(beamB)) continue;
 
-                    string idB = $"CAND_{Math.Round(beamB.StartX)}_{Math.Round(beamB.StartY)}_{Math.Round(beamB.EndX)}_{Math.Round(beamB.EndY)}";
+                    string idB = !string.IsNullOrEmpty(beamB.DiagnosticId) ? beamB.DiagnosticId : $"CAND_{Math.Round(beamB.StartX)}_{Math.Round(beamB.StartY)}_{Math.Round(beamB.EndX)}_{Math.Round(beamB.EndY)}";
+
+                    double scoreA = GetPriorityScore(beamA);
+                    double scoreB = GetPriorityScore(beamB);
 
                     var decision = EvaluateOverlapPair(beamA, beamB, opt);
                     if (decision == OverlapDecision.SuppressB)
@@ -56,12 +59,20 @@ namespace Antigravity.DrawBeams.Services
                         BeamDiagnosticCollector.Instance.Record(new BeamDiagnosticEntry
                         {
                             CandidateId = idB,
+                            DiagnosticId = idB,
+                            ObjectType = "SuppressedCandidate",
+                            ParentDiagnosticIds = beamB.ParentDiagnosticIds ?? new List<string>(),
+                            RootRawCandidateIds = beamB.RootRawCandidateIds ?? new List<string>(),
                             RelatedCandidateId = idA,
-                            Stage = BeamDiagnosticStage.OverlapResolverOutput,
+                            WinnerDiagnosticId = idA,
+                            LoserDiagnosticId = idB,
+                            Stage = BeamDiagnosticStage.OverlapDecision,
                             Action = BeamDiagnosticAction.Suppressed,
                             Reason = $"Suppressed by higher priority candidate {idA}",
                             DetectionMethod = beamB.DetectionMethod,
                             Confidence = beamB.Confidence,
+                            PriorityScore = scoreB,
+                            CompetingPriorityScore = scoreA,
                             StartX = beamB.StartX, StartY = beamB.StartY, EndX = beamB.EndX, EndY = beamB.EndY,
                             Width = beamB.Width, Height = beamB.Height, Mark = beamB.Mark
                         });
@@ -72,12 +83,20 @@ namespace Antigravity.DrawBeams.Services
                         BeamDiagnosticCollector.Instance.Record(new BeamDiagnosticEntry
                         {
                             CandidateId = idA,
+                            DiagnosticId = idA,
+                            ObjectType = "SuppressedCandidate",
+                            ParentDiagnosticIds = beamA.ParentDiagnosticIds ?? new List<string>(),
+                            RootRawCandidateIds = beamA.RootRawCandidateIds ?? new List<string>(),
                             RelatedCandidateId = idB,
-                            Stage = BeamDiagnosticStage.OverlapResolverOutput,
+                            WinnerDiagnosticId = idB,
+                            LoserDiagnosticId = idA,
+                            Stage = BeamDiagnosticStage.OverlapDecision,
                             Action = BeamDiagnosticAction.Suppressed,
                             Reason = $"Suppressed by higher priority candidate {idB}",
                             DetectionMethod = beamA.DetectionMethod,
                             Confidence = beamA.Confidence,
+                            PriorityScore = scoreA,
+                            CompetingPriorityScore = scoreB,
                             StartX = beamA.StartX, StartY = beamA.StartY, EndX = beamA.EndX, EndY = beamA.EndY,
                             Width = beamA.Width, Height = beamA.Height, Mark = beamA.Mark
                         });
@@ -96,15 +115,20 @@ namespace Antigravity.DrawBeams.Services
 
             foreach (var b in activeList)
             {
-                string id = $"CAND_{Math.Round(b.StartX)}_{Math.Round(b.StartY)}_{Math.Round(b.EndX)}_{Math.Round(b.EndY)}";
+                string id = !string.IsNullOrEmpty(b.DiagnosticId) ? b.DiagnosticId : $"CAND_{Math.Round(b.StartX)}_{Math.Round(b.StartY)}_{Math.Round(b.EndX)}_{Math.Round(b.EndY)}";
                 BeamDiagnosticCollector.Instance.Record(new BeamDiagnosticEntry
                 {
                     CandidateId = id,
-                    Stage = BeamDiagnosticStage.OverlapResolverOutput,
+                    DiagnosticId = id,
+                    ObjectType = "ActiveCandidate",
+                    ParentDiagnosticIds = b.ParentDiagnosticIds ?? new List<string>(),
+                    RootRawCandidateIds = b.RootRawCandidateIds ?? new List<string>(),
+                    Stage = BeamDiagnosticStage.OverlapDecision,
                     Action = BeamDiagnosticAction.Kept,
                     Reason = "Kept by BeamOverlapResolver",
                     DetectionMethod = b.DetectionMethod,
                     Confidence = b.Confidence,
+                    PriorityScore = GetPriorityScore(b),
                     StartX = b.StartX, StartY = b.StartY, EndX = b.EndX, EndY = b.EndY,
                     Width = b.Width, Height = b.Height, Mark = b.Mark
                 });

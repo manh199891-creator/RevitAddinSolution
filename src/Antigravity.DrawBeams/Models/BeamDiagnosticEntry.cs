@@ -7,7 +7,13 @@ namespace Antigravity.DrawBeams.Models
     {
         public string SessionId { get; set; }
         public string CandidateId { get; set; }
+        public string DiagnosticId { get; set; }
+        public string ObjectType { get; set; }
+
         public List<string> ParentCandidateIds { get; set; } = new List<string>();
+        public List<string> ParentDiagnosticIds { get; set; } = new List<string>();
+        public List<string> RootRawCandidateIds { get; set; } = new List<string>();
+
         public BeamDiagnosticStage Stage { get; set; }
         public BeamDiagnosticAction Action { get; set; }
         public string Reason { get; set; }
@@ -30,7 +36,34 @@ namespace Antigravity.DrawBeams.Models
         public string SourceLayer { get; set; }
         public List<string> SourceLineIds { get; set; } = new List<string>();
         public bool IsPaired { get; set; }
+
+        // Lineage & Relationship Properties
         public string RelatedCandidateId { get; set; }
+        public string WinnerDiagnosticId { get; set; }
+        public string LoserDiagnosticId { get; set; }
+        public List<string> InputDiagnosticIds { get; set; } = new List<string>();
+        public List<string> OutputDiagnosticIds { get; set; } = new List<string>();
+
+        // Geometry Metrics
+        public double AngularDifferenceDegrees { get; set; }
+        public double CenterlineDistanceMm { get; set; }
+        public double EndpointDistanceMm { get; set; }
+        public double GapMm { get; set; }
+        public double LateralOffsetMm { get; set; }
+        public double OverlapLengthMm { get; set; }
+        public double OverlapRatio { get; set; }
+        public bool IsContained { get; set; }
+        public int SharedSourceLineCount { get; set; }
+        public double PriorityScore { get; set; }
+        public double CompetingPriorityScore { get; set; }
+
+        // Text Metrics
+        public string DimensionTextId { get; set; }
+        public double TextProjection { get; set; }
+        public double TextLateralDistance { get; set; }
+        public List<string> AssignedChainIds { get; set; } = new List<string>();
+
+        // Revit & Exception Properties
         public string ExistingRevitElementId { get; set; }
         public string ExceptionType { get; set; }
         public string ExceptionMessage { get; set; }

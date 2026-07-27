@@ -25,6 +25,11 @@ namespace Antigravity.DrawBeams.Models
         public BeamDetectionMethod DetectionMethod { get; set; } = BeamDetectionMethod.PairedLines;
         public bool HasDimensionText => !string.IsNullOrEmpty(TextContent) || (Width > 0 && Height > 0);
 
+        // Lineage & Traceability
+        public string DiagnosticId { get; set; }
+        public List<string> ParentDiagnosticIds { get; set; } = new List<string>();
+        public List<string> RootRawCandidateIds { get; set; } = new List<string>();
+
         public double DirectionX => EndX - StartX;
         public double DirectionY => EndY - StartY;
 

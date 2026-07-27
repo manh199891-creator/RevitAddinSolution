@@ -49,7 +49,6 @@ namespace Antigravity.DrawBeams.Services
             {
                 if (options != null) _options = options;
 
-                // Finding 1 & 2: Reuse active session if unclosed and no explicit new ID requested
                 if (!string.IsNullOrEmpty(sessionId))
                 {
                     _currentSession = new BeamDiagnosticSession
@@ -124,17 +123,83 @@ namespace Antigravity.DrawBeams.Services
             {
                 if (_currentSession == null) return;
 
-                // Finding 3: Ensure EndTime is non-null
                 if (!_currentSession.EndTime.HasValue)
                 {
                     _currentSession.EndTime = DateTime.Now;
                 }
 
+                ValidateCounterInvariants();
+
                 if (_options != null && _options.Enabled && _options.AutoExport)
                 {
                     ExportJson();
                     ExportCsv();
+                    ExportLineageCsv();
                 }
+            }
+        }
+
+        public void ValidateCounterInvariants()
+        {
+            if (_currentSession == null) return;
+
+            var session = _currentSession;
+            var pipe = session.PipelineSummary;
+            var rev = session.RevitSummary;
+
+            List<BeamDiagnosticEntry> entriesSnapshot;
+            lock (_lock)
+            {
+                entriesSnapshot = session.Entries.ToList();
+            }
+
+            int actualRawCount = entriesSnapshot.Count(e => e.Stage == BeamDiagnosticStage.RawBeamCandidate && (e.Action == BeamDiagnosticAction.Created || e.Action == BeamDiagnosticAction.Kept));
+            int actualChainCount = entriesSnapshot.Count(e => e.Stage == BeamDiagnosticStage.ContinuityChainCreated);
+            int actualJunctionSplitCount = entriesSnapshot.Count(e => e.Stage == BeamDiagnosticStage.JunctionSplit);
+            int actualDimSplitCount = entriesSnapshot.Count(e => e.Stage == BeamDiagnosticStage.DimensionSplit);
+            int actualSuppressedCount = entriesSnapshot.Where(e => e.Stage == BeamDiagnosticStage.OverlapDecision && e.Action == BeamDiagnosticAction.Suppressed).Select(e => e.LoserDiagnosticId ?? e.CandidateId).Distinct().Count();
+            int actualFinalCount = entriesSnapshot.Count(e => e.Stage == BeamDiagnosticStage.FinalCandidate && e.Action == BeamDiagnosticAction.Kept);
+
+            int actualRevitCreated = entriesSnapshot.Count(e => e.Stage == BeamDiagnosticStage.RevitCreateResult && e.Action == BeamDiagnosticAction.Created);
+            int actualRevitSkipped = entriesSnapshot.Count(e => e.Stage == BeamDiagnosticStage.RevitGuardDecision && e.Action == BeamDiagnosticAction.SkippedDuplicate);
+            int actualRevitFailed = entriesSnapshot.Count(e => e.Stage == BeamDiagnosticStage.RevitCreateResult && e.Action == BeamDiagnosticAction.Failed);
+
+            var mismatchList = new List<string>();
+
+            if (pipe.RawCandidatesCount > 0 && actualRawCount > 0 && pipe.RawCandidatesCount != actualRawCount)
+                mismatchList.Add($"RawCandidates (Summary: {pipe.RawCandidatesCount}, Entries: {actualRawCount})");
+
+            if (actualChainCount > 0 && pipe.ContinuityChainsCount != actualChainCount)
+                mismatchList.Add($"ContinuityChains (Summary: {pipe.ContinuityChainsCount}, Entries: {actualChainCount})");
+
+            if (actualJunctionSplitCount > 0 && pipe.JunctionSplitsCount != actualJunctionSplitCount)
+                mismatchList.Add($"JunctionSplits (Summary: {pipe.JunctionSplitsCount}, Entries: {actualJunctionSplitCount})");
+
+            if (actualDimSplitCount > 0 && pipe.DimensionSplitsCount != actualDimSplitCount)
+                mismatchList.Add($"DimensionSplits (Summary: {pipe.DimensionSplitsCount}, Entries: {actualDimSplitCount})");
+
+            if (actualSuppressedCount > 0 && pipe.SuppressedOverlapsCount != actualSuppressedCount)
+                mismatchList.Add($"SuppressedOverlaps (Summary: {pipe.SuppressedOverlapsCount}, Entries: {actualSuppressedCount})");
+
+            if (actualFinalCount > 0 && pipe.AfterOverlapCount != actualFinalCount)
+                mismatchList.Add($"AfterOverlap/Final (Summary: {pipe.AfterOverlapCount}, Entries: {actualFinalCount})");
+
+            if (actualRevitCreated > 0 && rev.CreatedCount != actualRevitCreated)
+                mismatchList.Add($"RevitCreated (Summary: {rev.CreatedCount}, Entries: {actualRevitCreated})");
+
+            if (actualRevitSkipped > 0 && rev.SkippedCount != actualRevitSkipped)
+                mismatchList.Add($"RevitSkipped (Summary: {rev.SkippedCount}, Entries: {actualRevitSkipped})");
+
+            if (mismatchList.Count > 0)
+            {
+                string warnMsg = $"DiagnosticCounterInvariantFailed: Mismatches detected in {string.Join("; ", mismatchList)}";
+                Record(new BeamDiagnosticEntry
+                {
+                    Stage = BeamDiagnosticStage.FinalCandidate,
+                    Action = BeamDiagnosticAction.Warning,
+                    Reason = warnMsg
+                });
+                RecordWarning(warnMsg);
             }
         }
 
@@ -218,6 +283,46 @@ namespace Antigravity.DrawBeams.Services
             }
         }
 
+        public (bool Success, string FilePath, string Warning) ExportLineageCsv(string directory = null)
+        {
+            lock (_lock)
+            {
+                try
+                {
+                    if (_currentSession == null) return (false, null, "No active diagnostic session to export.");
+
+                    if (!_currentSession.EndTime.HasValue)
+                    {
+                        _currentSession.EndTime = DateTime.Now;
+                    }
+
+                    string targetDir = !string.IsNullOrEmpty(directory)
+                        ? directory
+                        : _options.ExportDirectory;
+
+                    if (!Directory.Exists(targetDir))
+                    {
+                        Directory.CreateDirectory(targetDir);
+                    }
+
+                    string timeStampStr = _currentSession.StartTime.ToString("yyyyMMdd_HHmmss", CultureInfo.InvariantCulture);
+                    string fileName = $"DrawBeams_{timeStampStr}_{_currentSession.SessionId}.lineage.csv";
+                    string filePath = Path.Combine(targetDir, fileName);
+
+                    string csvContent = SerializeSessionToLineageCsv(_currentSession);
+                    File.WriteAllText(filePath, csvContent, Encoding.UTF8);
+
+                    return (true, filePath, null);
+                }
+                catch (Exception ex)
+                {
+                    string warnMsg = $"Exporting Lineage CSV diagnostic failed: {ex.Message}";
+                    RecordWarning(warnMsg);
+                    return (false, null, warnMsg);
+                }
+            }
+        }
+
         public string BuildSummary()
         {
             lock (_lock)
@@ -231,6 +336,7 @@ namespace Antigravity.DrawBeams.Services
 
                 var (jsonSuccess, jsonPath, _) = ExportJson();
                 var (csvSuccess, csvPath, _) = ExportCsv();
+                var (linSuccess, linPath, _) = ExportLineageCsv();
 
                 var sb = new StringBuilder();
                 sb.AppendLine("===================================");
@@ -250,7 +356,14 @@ namespace Antigravity.DrawBeams.Services
                     sb.AppendLine();
                 }
 
-                sb.AppendLine($"Entries Recorded: {session.Entries.Count}");
+                if (pipe.ContinuityChainsCount > pipe.RawCandidatesCount && pipe.JunctionSplitsCount == 0 && pipe.DimensionSplitsCount == 0)
+                {
+                    sb.AppendLine("WARNING: Continuity output exceeds raw candidate count without recorded split events.");
+                    sb.AppendLine();
+                }
+
+                sb.AppendLine($"Diagnostic Entries: {session.Entries.Count}");
+                sb.AppendLine($"Counter Warnings:   {session.Entries.Count(e => e.Action == BeamDiagnosticAction.Warning)}");
                 sb.AppendLine();
                 sb.AppendLine("CAD Entities:");
                 sb.AppendLine($"  - Total: {cad.TotalEntities}");
@@ -276,8 +389,9 @@ namespace Antigravity.DrawBeams.Services
                 sb.AppendLine($"  - Failed: {rev.FailedCount}");
                 sb.AppendLine();
                 sb.AppendLine("Diagnostic Files:");
-                sb.AppendLine($"  - JSON: {(jsonSuccess ? jsonPath : "Not exported")}");
-                sb.AppendLine($"  - CSV:  {(csvSuccess ? csvPath : "Not exported")}");
+                sb.AppendLine($"  - JSON:    {(jsonSuccess ? jsonPath : "Not exported")}");
+                sb.AppendLine($"  - CSV:     {(csvSuccess ? csvPath : "Not exported")}");
+                sb.AppendLine($"  - Lineage: {(linSuccess ? linPath : "Not exported")}");
                 if (session.Warnings.Count > 0)
                 {
                     sb.AppendLine();
@@ -338,7 +452,11 @@ namespace Antigravity.DrawBeams.Services
                 sb.AppendLine("    {");
                 sb.AppendLine($"      \"SessionId\": \"{EscapeJson(e.SessionId)}\",");
                 sb.AppendLine($"      \"CandidateId\": \"{EscapeJson(e.CandidateId)}\",");
+                sb.AppendLine($"      \"DiagnosticId\": \"{EscapeJson(e.DiagnosticId)}\",");
+                sb.AppendLine($"      \"ObjectType\": \"{EscapeJson(e.ObjectType)}\",");
                 sb.AppendLine($"      \"ParentCandidateIds\": [{string.Join(", ", (e.ParentCandidateIds ?? new List<string>()).Select(id => $"\"{EscapeJson(id)}\""))}],");
+                sb.AppendLine($"      \"ParentDiagnosticIds\": [{string.Join(", ", (e.ParentDiagnosticIds ?? new List<string>()).Select(id => $"\"{EscapeJson(id)}\""))}],");
+                sb.AppendLine($"      \"RootRawCandidateIds\": [{string.Join(", ", (e.RootRawCandidateIds ?? new List<string>()).Select(id => $"\"{EscapeJson(id)}\""))}],");
                 sb.AppendLine($"      \"Stage\": \"{e.Stage}\",");
                 sb.AppendLine($"      \"Action\": \"{e.Action}\",");
                 sb.AppendLine($"      \"Reason\": \"{EscapeJson(e.Reason)}\",");
@@ -361,6 +479,25 @@ namespace Antigravity.DrawBeams.Services
                 sb.AppendLine($"      \"SourceLineIds\": [{string.Join(", ", (e.SourceLineIds ?? new List<string>()).Select(id => $"\"{EscapeJson(id)}\""))}],");
                 sb.AppendLine($"      \"IsPaired\": {(e.IsPaired ? "true" : "false")},");
                 sb.AppendLine($"      \"RelatedCandidateId\": \"{EscapeJson(e.RelatedCandidateId)}\",");
+                sb.AppendLine($"      \"WinnerDiagnosticId\": \"{EscapeJson(e.WinnerDiagnosticId)}\",");
+                sb.AppendLine($"      \"LoserDiagnosticId\": \"{EscapeJson(e.LoserDiagnosticId)}\",");
+                sb.AppendLine($"      \"InputDiagnosticIds\": [{string.Join(", ", (e.InputDiagnosticIds ?? new List<string>()).Select(id => $"\"{EscapeJson(id)}\""))}],");
+                sb.AppendLine($"      \"OutputDiagnosticIds\": [{string.Join(", ", (e.OutputDiagnosticIds ?? new List<string>()).Select(id => $"\"{EscapeJson(id)}\""))}],");
+                sb.AppendLine($"      \"AngularDifferenceDegrees\": {e.AngularDifferenceDegrees.ToString(CultureInfo.InvariantCulture)},");
+                sb.AppendLine($"      \"CenterlineDistanceMm\": {e.CenterlineDistanceMm.ToString(CultureInfo.InvariantCulture)},");
+                sb.AppendLine($"      \"EndpointDistanceMm\": {e.EndpointDistanceMm.ToString(CultureInfo.InvariantCulture)},");
+                sb.AppendLine($"      \"GapMm\": {e.GapMm.ToString(CultureInfo.InvariantCulture)},");
+                sb.AppendLine($"      \"LateralOffsetMm\": {e.LateralOffsetMm.ToString(CultureInfo.InvariantCulture)},");
+                sb.AppendLine($"      \"OverlapLengthMm\": {e.OverlapLengthMm.ToString(CultureInfo.InvariantCulture)},");
+                sb.AppendLine($"      \"OverlapRatio\": {e.OverlapRatio.ToString(CultureInfo.InvariantCulture)},");
+                sb.AppendLine($"      \"IsContained\": {(e.IsContained ? "true" : "false")},");
+                sb.AppendLine($"      \"SharedSourceLineCount\": {e.SharedSourceLineCount},");
+                sb.AppendLine($"      \"PriorityScore\": {e.PriorityScore.ToString(CultureInfo.InvariantCulture)},");
+                sb.AppendLine($"      \"CompetingPriorityScore\": {e.CompetingPriorityScore.ToString(CultureInfo.InvariantCulture)},");
+                sb.AppendLine($"      \"DimensionTextId\": \"{EscapeJson(e.DimensionTextId)}\",");
+                sb.AppendLine($"      \"TextProjection\": {e.TextProjection.ToString(CultureInfo.InvariantCulture)},");
+                sb.AppendLine($"      \"TextLateralDistance\": {e.TextLateralDistance.ToString(CultureInfo.InvariantCulture)},");
+                sb.AppendLine($"      \"AssignedChainIds\": [{string.Join(", ", (e.AssignedChainIds ?? new List<string>()).Select(id => $"\"{EscapeJson(id)}\""))}],");
                 sb.AppendLine($"      \"ExistingRevitElementId\": \"{EscapeJson(e.ExistingRevitElementId)}\",");
                 sb.AppendLine($"      \"ExceptionType\": \"{EscapeJson(e.ExceptionType)}\",");
                 sb.AppendLine($"      \"ExceptionMessage\": \"{EscapeJson(e.ExceptionMessage)}\"");
@@ -377,18 +514,25 @@ namespace Antigravity.DrawBeams.Services
         private string SerializeSessionToCsv(BeamDiagnosticSession s)
         {
             var sb = new StringBuilder();
-            sb.AppendLine("SessionId,CandidateId,ParentCandidateIds,Stage,Action,Reason,Timestamp,DetectionMethod,Confidence,StartX,StartY,EndX,EndY,Length,AngleDegrees,Width,Height,MeasuredWidth,Mark,TextContent,HasDimensionText,SourceLayer,SourceLineIds,IsPaired,RelatedCandidateId,ExistingRevitElementId,ExceptionType,ExceptionMessage");
+            sb.AppendLine("SessionId,CandidateId,DiagnosticId,ObjectType,ParentDiagnosticIds,RootRawCandidateIds,Stage,Action,Reason,Timestamp,DetectionMethod,Confidence,StartX,StartY,EndX,EndY,Length,AngleDegrees,Width,Height,MeasuredWidth,Mark,TextContent,HasDimensionText,SourceLayer,SourceLineIds,IsPaired,RelatedCandidateId,WinnerDiagnosticId,LoserDiagnosticId,InputDiagnosticIds,OutputDiagnosticIds,AngularDifferenceDegrees,CenterlineDistanceMm,EndpointDistanceMm,GapMm,LateralOffsetMm,OverlapLengthMm,OverlapRatio,IsContained,SharedSourceLineCount,PriorityScore,CompetingPriorityScore,DimensionTextId,TextProjection,TextLateralDistance,AssignedChainIds,ExistingRevitElementId,ExceptionType,ExceptionMessage");
 
             foreach (var e in s.Entries)
             {
-                var parentIds = e.ParentCandidateIds != null ? string.Join(";", e.ParentCandidateIds) : "";
+                var parentIds = e.ParentDiagnosticIds != null && e.ParentDiagnosticIds.Count > 0 ? string.Join(";", e.ParentDiagnosticIds) : (e.ParentCandidateIds != null ? string.Join(";", e.ParentCandidateIds) : "");
+                var rootIds = e.RootRawCandidateIds != null ? string.Join(";", e.RootRawCandidateIds) : "";
                 var sourceIds = e.SourceLineIds != null ? string.Join(";", e.SourceLineIds) : "";
+                var inIds = e.InputDiagnosticIds != null ? string.Join(";", e.InputDiagnosticIds) : "";
+                var outIds = e.OutputDiagnosticIds != null ? string.Join(";", e.OutputDiagnosticIds) : "";
+                var assignedChains = e.AssignedChainIds != null ? string.Join(";", e.AssignedChainIds) : "";
 
                 sb.AppendLine(string.Join(",", new[]
                 {
                     EscapeCsv(e.SessionId),
                     EscapeCsv(e.CandidateId),
+                    EscapeCsv(e.DiagnosticId),
+                    EscapeCsv(e.ObjectType),
                     EscapeCsv(parentIds),
+                    EscapeCsv(rootIds),
                     EscapeCsv(e.Stage.ToString()),
                     EscapeCsv(e.Action.ToString()),
                     EscapeCsv(e.Reason),
@@ -411,9 +555,62 @@ namespace Antigravity.DrawBeams.Services
                     EscapeCsv(sourceIds),
                     e.IsPaired.ToString(),
                     EscapeCsv(e.RelatedCandidateId),
+                    EscapeCsv(e.WinnerDiagnosticId),
+                    EscapeCsv(e.LoserDiagnosticId),
+                    EscapeCsv(inIds),
+                    EscapeCsv(outIds),
+                    e.AngularDifferenceDegrees.ToString(CultureInfo.InvariantCulture),
+                    e.CenterlineDistanceMm.ToString(CultureInfo.InvariantCulture),
+                    e.EndpointDistanceMm.ToString(CultureInfo.InvariantCulture),
+                    e.GapMm.ToString(CultureInfo.InvariantCulture),
+                    e.LateralOffsetMm.ToString(CultureInfo.InvariantCulture),
+                    e.OverlapLengthMm.ToString(CultureInfo.InvariantCulture),
+                    e.OverlapRatio.ToString(CultureInfo.InvariantCulture),
+                    e.IsContained.ToString(),
+                    e.SharedSourceLineCount.ToString(),
+                    e.PriorityScore.ToString(CultureInfo.InvariantCulture),
+                    e.CompetingPriorityScore.ToString(CultureInfo.InvariantCulture),
+                    EscapeCsv(e.DimensionTextId),
+                    e.TextProjection.ToString(CultureInfo.InvariantCulture),
+                    e.TextLateralDistance.ToString(CultureInfo.InvariantCulture),
+                    EscapeCsv(assignedChains),
                     EscapeCsv(e.ExistingRevitElementId),
                     EscapeCsv(e.ExceptionType),
                     EscapeCsv(e.ExceptionMessage)
+                }));
+            }
+
+            return sb.ToString();
+        }
+
+        private string SerializeSessionToLineageCsv(BeamDiagnosticSession s)
+        {
+            var sb = new StringBuilder();
+            sb.AppendLine("DiagnosticId,ObjectType,ParentDiagnosticIds,RootRawCandidateIds,Stage,Action,Reason,WinnerDiagnosticId,LoserDiagnosticId,StartX,StartY,EndX,EndY,Width,Height,Confidence");
+
+            foreach (var e in s.Entries)
+            {
+                var parentIds = e.ParentDiagnosticIds != null && e.ParentDiagnosticIds.Count > 0 ? string.Join(";", e.ParentDiagnosticIds) : (e.ParentCandidateIds != null ? string.Join(";", e.ParentCandidateIds) : "");
+                var rootIds = e.RootRawCandidateIds != null ? string.Join(";", e.RootRawCandidateIds) : "";
+
+                sb.AppendLine(string.Join(",", new[]
+                {
+                    EscapeCsv(e.DiagnosticId ?? e.CandidateId),
+                    EscapeCsv(e.ObjectType ?? e.Stage.ToString()),
+                    EscapeCsv(parentIds),
+                    EscapeCsv(rootIds),
+                    EscapeCsv(e.Stage.ToString()),
+                    EscapeCsv(e.Action.ToString()),
+                    EscapeCsv(e.Reason),
+                    EscapeCsv(e.WinnerDiagnosticId),
+                    EscapeCsv(e.LoserDiagnosticId),
+                    e.StartX.ToString(CultureInfo.InvariantCulture),
+                    e.StartY.ToString(CultureInfo.InvariantCulture),
+                    e.EndX.ToString(CultureInfo.InvariantCulture),
+                    e.EndY.ToString(CultureInfo.InvariantCulture),
+                    e.Width.ToString(CultureInfo.InvariantCulture),
+                    e.Height.ToString(CultureInfo.InvariantCulture),
+                    e.Confidence.ToString(CultureInfo.InvariantCulture)
                 }));
             }
 
