@@ -1,0 +1,30 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "required": ["VERDICT", "REVIEWED_RUN_ID", "REVIEWED_SNAPSHOT_HASH", "REVIEWED_FILES", "FINDINGS"],
+  "additionalProperties": false,
+  "properties": {
+    "VERDICT": {"enum": ["PASS", "FAIL"]},
+    "REVIEWED_RUN_ID": {"type": "string", "minLength": 1},
+    "REVIEWED_SNAPSHOT_HASH": {"type": "string", "minLength": 1},
+    "REVIEWED_FILES": {
+      "type": "array",
+      "items": {"type": "string"}
+    },
+    "FINDINGS": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["severity", "file", "line", "title", "body"],
+        "additionalProperties": false,
+        "properties": {
+          "severity": {"enum": ["P0", "P1", "P2", "P3"]},
+          "file": {"type": "string"},
+          "line": {"type": "integer", "minimum": 1},
+          "title": {"type": "string", "minLength": 1},
+          "body": {"type": "string", "minLength": 1}
+        }
+      }
+    }
+  }
+}

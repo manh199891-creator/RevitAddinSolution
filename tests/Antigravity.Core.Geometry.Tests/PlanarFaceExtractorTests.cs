@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using Antigravity.Core.Geometry;
+using Antigravity.AutoFoundation.Geometry;
 using Xunit;
 
 namespace Antigravity.Core.Geometry.Tests
@@ -129,6 +130,22 @@ namespace Antigravity.Core.Geometry.Tests
         }
 
         [Fact]
+        public void EndpointGapAcrossGridBoundary_ClosesTheFace()
+        {
+            var segments = new[]
+            {
+                Line(0, 0, 2.00049, 0),
+                Line(2.00051, 0, 2, 2),
+                Line(2, 2, 0, 2),
+                Line(0, 2, 0, 0)
+            };
+
+            var result = _extractor.Extract(segments);
+
+            Assert.Single(result.Faces);
+        }
+
+        [Fact]
         public void InputOrderAndDirection_DoNotChangeOutput()
         {
             var original = Rectangle(0, 0, 2, 2)
@@ -245,3 +262,4 @@ namespace Antigravity.Core.Geometry.Tests
         }
     }
 }
+

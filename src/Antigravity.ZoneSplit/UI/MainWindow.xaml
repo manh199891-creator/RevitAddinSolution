@@ -1,13 +1,14 @@
 <Window x:Class="Antigravity.ZoneSplit.UI.MainWindow"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-        Title="Vilai Viet ZoneSplit - Phân chia khối lượng" 
-        Width="450" Height="400"
+        xmlns:controls="clr-namespace:Antigravity.Core.UI.Controls;assembly=Antigravity.Core"
+        Title="Vilai Viet - Zone Split"
+        Width="820" Height="540"
         WindowStartupLocation="CenterScreen"
         Background="#FFFFFF"
         ResizeMode="CanResize"
-        Topmost="True" FontFamily="Segoe UI" UseLayoutRounding="True" SnapsToDevicePixels="True" MinWidth="420" MinHeight="360">
-    
+        Topmost="True" FontFamily="Segoe UI" UseLayoutRounding="True" SnapsToDevicePixels="True" MinWidth="720" MinHeight="480">
+
     <Window.Resources>
         <ResourceDictionary>
             <ResourceDictionary.MergedDictionaries>
@@ -88,77 +89,57 @@
     </ResourceDictionary>
     </Window.Resources>
 
-    <Grid Margin="16,16,16,10">
+    <Grid Margin="16">
         <Grid.RowDefinitions>
-            <RowDefinition Height="Auto"/> <!-- Header -->
-            <RowDefinition Height="10"/>   <!-- Space -->
-            <RowDefinition Height="Auto"/> <!-- Category Label -->
-            <RowDefinition Height="Auto"/> <!-- Category Options -->
-            <RowDefinition Height="10"/>   <!-- Space -->
-            <RowDefinition Height="Auto"/> <!-- Options Label -->
-            <RowDefinition Height="Auto"/> <!-- Options -->
-            <RowDefinition Height="*"/>    <!-- Spacer -->
-            <RowDefinition Height="Auto"/> <!-- Action Buttons -->
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="16"/>
+            <RowDefinition Height="*"/>
+            <RowDefinition Height="16"/>
+            <RowDefinition Height="Auto"/>
         </Grid.RowDefinitions>
 
-        <!-- HEADER -->
-        <Border Grid.Row="0" Background="#FFFFFF" BorderBrush="#D1D5DB" BorderThickness="0,0,0,1" Margin="-16,-16,-16,0" Padding="16,12">
-            <Grid>
-                <Grid.ColumnDefinitions>
-                    <ColumnDefinition Width="Auto"/>
-                    <ColumnDefinition Width="*"/>
-                </Grid.ColumnDefinitions>
-                <Viewbox Grid.Column="0" Width="28" Height="28" Margin="0,0,12,0" VerticalAlignment="Center">
-                    <Canvas Width="100" Height="80">
-                        <Path Fill="#1B3679" Data="M 30,10 L 70,10 L 50,45 Z"/>
-                        <Path Fill="#D8262C" Data="M 10,10 L 32,10 L 50,55 L 68,10 L 90,10 L 50,80 Z"/>
-                    </Canvas>
-                </Viewbox>
-                <StackPanel Grid.Column="1" VerticalAlignment="Center">
-                    <TextBlock FontSize="14" FontWeight="Bold" Foreground="#111827">
-                        <Run Text="VILA" Foreground="#1B3679"/><Run Text="I"><Run.Foreground><LinearGradientBrush StartPoint="0,0" EndPoint="1,0"><GradientStop Color="#1B3679" Offset="0.7"/><GradientStop Color="#D8262C" Offset="0.7"/></LinearGradientBrush></Run.Foreground></Run><Run Text="VIET" Foreground="#D8262C"/><Run Text=" · AUTO ZONE SPLIT" Foreground="#111827" FontWeight="SemiBold"/>
-                    </TextBlock>
-                    <TextBlock Text="Volume calculation based on Zone Generic Models" 
-                               FontSize="11" Foreground="#6B7280" Margin="0,2,0,0"/>
+        <controls:BrandHeader Grid.Row="0" TitleText="Zone Split" SubtitleText="Calculate quantities from Zone Generic Models"/>
+
+        <Grid x:Name="ZoneWorkspace" Grid.Row="2">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="5*"/>
+                <ColumnDefinition Width="16"/>
+                <ColumnDefinition Width="5*"/>
+            </Grid.ColumnDefinitions>
+
+            <Border Grid.Column="0" Background="{StaticResource VvSurfaceBrush}" BorderBrush="{StaticResource VvBorderBrush}" BorderThickness="1" CornerRadius="4" Padding="16">
+                <StackPanel>
+                    <TextBlock Style="{StaticResource VvSectionTitleStyle}" Text="ELEMENT CATEGORIES" Margin="0,0,0,12"/>
+                    <CheckBox Name="chkAll" Content="Select all" IsChecked="True" FontWeight="SemiBold" Checked="ChkAll_Checked" Unchecked="ChkAll_Unchecked"/>
+                    <Rectangle Fill="{StaticResource VvBorderBrush}" Height="1" Margin="0,8"/>
+                    <CheckBox Name="chkColumns" Content="Structural Columns" IsChecked="True" Checked="ChkItem_Changed" Unchecked="ChkItem_Changed"/>
+                    <CheckBox Name="chkFraming" Content="Structural Framing" IsChecked="True" Checked="ChkItem_Changed" Unchecked="ChkItem_Changed"/>
+                    <CheckBox Name="chkFloors" Content="Floors" IsChecked="True" Checked="ChkItem_Changed" Unchecked="ChkItem_Changed"/>
+                    <CheckBox Name="chkWalls" Content="Walls" IsChecked="True" Checked="ChkItem_Changed" Unchecked="ChkItem_Changed"/>
+                    <CheckBox Name="chkFoundation" Content="Structural Foundations" IsChecked="True" Checked="ChkItem_Changed" Unchecked="ChkItem_Changed"/>
                 </StackPanel>
-            </Grid>
-        </Border>
+            </Border>
 
-        <!-- SEPARATOR -->
-        <Rectangle Grid.Row="1" Fill="#D1D5DB" Height="1" Margin="0,4"/>
+            <Border Grid.Column="2" Background="{StaticResource VvSurfaceBrush}" BorderBrush="{StaticResource VvBorderBrush}" BorderThickness="1" CornerRadius="4" Padding="16">
+                <StackPanel>
+                    <TextBlock Style="{StaticResource VvSectionTitleStyle}" Text="PROCESSING METHOD" Margin="0,0,0,12"/>
+                    <RadioButton Name="optDataOnly" Content="Calculate volume and assign BIM_Volume" IsChecked="True"/>
+                    <RadioButton Name="optParts" Content="Create Parts and assign parameters (recommended for 4D)"/>
+                    <RadioButton Name="optPhysical" Content="Physical split by copy and adjust (walls and framing only)"/>
+                </StackPanel>
+            </Border>
+        </Grid>
 
-        <!-- CATEGORIES -->
-        <TextBlock Grid.Row="2" Style="{StaticResource HeaderStyle}" FontSize="12" Text="Chọn cấu kiện tính toán khối lượng:" Margin="0,10,0,5"/>
-        
-        <Border Grid.Row="3" Background="#F5F6F8" CornerRadius="4" Padding="15">
-            <StackPanel>
-                <CheckBox Name="chkAll" Content="Chọn tất cả" IsChecked="True" FontWeight="Bold" Checked="ChkAll_Checked" Unchecked="ChkAll_Unchecked"/>
-                <Rectangle Fill="#D1D5DB" Height="1" Margin="0,5"/>
-                <CheckBox Name="chkColumns" Content="Cột kết cấu (Structural Columns)" IsChecked="True" Checked="ChkItem_Changed" Unchecked="ChkItem_Changed"/>
-                <CheckBox Name="chkFraming" Content="Dầm kết cấu (Structural Framing)" IsChecked="True" Checked="ChkItem_Changed" Unchecked="ChkItem_Changed"/>
-                <CheckBox Name="chkFloors" Content="Sàn (Floors)" IsChecked="True" Checked="ChkItem_Changed" Unchecked="ChkItem_Changed"/>
-                <CheckBox Name="chkWalls" Content="Vách/Tường (Walls)" IsChecked="True" Checked="ChkItem_Changed" Unchecked="ChkItem_Changed"/>
-                <CheckBox Name="chkFoundation" Content="Móng (Structural Foundation)" IsChecked="True" Checked="ChkItem_Changed" Unchecked="ChkItem_Changed"/>
-            </StackPanel>
-        </Border>
-
-        <!-- OPTIONS -->
-        <TextBlock Grid.Row="5" Style="{StaticResource HeaderStyle}" FontSize="12" Text="Phương thức xử lý:" Margin="0,10,0,5"/>
-        <Border Grid.Row="6" Background="#F5F6F8" CornerRadius="4" Padding="15">
-            <StackPanel>
-                <RadioButton Name="optDataOnly" Content="Chỉ tính Volume và gán BIM_Volume (Không cắt)" IsChecked="True"/>
-                <RadioButton Name="optParts" Content="Tạo Parts và gán Parameter tự động (Khuyên dùng cho 4D)"/>
-                <RadioButton Name="optPhysical" Content="Cắt Vật lý - Copy &amp; Adjust (Chỉ Tường/Dầm, Mất Rebar)"/>
-            </StackPanel>
-        </Border>
-
-        <!-- ACTION BUTTONS -->
-        <Grid Grid.Row="8" Margin="0,15,0,0">
-            <UniformGrid Rows="1">
-                <Button Style="{StaticResource PrimaryBtn}" Content="▶  XỬ LÝ ZONE" Click="BtnProcess_Click"/>
-                <Button Content="✖  CANCEL" Click="BtnCancel_Click" Style="{StaticResource SecondaryBtn}"/>
-            </UniformGrid>
-            <TextBlock Text="@manhns" Margin="0,0,0,0" FontSize="12" FontWeight="SemiBold" Foreground="#6B7280" Opacity="1" HorizontalAlignment="Right" VerticalAlignment="Bottom" IsHitTestVisible="False" Focusable="False"/>
+        <Grid Grid.Row="4">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*"/>
+                <ColumnDefinition Width="160"/>
+                <ColumnDefinition Width="8"/>
+                <ColumnDefinition Width="120"/>
+            </Grid.ColumnDefinitions>
+            <TextBlock Grid.Column="0" Text="Ready to process selected categories." Style="{StaticResource VvSecondaryTextStyle}" VerticalAlignment="Center"/>
+            <Button Grid.Column="1" Style="{StaticResource VvPrimaryButtonStyle}" Content="PROCESS ZONES" Click="BtnProcess_Click"/>
+            <Button Grid.Column="3" Content="CANCEL" Click="BtnCancel_Click" Style="{StaticResource VvSecondaryButtonStyle}"/>
         </Grid>
     </Grid>
 </Window>

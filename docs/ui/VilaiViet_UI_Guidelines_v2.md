@@ -1,5 +1,7 @@
 # Vilai Viet Revit Add-in UI Design System v2
 
+> Superseded: the canonical enforced standard is [VilaiViet_UI_Guidelines_v3.md](VilaiViet_UI_Guidelines_v3.md). v2 is retained only for migration history.
+
 Ngày hiệu lực: 2026-07-17  
 Theme canonical: Light, nền trắng
 

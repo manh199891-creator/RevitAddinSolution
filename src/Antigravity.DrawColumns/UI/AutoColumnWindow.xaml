@@ -1,0 +1,154 @@
+﻿<Window x:Class="Antigravity.DrawColumns.UI.AutoColumnWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        mc:Ignorable="d"
+        Title="VILAI VIET Auto Column Creator" Height="650" Width="400"
+        WindowStyle="None" AllowsTransparency="True" Background="Transparent"
+        MouseLeftButtonDown="Window_MouseLeftButtonDown"
+        WindowStartupLocation="CenterScreen">
+    
+    <Window.Resources>
+        <Style TargetType="Button" x:Key="FlatButton">
+            <Setter Property="Background" Value="#1E88E5"/>
+            <Setter Property="Foreground" Value="White"/>
+            <Setter Property="FontWeight" Value="SemiBold"/>
+            <Setter Property="Padding" Value="10,5"/>
+            <Setter Property="BorderThickness" Value="0"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border Background="{TemplateBinding Background}" CornerRadius="4" Padding="{TemplateBinding Padding}">
+                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                        </Border>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+            <Style.Triggers>
+                <Trigger Property="IsMouseOver" Value="True">
+                    <Setter Property="Background" Value="#1565C0"/>
+                </Trigger>
+            </Style.Triggers>
+        </Style>
+        
+        <Style TargetType="Button" x:Key="CloseButton" BasedOn="{StaticResource FlatButton}">
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="Foreground" Value="White"/>
+            <Style.Triggers>
+                <Trigger Property="IsMouseOver" Value="True">
+                    <Setter Property="Background" Value="#E53935"/>
+                </Trigger>
+            </Style.Triggers>
+        </Style>
+    </Window.Resources>
+
+    <Border Background="White" CornerRadius="10" BorderBrush="#DDDDDD" BorderThickness="1">
+        <Border.Effect>
+            <DropShadowEffect Color="Black" Opacity="0.3" ShadowDepth="2" BlurRadius="10"/>
+        </Border.Effect>
+        <Grid>
+            <Grid.RowDefinitions>
+                <RowDefinition Height="60"/>
+                <RowDefinition Height="*"/>
+                <RowDefinition Height="60"/>
+            </Grid.RowDefinitions>
+
+            <!-- Header -->
+            <Border Grid.Row="0" Background="#1E88E5" CornerRadius="10,10,0,0">
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="60"/>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="40"/>
+                    </Grid.ColumnDefinitions>
+                    
+                    <TextBlock Grid.Column="1" Text="VILAI VIET - Auto Column Creator" 
+                               Foreground="White" FontWeight="Bold" FontSize="16" 
+                               VerticalAlignment="Center" HorizontalAlignment="Center"/>
+                    
+                    <Button Grid.Column="2" Content="X" Style="{StaticResource CloseButton}" Click="CloseButton_Click" 
+                            Width="30" Height="30" HorizontalAlignment="Right" VerticalAlignment="Top" Margin="0,5,5,0"/>
+                </Grid>
+            </Border>
+
+            <!-- Body -->
+            <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto" Margin="15">
+                <StackPanel>
+                    <Button Content="Set Coordinate Origin (CAD -- Revit)" Style="{StaticResource FlatButton}" Height="40" Margin="0,0,0,15"/>
+                    
+                    <Grid Margin="0,0,0,15">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*"/>
+                            <ColumnDefinition Width="*"/>
+                        </Grid.ColumnDefinitions>
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto"/>
+                            <RowDefinition Height="Auto"/>
+                            <RowDefinition Height="Auto"/>
+                            <RowDefinition Height="Auto"/>
+                        </Grid.RowDefinitions>
+                        
+                        <TextBlock Text="Level Bot:" Grid.Row="0" Grid.Column="0" FontWeight="SemiBold"/>
+                        <ComboBox Grid.Row="1" Grid.Column="0" Margin="0,0,5,0" ItemsSource="{Binding Levels}" DisplayMemberPath="Name" SelectedItem="{Binding SelectedLevelBot}"/>
+                        
+                        <TextBlock Text="Offset Bot (mm):" Grid.Row="2" Grid.Column="0" FontWeight="SemiBold" Margin="0,10,0,0"/>
+                        <TextBox Grid.Row="3" Grid.Column="0" Margin="0,0,5,0" Text="{Binding OffsetBot, UpdateSourceTrigger=PropertyChanged}"/>
+                        
+                        <TextBlock Text="Level Top:" Grid.Row="0" Grid.Column="1" FontWeight="SemiBold"/>
+                        <ComboBox Grid.Row="1" Grid.Column="1" Margin="5,0,0,0" ItemsSource="{Binding Levels}" DisplayMemberPath="Name" SelectedItem="{Binding SelectedLevelTop}"/>
+                        
+                        <TextBlock Text="Offset Top (mm):" Grid.Row="2" Grid.Column="1" FontWeight="SemiBold" Margin="0,10,0,0"/>
+                        <TextBox Grid.Row="3" Grid.Column="1" Margin="5,0,0,0" Text="{Binding OffsetTop, UpdateSourceTrigger=PropertyChanged}"/>
+                    </Grid>
+                    
+                    <GroupBox Header="Column (Rectang)" Margin="0,0,0,15" Padding="10">
+                        <StackPanel>
+                            <TextBlock Text="Family Type:" FontWeight="SemiBold"/>
+                            <ComboBox Margin="0,5,0,10" ItemsSource="{Binding RectFamilies}" DisplayMemberPath="Name" SelectedItem="{Binding SelectedRectFamily}"/>
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="*"/>
+                                </Grid.ColumnDefinitions>
+                                <StackPanel Grid.Column="0" Margin="0,0,5,0">
+                                    <TextBlock Text="Parameter - B:" FontWeight="SemiBold"/>
+                                    <TextBox Text="{Binding ParamB}" Margin="0,5,0,0"/>
+                                </StackPanel>
+                                <StackPanel Grid.Column="1" Margin="5,0,0,0">
+                                    <TextBlock Text="Parameter - H:" FontWeight="SemiBold"/>
+                                    <TextBox Text="{Binding ParamH}" Margin="0,5,0,0"/>
+                                </StackPanel>
+                            </Grid>
+                        </StackPanel>
+                    </GroupBox>
+                    
+                    <GroupBox Header="Column (Circle)" Padding="10">
+                        <StackPanel>
+                            <TextBlock Text="Family Type:" FontWeight="SemiBold"/>
+                            <ComboBox Margin="0,5,0,10" ItemsSource="{Binding CircleFamilies}" DisplayMemberPath="Name" SelectedItem="{Binding SelectedCircleFamily}"/>
+                            <TextBlock Text="Parameter - Dia:" FontWeight="SemiBold"/>
+                            <TextBox Text="{Binding ParamDia}" Margin="0,5,0,0"/>
+                        </StackPanel>
+                    </GroupBox>
+                </StackPanel>
+            </ScrollViewer>
+
+            <!-- Footer -->
+            <Border Grid.Row="2" BorderBrush="#EEEEEE" BorderThickness="0,1,0,0" Padding="10">
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="*"/>
+                    </Grid.ColumnDefinitions>
+                    
+                    <Button Grid.Column="0" Content="Draw Rect" Style="{StaticResource FlatButton}" Margin="2" Click="DrawRect_Click"/>
+                    <Button Grid.Column="1" Content="Draw Circle" Style="{StaticResource FlatButton}" Margin="2" Click="DrawCircle_Click"/>
+                    <Button Grid.Column="2" Content="Cancel" Style="{StaticResource FlatButton}" Margin="2" Background="#9E9E9E" Click="Cancel_Click"/>
+                </Grid>
+            </Border>
+        </Grid>
+    </Border>
+</Window>
+

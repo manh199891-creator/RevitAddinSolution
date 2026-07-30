@@ -2,7 +2,7 @@
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:controls="clr-namespace:Antigravity.Core.UI.Controls;assembly=Antigravity.Core"
-        Title="Vilai Viet Kiểm Tra Lỗ Mở Sàn" Height="620" Width="460"
+        Title="Vilai Viet Floor Opening Check" Height="620" Width="460"
         WindowStartupLocation="CenterScreen"
         Background="#FFFFFF" FontFamily="Segoe UI" UseLayoutRounding="True" SnapsToDevicePixels="True" ResizeMode="CanResize" MinWidth="420" MinHeight="500">
 
@@ -110,27 +110,7 @@
         </Grid.RowDefinitions>
 
         <!-- Header -->
-        <Border Grid.Row="0" Background="#FFFFFF" BorderBrush="#D1D5DB" BorderThickness="0,0,0,1" Margin="-24,-24,-24,16" Padding="16,12">
-            <Grid>
-                <Grid.ColumnDefinitions>
-                    <ColumnDefinition Width="Auto"/>
-                    <ColumnDefinition Width="*"/>
-                </Grid.ColumnDefinitions>
-                <Viewbox Grid.Column="0" Width="28" Height="28" Margin="0,0,12,0" VerticalAlignment="Center">
-                    <Canvas Width="100" Height="80">
-                        <Path Fill="#1B3679" Data="M 30,10 L 70,10 L 50,45 Z"/>
-                        <Path Fill="#D8262C" Data="M 10,10 L 32,10 L 50,55 L 68,10 L 90,10 L 50,80 Z"/>
-                    </Canvas>
-                </Viewbox>
-                <StackPanel Grid.Column="1" VerticalAlignment="Center">
-                    <TextBlock FontSize="14" FontWeight="Bold" Foreground="#111827">
-                        <Run Text="VILA" Foreground="#1B3679"/><Run Text="I"><Run.Foreground><LinearGradientBrush StartPoint="0,0" EndPoint="1,0"><GradientStop Color="#1B3679" Offset="0.7"/><GradientStop Color="#D8262C" Offset="0.7"/></LinearGradientBrush></Run.Foreground></Run><Run Text="VIET" Foreground="#D8262C"/><Run Text=" · KIỂM TRA LỖ MỞ SÀN" Foreground="#111827" FontWeight="SemiBold"/>
-                    </TextBlock>
-                    <TextBlock Text="Tạo các lỗ mở (void) trên sàn tự động từ đường nét AutoCAD" 
-                               FontSize="11" Foreground="#6B7280" Margin="0,2,0,0"/>
-                </StackPanel>
-            </Grid>
-        </Border>
+        <controls:BrandHeader Grid.Row="0" TitleText="Floor Opening Check" SubtitleText="Create floor openings automatically from AutoCAD geometry"/>
 
         <!-- Form -->
         <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto">
@@ -140,7 +120,7 @@
                 <Label Content="1 · SELECT GEOMETRY IN AUTOCAD"/>
                 <TextBlock Text="Choose how to get geometry: Manual selection or Scanning a specific layer."
                            FontSize="11" Foreground="#888888" Margin="0,0,0,8" TextWrapping="Wrap"/>
-                
+
                 <TabControl Background="Transparent" BorderThickness="0" Margin="0,0,0,10">
                     <TabItem Header="Manual Pick">
                         <StackPanel Margin="0,10,0,0">
@@ -233,7 +213,7 @@
                         Style="{StaticResource PrimaryBtn}"
                         Click="BtnProcess_Click" Cursor="Hand"/>
             </StackPanel>
-            <TextBlock Text="@manhns" Margin="0,0,0,-8" FontSize="12" FontWeight="SemiBold" Foreground="#6B7280" Opacity="1" HorizontalAlignment="Right" VerticalAlignment="Bottom" IsHitTestVisible="False" Focusable="False"/>
+
         </Grid>
     </Grid>
 </Window>

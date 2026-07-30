@@ -154,7 +154,7 @@ namespace Antigravity.WallMepClash.UI
             SetRunningState(true);
             _viewModels.Clear();
             _lastResults = new List<ClashResult>();
-            TxtSummary.Text = string.Empty;
+            WindowHeader.SubtitleText = string.Empty;
 
             bool activeViewOnly = ChkActiveViewOnly.IsChecked == true;
             IList<ElementId> selectedLevelIds = GetSelectedLevelIds();
@@ -217,7 +217,7 @@ namespace Antigravity.WallMepClash.UI
                             _viewModels.Add(new ClashResultViewModel(result));
                         }
 
-                        TxtSummary.Text = _lastResults.Count + " Clashes Found";
+                        WindowHeader.SubtitleText = _lastResults.Count + " Clashes Found";
                         TxtStatusBar.Text = "Completed. Checked " + hostWalls.Count + " walls and " + mepElements.Count + " MEP elements. Level: " + selectedLevelNames;
                         
                         bool hasResults = _lastResults.Count > 0;

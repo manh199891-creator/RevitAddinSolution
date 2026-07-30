@@ -4,11 +4,18 @@
 ### Added
 - **Shared UI system:** Added common design tokens, typography, control styles, branded headers, and the `@manhns` signature for Revit add-in windows.
 - **UI contract validation:** Added automated XAML checks covering 24 windows, 131 buttons, theme resources, readability, minimum sizing, signatures, and click-handler wiring.
+- **Strict UI guideline v3:** Added enforced resource-resolution, canonical shell, landscape profile, contrast, scaling and footer ownership rules.
 
 ### Changed
 - **UI/UX standardization:** Standardized white window backgrounds, header colors, Segoe UI typography, readable font sizing, resize behavior, and scroll-safe layouts across the add-in suite.
+- **English UI:** Standardized visible XAML and Revit Ribbon copy in English.
+- **Brand signature:** Moved `@manhns` from window footers into the shared header immediately after each module title.
+- **Responsive workflows:** Rebuilt Zone Split as a two-column workspace and Tag Arranger as a three-column landscape workspace.
 
 ### Fixed
+- **XAML runtime loading:** Removed 29 unresolved `StaticResource` references that caused Revit errors near XAML lines 139, 141 and 152.
+- **Captured layout regressions:** Fixed DoorClearance white-on-white text, HoanThien unused star area/footer placement, and ArchModeling collapsed-pane whitespace.
+- **Floor Elevation theme:** Removed the module-local dark ComboBox/DataGrid templates and applied the shared light controls.
 - **Revit 2024 deployment:** Corrected framework-output selection so `ZoneSplit` deploys the real `net48` assembly instead of a small intermediate DLL.
 - **ArchModeling deployment:** Added ExcelDataReader, Newtonsoft.Json, JetBrains annotations, and Nice3point dependencies required by its ribbon commands.
 
@@ -36,7 +43,7 @@
 - **Flex-Scroll Layout:** Implementation of scrollable rule lists in AutoJoin to preserve button visibility.
 
 ### Changed
-- **UI Standardization:** 
+- **UI Standardization:**
     - Hardcoded Dark Mode background (`#2D2D8A`) for all ComboBoxes to ensure visibility across system themes.
     - Enabled `CanResize` mode for all Add-in modules (Walls, Floors, Beams, Columns, AutoJoin).
     - Unified bottom margin (10px) for all status bars to prevent layout clipping.

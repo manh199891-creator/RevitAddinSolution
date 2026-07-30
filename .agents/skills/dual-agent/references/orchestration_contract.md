@@ -48,8 +48,16 @@ For `release`, additionally require `RELEASE_GATE_REPORT.md` with `ALLOW_RELEASE
 - `FAIL`: Anti fixes the exact findings, tests, then reruns the same mode.
 - `STALE`: stabilize the repository/artifact and rerun; do not fix code based on stale findings.
 - `INFRA_FAIL`: repair Codex CLI, timeout, schema, or evidence collection; do not treat it as a code failure.
+- `AUTH_REQUIRED`: the writer CLI is not authenticated. Do not claim an automatic fixer is running. Use manual Antigravity work in the IDE or sign in before invoking a fixer command.
 - Scope failure: isolate unrelated work or correct the original boundary; never broaden scope only to pass.
 - Missing fixer command: create/read `FIXER_HANDOFF.md` and state that automatic fixing did not run.
+
+## Entrypoint rules
+
+- The bridge must always be called with `-Action` and `-Project`.
+- `init` and `run` additionally require `-TaskId` and `-Feature`.
+- A command such as `dual_orchestrate.ps1 -Mode release` is invalid and must be treated as `INFRA_FAIL`, not as a running background task.
+- `doctor` is the first diagnostic action when either model is suspected to be unavailable.
 
 ## Dirty worktree policy
 

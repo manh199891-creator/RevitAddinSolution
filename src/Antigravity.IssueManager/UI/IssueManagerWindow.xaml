@@ -123,7 +123,7 @@
         </Style>
     </ResourceDictionary>
     </Window.Resources>
-    
+
     <Grid Margin="16">
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto"/> <!-- Header -->
@@ -135,35 +135,7 @@
         </Grid.RowDefinitions>
 
         <!-- Brand Header -->
-        <Border Grid.Row="0" Background="#FFFFFF" BorderBrush="#D1D5DB" BorderThickness="0,0,0,1" Margin="-16,-16,-16,0" Padding="16,12">
-            <Grid>
-                <Grid.ColumnDefinitions>
-                    <ColumnDefinition Width="Auto"/> <!-- Cột chứa Logo -->
-                    <ColumnDefinition Width="*"/>    <!-- Cột chứa Text -->
-                </Grid.ColumnDefinitions>
-            
-            <!-- 1. Logo Vector chữ V chuẩn xác của Vilai Viet -->
-            <Viewbox Grid.Column="0" Width="28" Height="28" Margin="0,0,12,0" VerticalAlignment="Center">
-                <Canvas Width="100" Height="80">
-                    <!-- Tam giác xanh tím than ở trên -->
-                    <Path Fill="#1B3679" Data="M 30,10 L 70,10 L 50,45 Z"/>
-                    <!-- Cánh chữ V màu đỏ ôm bên ngoài -->
-                    <Path Fill="#D8262C" Data="M 10,10 L 32,10 L 50,55 L 68,10 L 90,10 L 50,80 Z"/>
-                </Canvas>
-            </Viewbox>
-            
-            <!-- 2. Text Thương hiệu & Tên Add-in -->
-            <StackPanel Grid.Column="1" VerticalAlignment="Center">
-                <TextBlock FontSize="14" FontWeight="Bold"><Run Text="VILA" Foreground="#1B3679"/><Run Text="I"><Run.Foreground><LinearGradientBrush StartPoint="0,0" EndPoint="1,0"><GradientStop Color="#1B3679" Offset="0.7"/><GradientStop Color="#D8262C" Offset="0.7"/></LinearGradientBrush></Run.Foreground></Run><Run Text="VIET" Foreground="#D8262C"/><Run Text=" · Issue Manager" Foreground="#000000" FontWeight="SemiBold"/></TextBlock>
-                
-                <!-- Dòng chú thích chức năng (Subtitle) -->
-                <TextBlock Text="Manage, create and review BCF issues" 
-                           FontSize="11" 
-                           Foreground="#6B7280" 
-                           Margin="0,2,0,0"/>
-            </StackPanel>
-            </Grid>
-        </Border>
+        <controls:BrandHeader Grid.Row="0" TitleText="Issue Manager" SubtitleText="Manage, create and review BCF issues"/>
 
         <!-- Toolbar -->
         <WrapPanel Grid.Row="2" Orientation="Horizontal" HorizontalAlignment="Left" VerticalAlignment="Center">
@@ -266,7 +238,7 @@
                                 <ComboBoxItem Content="Resolved"/>
                                 <ComboBoxItem Content="Approved"/>
                             </ComboBox>
-                            
+
                             <TextBlock Grid.Column="3" Text="Folder" Style="{StaticResource LabelStyle}" VerticalAlignment="Center" Margin="0,0,8,0"/>
                             <ComboBox Grid.Column="4" x:Name="CmbIssueFolder" Width="130" IsEditable="True" IsEnabled="False" LostFocus="CmbIssueFolder_LostFocus" SelectionChanged="CmbIssueFolder_SelectionChanged" />
                             <Button Grid.Column="5" x:Name="BtnCreateFolderForIssue" Content="New" Click="BtnCreateFolderForIssue_Click" Style="{StaticResource SecondaryBtn}" IsEnabled="False" Margin="8,0,0,0"/>
@@ -317,7 +289,7 @@
                 </Grid>
             </Border>
         </Grid>
-        
+
         <!-- Status Bar / Dashboard -->
         <Border Grid.Row="5" Background="#F5F6F8" BorderBrush="#D1D5DB" BorderThickness="1" CornerRadius="4" Padding="10,5" Margin="0,16,0,0">
             <Grid>
@@ -328,8 +300,8 @@
                     <TextBlock x:Name="TxtResolved" Text="Resolved: 0" Foreground="#55FF55" FontWeight="SemiBold" Margin="0,0,15,0"/>
                     <TextBlock x:Name="TxtApproved" Text="Approved: 0" Foreground="#55FFFF" FontWeight="SemiBold"/>
                 </StackPanel>
-                
-                <TextBlock Text="@manhns" FontSize="12" FontWeight="SemiBold" Foreground="#6B7280" Opacity="1" HorizontalAlignment="Right" VerticalAlignment="Bottom" IsHitTestVisible="False" Focusable="False"/>
+
+
             </Grid>
         </Border>
     </Grid>

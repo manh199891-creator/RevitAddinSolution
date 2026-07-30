@@ -9,7 +9,7 @@ namespace Antigravity.ZoneSplit.UI
         private bool _isUpdating = false;
 
         public List<BuiltInCategory> SelectedCategories { get; private set; } = new List<BuiltInCategory>();
-        
+
         public bool IsDataOnly { get; private set; }
         public bool IsCreateParts { get; private set; }
         public bool IsPhysicalSplit { get; private set; }
@@ -70,7 +70,7 @@ namespace Antigravity.ZoneSplit.UI
 
             if (SelectedCategories.Count == 0)
             {
-                MessageBox.Show("Vui lòng chọn ít nhất một loại cấu kiện để tính toán.", "Thông báo", MessageBoxButton.OK, MessageBoxImage.Warning);
+                MessageBox.Show("Select at least one element category to calculate.", "Zone Split", MessageBoxButton.OK, MessageBoxImage.Warning);
                 return;
             }
 

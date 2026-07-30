@@ -108,7 +108,7 @@ namespace Antigravity.TagArranger.UI
             }
             else if (RbMergePick.IsChecked == true)
             {
-                // To allow PickPoint to work, we hide the window temporarily, 
+                // To allow PickPoint to work, we hide the window temporarily,
                 // the external event runs, and then the callback will show it again.
                 this.Hide();
                 RaiseAction(ArrangeAction.MergeTagsPickPoint);
@@ -178,7 +178,7 @@ namespace Antigravity.TagArranger.UI
                     default: _handler.AutoTagCategory = BuiltInCategory.OST_Walls; break;
                 }
             }
-            
+
             if (CmbTagType.SelectedItem is TagTypeItem tagType)
             {
                 _handler.AutoTagTypeId = tagType.Id;
@@ -198,7 +198,7 @@ namespace Antigravity.TagArranger.UI
             _handler.AutoUntangle = ChkAutoUntangle.IsChecked == true;
             _handler.AutoTagHasLeader = ChkAutoTagLeader.IsChecked == true;
             _handler.AutoTagOffsetFeet = ParseMmToFeet(TxtAutoTagOffset.Text, 900.0);
-            
+
             if (RbAutoTagPickPoint.IsChecked == true)
             {
                 _handler.AutoTagPickPoint = true;
@@ -223,19 +223,19 @@ namespace Antigravity.TagArranger.UI
             _handler.Options = BuildOptions();
 
             // Set AlignOffsetFeet if it's an Align action
-            if (action == ArrangeAction.AlignTop || action == ArrangeAction.AlignBottom || 
-                action == ArrangeAction.AlignLeft || action == ArrangeAction.AlignRight || 
+            if (action == ArrangeAction.AlignTop || action == ArrangeAction.AlignBottom ||
+                action == ArrangeAction.AlignLeft || action == ArrangeAction.AlignRight ||
                 action == ArrangeAction.AlignCenterH || action == ArrangeAction.AlignCenterV)
             {
                 _handler.AlignOffsetFeet = ParseMmToFeet(TxtAlignOffset.Text, 0.0);
             }
 
-            TxtStatus.Text = $"Đang xử lý {action}...";
+            TxtStatus.Text = $"Processing {action}...";
 
             var result = _externalEvent.Raise();
             if (result != ExternalEventRequest.Accepted)
             {
-                TxtStatus.Text = "Revit đang bận. Vui lòng thử lại.";
+                TxtStatus.Text = "Revit is busy. Please try again.";
             }
         }
 
@@ -282,7 +282,7 @@ namespace Antigravity.TagArranger.UI
         private static double ParseMmToFeet(string text, double defaultMm)
         {
             if (string.IsNullOrWhiteSpace(text)) return defaultMm / 304.8;
-            
+
             // Handle negative values for offset
             if (double.TryParse(text.Replace(",", "."),
                 NumberStyles.Any, CultureInfo.InvariantCulture, out double mm))

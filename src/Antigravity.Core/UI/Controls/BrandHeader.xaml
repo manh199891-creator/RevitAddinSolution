@@ -30,6 +30,7 @@
                     <Run Text="VIET" Foreground="#D8262C" FontWeight="Bold" FontSize="16"/>
                     <Run Text=" · " FontWeight="SemiBold" FontSize="16"/>
                     <Run Text="{Binding TitleText, ElementName=Root}" FontWeight="SemiBold" FontSize="16"/>
+                    <Run Text="  @manhns" Foreground="#6B7280" FontSize="12" FontWeight="SemiBold"/>
                 </TextBlock>
                 <TextBlock Text="{Binding SubtitleText, ElementName=Root}"
                            FontSize="11" Foreground="#4B5563"

@@ -116,49 +116,20 @@
             </Grid.RowDefinitions>
 
             <!-- 0: Brand Header -->
-            <Border Grid.Row="0" Background="#FFFFFF" BorderBrush="#D1D5DB" BorderThickness="0,0,0,1" Margin="-16,-16,0,0" Padding="16,12">
-                <Grid>
-                    <Grid.ColumnDefinitions>
-                        <ColumnDefinition Width="Auto"/>
-                        <ColumnDefinition Width="*"/>
-                    </Grid.ColumnDefinitions>
-                    <Viewbox Grid.Column="0" Width="28" Height="28" Margin="0,0,12,0" VerticalAlignment="Center">
-                        <Canvas Width="100" Height="80">
-                            <Path Fill="#1B3679" Data="M 30,10 L 70,10 L 50,45 Z"/>
-                            <Path Fill="#D8262C" Data="M 10,10 L 32,10 L 50,55 L 68,10 L 90,10 L 50,80 Z"/>
-                        </Canvas>
-                    </Viewbox>
-                    <StackPanel Grid.Column="1" VerticalAlignment="Center">
-                        <TextBlock FontSize="14" FontWeight="Bold">
-                            <Run Text="VILA" Foreground="#1B3679"/>
-                            <Run Text="I">
-                                <Run.Foreground>
-                                    <LinearGradientBrush StartPoint="0,0" EndPoint="1,0">
-                                        <GradientStop Color="#1B3679" Offset="0.7"/>
-                                        <GradientStop Color="#D8262C" Offset="0.7"/>
-                                    </LinearGradientBrush>
-                                </Run.Foreground>
-                            </Run>
-                            <Run Text="VIET" Foreground="#D8262C"/>
-                            <Run Text=" · AutoJoin" Foreground="#111827" FontWeight="SemiBold"/>
-                        </TextBlock>
-                        <TextBlock Text="Automatic structural elements join coordination" FontSize="11" Foreground="#6B7280" Margin="0,2,0,0"/>
-                    </StackPanel>
-                </Grid>
-            </Border>
+            <controls:BrandHeader Grid.Row="0" TitleText="AutoJoin" SubtitleText="Automatic structural elements join coordination"/>
 
-            <Separator Grid.Row="1" Background="{StaticResource Border}" Margin="0,10,0,0"/>
+            <Separator Grid.Row="1" Background="{DynamicResource VvBorderBrush}" Margin="0,10,0,0"/>
 
             <!-- 2: Scope -->
             <StackPanel Grid.Row="2" Margin="0,5,0,0">
-                <TextBlock Text="PHẠM VI ÁP DỤNG" Style="{StaticResource LabelStyle}" FontSize="11" FontWeight="Bold" Foreground="{StaticResource TextSec}"/>
+                <TextBlock Text="SCOPE" Style="{StaticResource VvBodyTextStyle}" FontSize="11" FontWeight="Bold" Foreground="{DynamicResource VvTextSecondaryBrush}"/>
                 <StackPanel Orientation="Horizontal" Margin="5,5,0,0">
                     <RadioButton x:Name="RbActiveView" Content="Active View" IsChecked="True"/>
                     <RadioButton x:Name="RbSelection"  Content="Selection"/>
                 </StackPanel>
             </StackPanel>
 
-            <Separator Grid.Row="3" Background="{StaticResource Border}" Margin="0,10"/>
+            <Separator Grid.Row="3" Background="{DynamicResource VvBorderBrush}" Margin="0,10"/>
 
             <!-- 4: Rules -->
             <Grid Grid.Row="4">
@@ -168,14 +139,14 @@
                     <RowDefinition Height="Auto"/>
                 </Grid.RowDefinitions>
                 <Grid Margin="0,0,0,5">
-                    <TextBlock Text="QUY TẮC JOIN THEO CẶP" Style="{StaticResource LabelStyle}" FontWeight="Bold" Foreground="{StaticResource TextSec}"/>
+                    <TextBlock Text="PAIR-BASED JOIN RULES" Style="{StaticResource VvBodyTextStyle}" FontWeight="Bold" Foreground="{DynamicResource VvTextSecondaryBrush}"/>
                     <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
                         <Button x:Name="BtnAddRule"    Content="＋" Width="24" Height="24" Style="{StaticResource SecondaryBtn}" Margin="0,0,4,0" Click="BtnAddRule_Click" Padding="0"/>
                         <Button x:Name="BtnRemoveRule" Content="🗑" Width="24" Height="24" Style="{StaticResource SecondaryBtn}" Click="BtnRemoveRule_Click" Padding="0"/>
                     </StackPanel>
                 </Grid>
-                <Border Grid.Row="1" Background="{StaticResource InputBrush}" BorderBrush="{StaticResource Border}" BorderThickness="1" CornerRadius="4">
-                    <ListView x:Name="RulesListView" Background="Transparent" BorderThickness="0" Foreground="{StaticResource TextPri}"
+                <Border Grid.Row="1" Background="{DynamicResource VvSurfaceBrush}" BorderBrush="{DynamicResource VvBorderBrush}" BorderThickness="1" CornerRadius="4">
+                    <ListView x:Name="RulesListView" Background="Transparent" BorderThickness="0" Foreground="{DynamicResource VvTextPrimaryBrush}"
                               ScrollViewer.VerticalScrollBarVisibility="Auto"
                               ScrollViewer.HorizontalScrollBarVisibility="Disabled">
                         <ListView.ItemTemplate>
@@ -189,43 +160,43 @@
                                     </Grid.ColumnDefinitions>
                                     <ComboBox ItemsSource="{x:Static models:JoinRule.SupportedCategories}"
                                               SelectedItem="{Binding CategoryA, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
-                                              Style="{StaticResource CategoryComboBox}"
+                                              Style="{StaticResource VvComboBoxStyle}"
                                               SelectionChanged="CategoryComboBox_SelectionChanged"/>
-                                    <TextBlock Grid.Column="1" Text="→" Foreground="{StaticResource Amber}" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                    <TextBlock Grid.Column="1" Text="→" Foreground="{DynamicResource VvAccentBrush}" HorizontalAlignment="Center" VerticalAlignment="Center"/>
                                     <ComboBox Grid.Column="2"
                                               ItemsSource="{x:Static models:JoinRule.SupportedCategories}"
                                               SelectedItem="{Binding CategoryB, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
-                                              Style="{StaticResource CategoryComboBox}"
+                                              Style="{StaticResource VvComboBoxStyle}"
                                               SelectionChanged="CategoryComboBox_SelectionChanged"/>
-                                    <CheckBox Grid.Column="3" Content="Sử dụng" IsChecked="{Binding IsEnabled}" Margin="10,0,0,0" ToolTip="Bật/Tắt cặp kết nối này"/>
+                                    <CheckBox Grid.Column="3" Content="Enabled" IsChecked="{Binding IsEnabled}" Margin="10,0,0,0" ToolTip="Enable or disable this join pair"/>
                                 </Grid>
                             </DataTemplate>
                         </ListView.ItemTemplate>
                         <ListView.ItemContainerStyle>
                             <Style TargetType="ListViewItem">
-                                <Setter Property="Foreground" Value="{StaticResource TextPri}"/>
+                                <Setter Property="Foreground" Value="{DynamicResource VvTextPrimaryBrush}"/>
                             </Style>
                         </ListView.ItemContainerStyle>
                     </ListView>
                 </Border>
                 <StackPanel Grid.Row="2" Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,8,0,0">
-                    <Button x:Name="BtnReload" Content="↺  Tải lại" Style="{StaticResource SecondaryBtn}" Margin="0,0,6,0" Click="BtnReload_Click" Padding="10,5"/>
-                    <Button x:Name="BtnSave"   Content="💾  Lưu cấu hình" Style="{StaticResource SecondaryBtn}" Click="BtnSave_Click" Padding="10,5"/>
+                    <Button x:Name="BtnReload" Content="↺  Reload" Style="{StaticResource SecondaryBtn}" Margin="0,0,6,0" Click="BtnReload_Click" Padding="10,5"/>
+                    <Button x:Name="BtnSave"   Content="💾  Save Configuration" Style="{StaticResource SecondaryBtn}" Click="BtnSave_Click" Padding="10,5"/>
                 </StackPanel>
             </Grid>
 
-            <Separator Grid.Row="5" Background="{StaticResource Border}" Margin="0,10"/>
+            <Separator Grid.Row="5" Background="{DynamicResource VvBorderBrush}" Margin="0,10"/>
 
             <!-- 6: DMU -->
             <Grid Grid.Row="6">
                 <StackPanel VerticalAlignment="Center">
-                    <TextBlock Text="⚡ AUTO JOIN REALTIME" FontWeight="Bold" Foreground="{StaticResource TextPri}" FontSize="12"/>
-                    <TextBlock Text="Tự động join khi vẽ mới hoặc chỉnh sửa" FontSize="11" Foreground="{StaticResource TextSec}"/>
+                    <TextBlock Text="⚡ AUTO JOIN REALTIME" FontWeight="Bold" Foreground="{DynamicResource VvTextPrimaryBrush}" FontSize="12"/>
+                    <TextBlock Text="Join automatically when elements are created or modified" FontSize="11" Foreground="{DynamicResource VvTextSecondaryBrush}"/>
                 </StackPanel>
                 <CheckBox x:Name="ChkDmuEnabled" HorizontalAlignment="Right" VerticalAlignment="Center" Checked="ChkDmu_Changed" Unchecked="ChkDmu_Changed"/>
             </Grid>
 
-            <Separator Grid.Row="7" Background="{StaticResource Border}" Margin="0,10"/>
+            <Separator Grid.Row="7" Background="{DynamicResource VvBorderBrush}" Margin="0,10"/>
 
             <!-- 8: Actions -->
             <UniformGrid Grid.Row="8" Rows="1" Columns="2">
@@ -235,13 +206,13 @@
 
             <!-- 10: Status -->
             <StackPanel Grid.Row="10" Margin="0,0,0,0">
-                <ProgressBar x:Name="PrgBar" IsIndeterminate="True" Height="2" Margin="0,0,0,4" Visibility="Collapsed" Foreground="{StaticResource PrimaryBrush}" Background="Transparent"/>
-                <TextBlock x:Name="TxtStatus" Text="Sẵn sàng." Foreground="{StaticResource TextSec}" FontSize="11" TextWrapping="Wrap"/>
+                <ProgressBar x:Name="PrgBar" IsIndeterminate="True" Height="2" Margin="0,0,0,4" Visibility="Collapsed" Foreground="{DynamicResource VvAccentBrush}" Background="Transparent"/>
+                <TextBlock x:Name="TxtStatus" Text="Ready." Foreground="{DynamicResource VvTextSecondaryBrush}" FontSize="11" TextWrapping="Wrap"/>
             </StackPanel>
         </Grid>
 
         <!-- ── RIGHT: RESULTS ── -->
-        <Border Grid.Column="2" Background="{StaticResource Surface}" BorderBrush="{StaticResource Border}" BorderThickness="1" CornerRadius="4" Padding="12" Margin="0,-16,-16,-16">
+        <Border Grid.Column="2" Background="{DynamicResource VvSurfaceSubtleBrush}" BorderBrush="{DynamicResource VvBorderBrush}" BorderThickness="1" CornerRadius="4" Padding="12" Margin="0">
             <Grid>
                 <Grid.RowDefinitions>
                     <RowDefinition Height="Auto"/> <!-- Stats -->
@@ -252,36 +223,36 @@
                 </Grid.RowDefinitions>
 
                 <StackPanel Grid.Row="0">
-                    <TextBlock Text="KẾT QUẢ THỰC HIỆN" FontSize="12" FontWeight="Bold" Foreground="{StaticResource PrimaryBrush}" Margin="0,0,0,12"/>
+                    <TextBlock Text="EXECUTION RESULTS" FontSize="12" FontWeight="Bold" Foreground="{DynamicResource VvAccentBrush}" Margin="0,0,0,12"/>
                     <Grid>
                         <Grid.ColumnDefinitions>
                             <ColumnDefinition Width="*"/>
                             <ColumnDefinition Width="Auto"/>
                         </Grid.ColumnDefinitions>
                         <StackPanel>
-                            <TextBlock Text="Tổng giao cắt tìm thấy:" Foreground="{StaticResource TextSec}" Margin="0,0,0,4"/>
-                            <TextBlock Text="Đã Join thành công:" Foreground="{StaticResource TextSec}" Margin="0,0,0,4"/>
-                            <TextBlock Text="Đã được Join trước đó:" Foreground="{StaticResource TextSec}" Margin="0,0,0,4"/>
-                            <TextBlock Text="Bị lỗi / Không Join được:" Foreground="#D8262C" FontWeight="Bold"/>
+                            <TextBlock Text="Intersections found:" Foreground="{DynamicResource VvTextSecondaryBrush}" Margin="0,0,0,4"/>
+                            <TextBlock Text="Joined successfully:" Foreground="{DynamicResource VvTextSecondaryBrush}" Margin="0,0,0,4"/>
+                            <TextBlock Text="Previously joined:" Foreground="{DynamicResource VvTextSecondaryBrush}" Margin="0,0,0,4"/>
+                            <TextBlock Text="Failed or unable to join:" Foreground="#D8262C" FontWeight="Bold"/>
                         </StackPanel>
                         <StackPanel Grid.Column="1" HorizontalAlignment="Right">
-                            <TextBlock x:Name="TxtTotalInt" Text="0" TextAlignment="Right" Foreground="{StaticResource TextPri}" Margin="0,0,0,4"/>
-                            <TextBlock x:Name="TxtJoined"   Text="0" TextAlignment="Right" Foreground="{StaticResource TextPri}" Margin="0,0,0,4"/>
-                            <TextBlock x:Name="TxtAlready"  Text="0" TextAlignment="Right" Foreground="{StaticResource TextPri}" Margin="0,0,0,4"/>
+                            <TextBlock x:Name="TxtTotalInt" Text="0" TextAlignment="Right" Foreground="{DynamicResource VvTextPrimaryBrush}" Margin="0,0,0,4"/>
+                            <TextBlock x:Name="TxtJoined"   Text="0" TextAlignment="Right" Foreground="{DynamicResource VvTextPrimaryBrush}" Margin="0,0,0,4"/>
+                            <TextBlock x:Name="TxtAlready"  Text="0" TextAlignment="Right" Foreground="{DynamicResource VvTextPrimaryBrush}" Margin="0,0,0,4"/>
                             <TextBlock x:Name="TxtFailed"   Text="0" TextAlignment="Right" Foreground="#D8262C" FontWeight="Bold"/>
                         </StackPanel>
                     </Grid>
                 </StackPanel>
 
-                <Separator Grid.Row="1" Background="{StaticResource Border}" Margin="0,12"/>
+                <Separator Grid.Row="1" Background="{DynamicResource VvBorderBrush}" Margin="0,12"/>
 
-                <TextBlock Grid.Row="2" Text="DANH SÁCH GIAO CẮT CHƯA XỬ LÝ ĐƯỢC" FontSize="11" FontWeight="Bold" Foreground="#D8262C" Margin="0,0,0,8"/>
+                <TextBlock Grid.Row="2" Text="UNRESOLVED INTERSECTIONS" FontSize="11" FontWeight="Bold" Foreground="#D8262C" Margin="0,0,0,8"/>
 
-                <ListView x:Name="FailedListView" Grid.Row="3" Background="{StaticResource InputBrush}" BorderBrush="{StaticResource Border}" BorderThickness="1" Foreground="{StaticResource TextPri}">
+                <ListView x:Name="FailedListView" Grid.Row="3" Background="{DynamicResource VvSurfaceBrush}" BorderBrush="{DynamicResource VvBorderBrush}" BorderThickness="1" Foreground="{DynamicResource VvTextPrimaryBrush}">
                     <ListView.View>
                         <GridView>
-                            <GridViewColumn Header="Phần tử A" Width="120" DisplayMemberBinding="{Binding ElementA}"/>
-                            <GridViewColumn Header="Phần tử B" Width="120" DisplayMemberBinding="{Binding ElementB}"/>
+                            <GridViewColumn Header="Element A" Width="120" DisplayMemberBinding="{Binding ElementA}"/>
+                            <GridViewColumn Header="Element B" Width="120" DisplayMemberBinding="{Binding ElementB}"/>
                             <GridViewColumn Header="Lý do"     Width="150" DisplayMemberBinding="{Binding Reason}"/>
                         </GridView>
                     </ListView.View>
@@ -289,18 +260,18 @@
                         <Style TargetType="ListViewItem">
                             <Setter Property="Background" Value="Transparent"/>
                             <Setter Property="BorderThickness" Value="0"/>
-                            <Setter Property="Foreground" Value="{StaticResource TextPri}"/>
+                            <Setter Property="Foreground" Value="{DynamicResource VvTextPrimaryBrush}"/>
                             <Setter Property="FontSize" Value="10"/>
                             <Style.Triggers>
                                 <Trigger Property="IsMouseOver" Value="True">
-                                    <Setter Property="Background" Value="{StaticResource Border}"/>
+                                    <Setter Property="Background" Value="{DynamicResource VvBorderBrush}"/>
                                 </Trigger>
                             </Style.Triggers>
                         </Style>
                     </ListView.ItemContainerStyle>
                 </ListView>
-                
-                <TextBlock Text="@manhns" Margin="0,0,0,0" FontSize="12" FontWeight="SemiBold" Foreground="#6B7280" Opacity="1" HorizontalAlignment="Right" VerticalAlignment="Bottom" IsHitTestVisible="False" Focusable="False"/>
+
+
             </Grid>
         </Border>
     </Grid>

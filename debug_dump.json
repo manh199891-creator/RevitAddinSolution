@@ -1,0 +1,23 @@
+{
+  "repo_root": "E:\\AI_SOFTWARE_FACTORY\\RevitAddinSolution\\source-code",
+  "baseline_path": "E:\\AI_SOFTWARE_FACTORY\\RevitAddinSolution\\.agent\\state\\task_baseline.json",
+  "baseline_path_exists": true,
+  "expected_task_id": "auto_foundation_cleanup_fix",
+  "baseline_task_id": null,
+  "current_files_len": 13,
+  "current_files_sample": [
+    "src/Antigravity.Core/Commands/AutoFoundationCommand.cs",
+    "src/Antigravity.Core/Geometry/PlanarFaceExtractor.cs",
+    "src/Antigravity.Core/Models/FoundationData.cs",
+    "src/Antigravity.Core/Services/CadParserService.cs",
+    "src/Antigravity.Core/Services/FoundationPlacementOrchestrator.cs",
+    "src/Antigravity.Core/Services/ICadParserService.cs",
+    "src/Antigravity.Core/Services/IFoundationPlacementAdapter.cs",
+    "src/Antigravity.Core/Services/RevitFoundationPlacementAdapter.cs",
+    "src/Antigravity.Main/App.cs",
+    "tests/Antigravity.Core.Geometry.Tests/Antigravity.Core.Geometry.Tests.csproj"
+  ],
+  "App.cs_in_current_files": true,
+  "App.cs_in_current_fingerprints": true,
+  "App.cs_in_baseline_files": false
+}

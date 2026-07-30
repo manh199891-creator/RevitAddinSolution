@@ -37,7 +37,7 @@ namespace Antigravity.Core.UI
             }
             else
             {
-                lblError.Text = "❌ Mật khẩu không đúng. Vui lòng thử lại.";
+                lblError.Text = "❌ Incorrect password. Please try again.";
                 txtPassword.Clear();
                 txtPassword.Focus();
             }

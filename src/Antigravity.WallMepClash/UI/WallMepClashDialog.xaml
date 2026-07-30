@@ -100,36 +100,7 @@
         </Grid.RowDefinitions>
 
         <!-- ── TIÊU ĐỀ ── -->
-        <Border Grid.Row="0" Background="#FFFFFF" BorderBrush="#D1D5DB" BorderThickness="0,0,0,1" Margin="-16,-16,-16,0" Padding="16,12">
-            <Grid>
-                <Grid.ColumnDefinitions>
-                    <ColumnDefinition Width="Auto"/>
-                    <ColumnDefinition Width="*"/>
-                </Grid.ColumnDefinitions>
-                <Viewbox Grid.Column="0" Width="28" Height="28" Margin="0,0,12,0" VerticalAlignment="Center">
-                    <Canvas Width="100" Height="80">
-                        <Path Fill="#1B3679" Data="M 30,10 L 70,10 L 50,45 Z"/>
-                        <Path Fill="#D8262C" Data="M 10,10 L 32,10 L 50,55 L 68,10 L 90,10 L 50,80 Z"/>
-                    </Canvas>
-                </Viewbox>
-                <StackPanel Grid.Column="1" VerticalAlignment="Center">
-                    <Grid>
-                        <Grid.ColumnDefinitions>
-                            <ColumnDefinition Width="*"/>
-                            <ColumnDefinition Width="Auto"/>
-                        </Grid.ColumnDefinitions>
-                        <StackPanel Grid.Column="0">
-                            <TextBlock FontSize="14" FontWeight="Bold" Foreground="#111827">
-                                <Run Text="VILA" Foreground="#1B3679"/><Run Text="I"><Run.Foreground><LinearGradientBrush StartPoint="0,0" EndPoint="1,0"><GradientStop Color="#1B3679" Offset="0.7"/><GradientStop Color="#D8262C" Offset="0.7"/></LinearGradientBrush></Run.Foreground></Run><Run Text="VIET" Foreground="#D8262C"/><Run Text=" · WALL - MEP PARALLEL CLASH CHECKER" Foreground="#111827" FontWeight="SemiBold"/>
-                            </TextBlock>
-                            <TextBlock Text="Check parallel clash between host walls and linked MEP elements" 
-                                       FontSize="11" Foreground="#6B7280" Margin="0,2,0,0"/>
-                        </StackPanel>
-                        <TextBlock x:Name="TxtSummary" Grid.Column="1" HorizontalAlignment="Right" Foreground="#111827" VerticalAlignment="Center" FontFamily="Segoe UI" FontSize="12" FontWeight="SemiBold"/>
-                    </Grid>
-                </StackPanel>
-            </Grid>
-        </Border>
+        <controls:BrandHeader x:Name="WindowHeader" Grid.Row="0" TitleText="Wall - MEP Clash Checker" SubtitleText="Check parallel clash between host walls and linked MEP elements"/>
 
         <Rectangle Grid.Row="1" Height="1" Fill="#D1D5DB" Margin="0,4"/>
 
@@ -149,14 +120,14 @@
 
             <!-- Chọn File Link -->
             <StackPanel Grid.Column="0">
-                <TextBlock Text="🔗  Linked MEP Model" Style="{StaticResource LabelStyle}"/>
-                <ComboBox x:Name="CmbLinks" Style="{StaticResource ComboStyle}" DisplayMemberPath="Name" SelectionChanged="CmbLinks_SelectionChanged"/>
+                <TextBlock Text="🔗  Linked MEP Model" Style="{StaticResource VvBodyTextStyle}"/>
+                <ComboBox x:Name="CmbLinks" Style="{StaticResource VvComboBoxStyle}" DisplayMemberPath="Name" SelectionChanged="CmbLinks_SelectionChanged"/>
             </StackPanel>
 
             <!-- Chọn MEP Categories -->
             <StackPanel Grid.Column="2">
-                <TextBlock Text="Categories to Check" Style="{StaticResource LabelStyle}"/>
-                <ComboBox x:Name="CmbCategories" Style="{StaticResource MultiSelectComboStyle}">
+                <TextBlock Text="Categories to Check" Style="{StaticResource VvBodyTextStyle}"/>
+                <ComboBox x:Name="CmbCategories" Style="{StaticResource VvComboBoxStyle}">
                     <ComboBox.ItemTemplate>
                         <DataTemplate>
                             <CheckBox Content="{Binding Name}"
@@ -172,8 +143,8 @@
 
             <!-- Lọc theo Level -->
             <StackPanel Grid.Column="4">
-                <TextBlock Text="Host level" Style="{StaticResource LabelStyle}"/>
-                <ComboBox x:Name="CmbHostLevels" Style="{StaticResource MultiSelectComboStyle}">
+                <TextBlock Text="Host level" Style="{StaticResource VvBodyTextStyle}"/>
+                <ComboBox x:Name="CmbHostLevels" Style="{StaticResource VvComboBoxStyle}">
                     <ComboBox.ItemTemplate>
                         <DataTemplate>
                             <CheckBox Content="{Binding Name}"
@@ -189,7 +160,7 @@
 
             <!-- Góc ngưỡng song song -->
             <StackPanel Grid.Column="6">
-                <TextBlock Text="Parallel ≤ (°)" Style="{StaticResource LabelStyle}"/>
+                <TextBlock Text="Parallel ≤ (°)" Style="{StaticResource VvBodyTextStyle}"/>
                 <TextBox x:Name="TxtThreshold" Style="{StaticResource ModernTextBox}" Text="10"/>
             </StackPanel>
 
@@ -212,7 +183,7 @@
         <Rectangle Grid.Row="5" Height="1" Fill="#D1D5DB" Margin="0,4" x:Name="SepProgress" Visibility="Collapsed"/>
 
         <!-- ── DATAGRID ── -->
-        <DataGrid x:Name="GridResults" Grid.Row="6" Style="{StaticResource DataGridStyle}" SelectionChanged="GridResults_SelectionChanged">
+        <DataGrid x:Name="GridResults" Grid.Row="6" Style="{StaticResource VvDataGridStyle}" SelectionChanged="GridResults_SelectionChanged">
             <DataGrid.Columns>
                 <DataGridTextColumn Header="Wall Id (Host)" Binding="{Binding HostWallId}" Width="100"/>
                 <DataGridTextColumn Header="MEP Id (Link)" Binding="{Binding LinkMepId}" Width="100"/>
@@ -263,7 +234,7 @@
                 <Button x:Name="BtnExportHtml" Content="📄  Export HTML" Click="BtnExportHtml_Click" Style="{StaticResource SecondaryBtn}" Margin="6,0,0,0" IsEnabled="False"/>
                 <Button x:Name="BtnResetColor" Content="✖  Reset Color" Click="BtnResetColor_Click" Style="{StaticResource SecondaryBtn}" Margin="6,0,0,0" IsEnabled="False"/>
             </UniformGrid>
-            <TextBlock Text="@manhns" Margin="0,0,0,0" FontSize="12" FontWeight="SemiBold" Foreground="#6B7280" Opacity="1" HorizontalAlignment="Right" VerticalAlignment="Bottom" IsHitTestVisible="False" Focusable="False"/>
+
         </Grid>
     </Grid>
 </Window>

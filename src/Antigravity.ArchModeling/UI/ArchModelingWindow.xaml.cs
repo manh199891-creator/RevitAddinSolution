@@ -53,16 +53,20 @@ namespace Antigravity.ArchModeling.UI
 
         private void SetupUIForMode()
         {
+            System.Windows.Controls.Grid.SetColumnSpan(
+                GridPrimaryMapping,
+                _mode == ArchModelingMode.Combined ? 1 : 3);
+
             switch (_mode)
             {
                 case ArchModelingMode.Wall:
-                    TxtModeTitle.Text = " · DRAW WALLS";
+                    WindowHeader.TitleText = "DRAW WALLS";
                     DgMapping.Columns[0].Header = "CAD Name (Pattern/Layer)";
                     ColGroup.Visibility   = System.Windows.Visibility.Collapsed;
                     ColPreview.Visibility = System.Windows.Visibility.Collapsed;
                     break;
                 case ArchModelingMode.DoorWindow:
-                    TxtModeTitle.Text = " · PLACE DOORS/WINDOWS";
+                    WindowHeader.TitleText = "PLACE DOORS/WINDOWS";
                     LblTopLevel.Visibility  = System.Windows.Visibility.Collapsed;
                     CboTopLevel.Visibility  = System.Windows.Visibility.Collapsed;
                     LblTopOffset.Visibility = System.Windows.Visibility.Collapsed;
@@ -74,7 +78,7 @@ namespace Antigravity.ArchModeling.UI
                     ChkMirrorHinge.Visibility = System.Windows.Visibility.Visible;
                     break;
                 case ArchModelingMode.FloorCeil:
-                    TxtModeTitle.Text = " · DRAW FLOORS/CEILINGS";
+                    WindowHeader.TitleText = "DRAW FLOORS/CEILINGS";
                     LblTopLevel.Visibility  = System.Windows.Visibility.Collapsed;
                     CboTopLevel.Visibility  = System.Windows.Visibility.Collapsed;
                     LblTopOffset.Visibility = System.Windows.Visibility.Collapsed;
@@ -86,7 +90,7 @@ namespace Antigravity.ArchModeling.UI
                     DgMapping.Columns[0].Header = "CAD Name (Pattern)";
                     break;
                 case ArchModelingMode.Combined:
-                    TxtModeTitle.Text = " · WALLS & DOORS";
+                    WindowHeader.TitleText = "WALLS & DOORS";
                     DgMapping.Columns[0].Header = "CAD Name (Hatch/Layer)";
                     TxtWallMappingTitle.Visibility = System.Windows.Visibility.Visible;
                     GridDoorsMapping.Visibility   = System.Windows.Visibility.Visible;

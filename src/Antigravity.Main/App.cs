@@ -39,7 +39,7 @@ namespace Antigravity.Main
             {
                 Assembly assembly = Assembly.GetExecutingAssembly();
                 string resourceName = $"Antigravity.Main.Resources.{imageName}";
-                
+
                 using (Stream stream = assembly.GetManifestResourceStream(resourceName))
                 {
                     if (stream == null) return null;
@@ -71,67 +71,77 @@ namespace Antigravity.Main
             }
 
             // 2. Create Panels
-            RibbonPanel structuralPanel = application.CreateRibbonPanel(tabName, "DỰNG HÌNH");
+            RibbonPanel structuralPanel = application.CreateRibbonPanel(tabName, "MODELING");
 
             // 3. Add Buttons
             string assemblyPath = Assembly.GetExecutingAssembly().Location;
             BitmapImage logoImage = GetEmbeddedImage("icon_logo_32.png");
 
             PushButtonData btnDrawColumns = new PushButtonData(
-                "btnDrawColumns", 
-                "Vẽ Cột", 
-                assemblyPath.Replace("Antigravity.Main.dll", "Antigravity.DrawColumns.dll"), 
+                "btnDrawColumns",
+                "Draw\nColumns",
+                assemblyPath.Replace("Antigravity.Main.dll", "Antigravity.DrawColumns.dll"),
                 "Antigravity.DrawColumns.CreateColumnCommand");
-            
-            btnDrawColumns.ToolTip = "Tự động vẽ cột từ bản vẽ CAD";
+
+            btnDrawColumns.ToolTip = "Create structural columns automatically from CAD geometry.";
             btnDrawColumns.LargeImage = logoImage;
-            
+
             PushButtonData btnDrawBeams = new PushButtonData(
-                "btnDrawBeams", 
-                "Vẽ Dầm", 
-                assemblyPath.Replace("Antigravity.Main.dll", "Antigravity.DrawBeams.dll"), 
+                "btnDrawBeams",
+                "Draw\nBeams",
+                assemblyPath.Replace("Antigravity.Main.dll", "Antigravity.DrawBeams.dll"),
                 "Antigravity.DrawBeams.CreateBeamCommand");
 
-            btnDrawBeams.ToolTip = "Tự động vẽ dầm từ bản vẽ CAD";
+            btnDrawBeams.ToolTip = "Create structural framing automatically from CAD geometry.";
             btnDrawBeams.LargeImage = logoImage;
 
             PushButtonData btnDrawWalls = new PushButtonData(
-                "btnDrawWalls", 
-                "Vẽ Vách", 
-                assemblyPath.Replace("Antigravity.Main.dll", "Antigravity.DrawWalls.dll"), 
+                "btnDrawWalls",
+                "Draw\nWalls",
+                assemblyPath.Replace("Antigravity.Main.dll", "Antigravity.DrawWalls.dll"),
                 "Antigravity.DrawWalls.CreateWallCommand");
 
-            btnDrawWalls.ToolTip = "Tự động vẽ vách từ bản vẽ CAD";
+            btnDrawWalls.ToolTip = "Create structural walls automatically from CAD geometry.";
             btnDrawWalls.LargeImage = logoImage;
 
             PushButtonData btnDrawFloors = new PushButtonData(
-                "btnDrawFloors", 
-                "Vẽ Sàn", 
-                assemblyPath.Replace("Antigravity.Main.dll", "Antigravity.DrawFloors.dll"), 
+                "btnDrawFloors",
+                "Draw\nFloors",
+                assemblyPath.Replace("Antigravity.Main.dll", "Antigravity.DrawFloors.dll"),
                 "Antigravity.DrawFloors.CreateFloorCommand");
 
-            btnDrawFloors.ToolTip = "Tự động vẽ sàn từ bản vẽ CAD";
+            btnDrawFloors.ToolTip = "Create floors automatically from CAD geometry.";
             btnDrawFloors.LargeImage = logoImage;
 
             PushButtonData btnCadSleevePlacer = new PushButtonData(
                 "btnCadSleevePlacer",
-                "Đặt Sleeve\nDầm Vách",
+                "Place CAD\nSleeves",
                 assemblyPath.Replace("Antigravity.Main.dll", "Antigravity.CadSleevePlacer.dll"),
                 "Antigravity.CadSleevePlacer.AppCommand");
 
-            btnCadSleevePlacer.ToolTip = "Tự động đặt Family Sleeve Generic Model cho Dầm/Vách dựa trên dữ liệu AutoCAD (Leader, Text).";
+            btnCadSleevePlacer.ToolTip = "Place Generic Model sleeve families in beams and walls from AutoCAD leaders and text.";
             btnCadSleevePlacer.LargeImage = logoImage;
 
             PushButtonData btnDoorClearance = new PushButtonData(
                 "btnDoorClearance",
-                "Khoảng Mở\nCửa",
+                "Door\nClearance",
                 assemblyPath.Replace("Antigravity.Main.dll", "DoorClearanceBox.dll"),
                 "DoorClearanceBox.Commands.CreateClearanceBoxCommand");
-            
-            btnDoorClearance.ToolTip = "Tự động tạo khối không gian (Clearance Box) cho Cửa đi và Cửa sổ.";
+
+            btnDoorClearance.ToolTip = "Create clearance boxes automatically for doors and windows.";
             btnDoorClearance.LargeImage = logoImage;
 
 
+            PushButtonData btnAutoFoundation = new PushButtonData(
+                "btnAutoFoundation",
+                "Draw\nFoundations",
+                assemblyPath.Replace("Antigravity.Main.dll", "Antigravity.AutoFoundation.dll"),
+                "Antigravity.AutoFoundation.Commands.AutoFoundationCommand");
+
+            btnAutoFoundation.ToolTip = "Create structural foundations automatically from CAD geometry.";
+            btnAutoFoundation.LargeImage = logoImage;
+
+            structuralPanel.AddItem(btnAutoFoundation);
             structuralPanel.AddItem(btnDrawColumns);
             structuralPanel.AddItem(btnDrawBeams);
             structuralPanel.AddItem(btnDrawWalls);
@@ -139,35 +149,35 @@ namespace Antigravity.Main
 
             // --- KIẾN TRÚC ---
             PushButtonData btnArchWall = new PushButtonData(
-                "btnArchWall", 
-                "Vẽ Tường KT", 
-                assemblyPath.Replace("Antigravity.Main.dll", "Antigravity.ArchModeling.dll"), 
+                "btnArchWall",
+                "Architectural\nWalls",
+                assemblyPath.Replace("Antigravity.Main.dll", "Antigravity.ArchModeling.dll"),
                 "Antigravity.ArchModeling.Commands.DrawWallFromCadCommand");
-            btnArchWall.ToolTip = "Tự động vẽ tường kiến trúc từ layer AutoCAD";
+            btnArchWall.ToolTip = "Create architectural walls automatically from AutoCAD layers.";
             btnArchWall.LargeImage = logoImage;
 
             PushButtonData btnArchWallDoor = new PushButtonData(
-                "btnArchWallDoor", 
-                "Tường & Cửa", 
-                assemblyPath.Replace("Antigravity.Main.dll", "Antigravity.ArchModeling.dll"), 
+                "btnArchWallDoor",
+                "Walls &\nDoors",
+                assemblyPath.Replace("Antigravity.Main.dll", "Antigravity.ArchModeling.dll"),
                 "Antigravity.ArchModeling.Commands.DrawWallsAndDoorsFromCadCommand");
-            btnArchWallDoor.ToolTip = "Tự động vẽ tường và đặt cửa cùng lúc từ AutoCAD";
+            btnArchWallDoor.ToolTip = "Create walls and place doors together from AutoCAD.";
             btnArchWallDoor.LargeImage = logoImage;
 
             PushButtonData btnArchFloor = new PushButtonData(
-                "btnArchFloor", 
-                "Vẽ Sàn HT", 
-                assemblyPath.Replace("Antigravity.Main.dll", "Antigravity.ArchModeling.dll"), 
+                "btnArchFloor",
+                "Finish\nFloors",
+                assemblyPath.Replace("Antigravity.Main.dll", "Antigravity.ArchModeling.dll"),
                 "Antigravity.ArchModeling.Commands.DrawFloorCeilFromCadCommand");
-            btnArchFloor.ToolTip = "Tự động vẽ sàn/trần hoàn thiện từ Hatch AutoCAD";
+            btnArchFloor.ToolTip = "Create finish floors and ceilings from AutoCAD hatches.";
             btnArchFloor.LargeImage = logoImage;
 
             PushButtonData btnArchDoor = new PushButtonData(
-                "btnArchDoor", 
-                "Đặt Cửa", 
-                assemblyPath.Replace("Antigravity.Main.dll", "Antigravity.ArchModeling.dll"), 
+                "btnArchDoor",
+                "Place\nOpenings",
+                assemblyPath.Replace("Antigravity.Main.dll", "Antigravity.ArchModeling.dll"),
                 "Antigravity.ArchModeling.Commands.PlaceDoorFromCadCommand");
-            btnArchDoor.ToolTip = "Tự động đặt cửa đi/cửa sổ từ Block AutoCAD";
+            btnArchDoor.ToolTip = "Place doors and windows automatically from AutoCAD blocks.";
             btnArchDoor.LargeImage = logoImage;
 
             structuralPanel.AddItem(btnArchWall);
@@ -176,18 +186,18 @@ namespace Antigravity.Main
             structuralPanel.AddItem(btnArchDoor);
 
             // --- Panel Kiểm soát khối lượng ---
-            RibbonPanel utilityPanel = application.CreateRibbonPanel(tabName, "KIỂM SOÁT KHỐI LƯỢNG");
+            RibbonPanel utilityPanel = application.CreateRibbonPanel(tabName, "QUANTITY CONTROL");
 
 #if DEBUG
             SplitButtonData sbAutoJoinData = new SplitButtonData("splitAutoJoin", "Auto Join");
             SplitButton sbAutoJoin = utilityPanel.AddItem(sbAutoJoinData) as SplitButton;
 
             PushButtonData btnAutojoin = new PushButtonData(
-                "btnAutojoin", 
-                "Auto Join", 
-                assemblyPath.Replace("Antigravity.Main.dll", "Antigravity.Autojoin.dll"), 
+                "btnAutojoin",
+                "Auto Join",
+                assemblyPath.Replace("Antigravity.Main.dll", "Antigravity.Autojoin.dll"),
                 "Antigravity.Autojoin.AutoJoinCommand");
-            btnAutojoin.ToolTip = "Tự động kết nối (Join) các phần tử kết cấu theo quy tắc";
+            btnAutojoin.ToolTip = "Join structural elements automatically using configurable rules.";
             btnAutojoin.LargeImage = logoImage;
             sbAutoJoin.AddPushButton(btnAutojoin);
 
@@ -201,60 +211,60 @@ namespace Antigravity.Main
             sbAutoJoin.AddPushButton(btnAutojoinTest);
 #else
             PushButtonData btnAutojoin = new PushButtonData(
-                "btnAutojoin", 
-                "Auto Join", 
-                assemblyPath.Replace("Antigravity.Main.dll", "Antigravity.Autojoin.dll"), 
+                "btnAutojoin",
+                "Auto Join",
+                assemblyPath.Replace("Antigravity.Main.dll", "Antigravity.Autojoin.dll"),
                 "Antigravity.Autojoin.AutoJoinCommand");
 
-            btnAutojoin.ToolTip = "Tự động kết nối (Join) các phần tử kết cấu theo quy tắc";
+            btnAutojoin.ToolTip = "Join structural elements automatically using configurable rules.";
             btnAutojoin.LargeImage = logoImage;
             utilityPanel.AddItem(btnAutojoin);
 #endif
 
             PushButtonData btnZoneSplit = new PushButtonData(
-                "btnZoneSplit", 
-                "Chia Zone", 
-                assemblyPath.Replace("Antigravity.Main.dll", "Antigravity.ZoneSplit.dll"), 
+                "btnZoneSplit",
+                "Split\nZones",
+                assemblyPath.Replace("Antigravity.Main.dll", "Antigravity.ZoneSplit.dll"),
                 "Antigravity.ZoneSplit.Commands.ZoneProcessCommand");
 
-            btnZoneSplit.ToolTip = "Phân loại cấu kiện theo Generic Model zone volume và xuất báo cáo Markdown.";
+            btnZoneSplit.ToolTip = "Classify elements by Generic Model zone volumes and generate a Markdown report.";
             btnZoneSplit.LargeImage = logoImage;
             utilityPanel.AddItem(btnZoneSplit);
 
             PushButtonData btnZoneExport = new PushButtonData(
-                "btnZoneExport", 
-                "Xuất Navis", 
-                assemblyPath.Replace("Antigravity.Main.dll", "Antigravity.ZoneSplit.dll"), 
+                "btnZoneExport",
+                "Export\nNavis",
+                assemblyPath.Replace("Antigravity.Main.dll", "Antigravity.ZoneSplit.dll"),
                 "Antigravity.ZoneSplit.Commands.ExportCommand");
 
-            btnZoneExport.ToolTip = "Xuất ZoneID selection sets sang file XML cho Navisworks.";
+            btnZoneExport.ToolTip = "Export ZoneID selection sets to Navisworks XML.";
             btnZoneExport.LargeImage = logoImage;
             utilityPanel.AddItem(btnZoneExport);
 
             // --- Panel Kiểm soát xung đột ---
-            RibbonPanel clashPanel = application.CreateRibbonPanel(tabName, "KIỂM SOÁT XUNG ĐỘT");
+            RibbonPanel clashPanel = application.CreateRibbonPanel(tabName, "CLASH CONTROL");
 
             PushButtonData btnIssueManager = new PushButtonData(
                 "btnIssueManager",
-                "Quản Lý\nLỗi BIM",
+                "Issue\nManager",
                 assemblyPath.Replace("Antigravity.Main.dll", "Antigravity.IssueManager.dll"),
                 "Antigravity.IssueManager.Commands.CmdOpenIssueManager");
 
-            btnIssueManager.ToolTip = "Đồng bộ lỗi từ Navisworks thông qua file XML hoặc BCFzip.";
+            btnIssueManager.ToolTip = "Synchronize Navisworks issues through XML or BCFZIP files.";
             btnIssueManager.LargeImage = logoImage;
 
             PushButtonData btnClashControl = new PushButtonData(
                 "btnClashControl",
-                "Kiểm Soát\nXung Đột",
+                "Door Clash\nControl",
                 assemblyPath.Replace("Antigravity.Main.dll", "DoorClearanceBox.dll"),
                 "DoorClearanceBox.Commands.ClashControlCommand");
 
-            btnClashControl.ToolTip = "Phát hiện và hiển thị các cấu kiện kết cấu (Cột, Dầm, Sàn, Tường) xung đột với khoảng mở cửa.";
+            btnClashControl.ToolTip = "Detect structural elements that clash with door clearance boxes.";
             btnClashControl.LargeImage = logoImage;
 
             PushButtonData btnCheckFloorElevation = new PushButtonData(
                 "btnCheckFloorElevation",
-                "Kiem Tra\nCao Do San",
+                "Check Floor\nElevation",
                 assemblyPath.Replace("Antigravity.Main.dll", "Antigravity.CheckFloorElevation.dll"),
                 "Antigravity.CheckFloorElevation.CheckFloorElevationCommand");
 
@@ -263,10 +273,10 @@ namespace Antigravity.Main
 
             PushButtonData btnWallMepClash = new PushButtonData(
                 "btnWallMepClash",
-                "Tường\nMEP Clash",
+                "Wall MEP\nClash",
                 assemblyPath.Replace("Antigravity.Main.dll", "Antigravity.WallMepClash.dll"),
                 "Antigravity.WallMepClash.WallMepClashCommand");
-            btnWallMepClash.ToolTip = "Phát hiện va chạm song song giữa Tường host và đường ống/thiết bị MEP từ file link.";
+            btnWallMepClash.ToolTip = "Detect parallel clashes between host walls and linked MEP pipes or equipment.";
             btnWallMepClash.LargeImage = logoImage;
 
             clashPanel.AddItem(btnCadSleevePlacer);
@@ -277,35 +287,35 @@ namespace Antigravity.Main
             clashPanel.AddItem(btnDoorClearance);
 
             // --- Panel Trình bày ---
-            RibbonPanel docPanel = application.CreateRibbonPanel(tabName, "TRÌNH BÀY");
+            RibbonPanel docPanel = application.CreateRibbonPanel(tabName, "PRESENTATION");
 
             PushButtonData btnAutoDimWalls = new PushButtonData(
                 "btnAutoDimWalls",
                 "AutoDim\nWalls",
                 assemblyPath.Replace("Antigravity.Main.dll", "Antigravity.AutoDimWalls.dll"),
                 "Antigravity.AutoDimWalls.AutoDimCommand");
-            
-            btnAutoDimWalls.ToolTip = "Tự động đo kích thước cho các bức tường kiến trúc thẳng trong View hiện tại.";
+
+            btnAutoDimWalls.ToolTip = "Dimension straight architectural walls automatically in the active view.";
             btnAutoDimWalls.LargeImage = logoImage;
             docPanel.AddItem(btnAutoDimWalls);
 
             PushButtonData btnTagArranger = new PushButtonData(
                 "btnTagArranger",
-                "Sắp Xếp\nTag",
+                "Arrange\nTags",
                 assemblyPath.Replace("Antigravity.Main.dll", "Antigravity.TagArranger.dll"),
                 "Antigravity.TagArranger.TagArrangeCommand");
-            
-            btnTagArranger.ToolTip = "Tự động căn thẳng hàng, chống đè chữ và giãn đều Tag/Dimension.";
+
+            btnTagArranger.ToolTip = "Align, untangle, and distribute tags and dimensions automatically.";
             btnTagArranger.LargeImage = logoImage;
             docPanel.AddItem(btnTagArranger);
 
             PushButtonData btnHoanThien = new PushButtonData(
                 "btnHoanThien",
-                "Hoàn Thiện",
+                "Room\nFinishes",
                 assemblyPath.Replace("Antigravity.Main.dll", "Antigravity.HoanThien.dll"),
                 "Antigravity.HoanThien.Commands.HoanThienCommand");
-            
-            btnHoanThien.ToolTip = "Tự động tạo tường và sàn hoàn thiện dựa trên Room Boundaries.";
+
+            btnHoanThien.ToolTip = "Create finish walls and floors automatically from room boundaries.";
             btnHoanThien.LargeImage = logoImage;
             docPanel.AddItem(btnHoanThien);
 
@@ -424,7 +434,7 @@ namespace Antigravity.Main
             if (File.Exists(triggerFile))
             {
                 AutomationLogger.Write("AutomationHook", $"Phát hiện file kích hoạt: {triggerFile}. Bắt đầu chạy automation...");
-                
+
                 bool shouldExit = false;
                 try
                 {

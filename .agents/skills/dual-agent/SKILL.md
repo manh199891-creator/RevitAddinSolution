@@ -15,6 +15,12 @@ Coordinate the work and invoke `dual-agent-pipeline` for every substantive phase
 
 ## Route the request
 
+- Treat `/research-test-and-fix` as a shortcut for the full lifecycle through this orchestrator:
+  `research -> plan -> code -> release`.
+- Treat `/test-and-fix` as a shortcut for the implementation lifecycle through this orchestrator:
+  `code -> release`.
+- These shortcuts are aliases only. Never implement them as separate workflows, never bypass
+  `dual-agent-pipeline`, and never claim Codex participated unless the pipeline evidence gate passes.
 - Route investigation, feasibility, comparison, or architectural research to `research`.
 - Route specifications, implementation plans, technical designs, or acceptance criteria to `plan`.
 - Route implementation, bug fixing, debugging, refactoring, or code review to `code`.
@@ -26,6 +32,14 @@ Read [references/orchestration_contract.md](references/orchestration_contract.md
 
 ## Execute each phase
 
+0. Run the connection doctor before claiming either agent is available:
+
+```powershell
+powershell -NoProfile -ExecutionPolicy Bypass -File "scripts\dual_orchestrate.ps1" -Action doctor -Project <Project>
+```
+
+If Codex is not `READY`, treat the pipeline as `INFRA_FAIL`. If Antigravity is not `READY`, do not claim an automatic fixer can run; Codex read-only review may still run.
+
 1. Inspect the registered project and repository, then select `Project`, a stable `TaskId`, a concise `Feature`, the narrowest safe `Allowed` scope, and `Mode`. Verify every proposed scope path exists or is an intentional new-file boundary; never invent a glob from naming assumptions.
 2. Initialize through the bundled bridge:
 
@@ -34,6 +48,7 @@ powershell -NoProfile -ExecutionPolicy Bypass -File "scripts\dual_orchestrate.ps
 ```
 
 3. Produce the primary evidence:
+   - Before changing or reviewing anything, read `.agent/context/MEMORY_CONTEXT.md` if it exists. This is the compact Learning Guard memory. Do not load full `.agent/knowledge/**` unless a prevention rule in the compact memory directly matches the active issue.
    - `research`: complete `.agent/context/RESEARCH.md` with repository evidence and sourced external facts.
    - `plan`: complete `PLAN.md`, `TECHNICAL_DESIGN.md`, and `ACCEPTANCE_CRITERIA.md`.
    - `code`: implement and test only inside `TASK_SCOPE.json`.
@@ -43,6 +58,8 @@ powershell -NoProfile -ExecutionPolicy Bypass -File "scripts\dual_orchestrate.ps
 ```powershell
 powershell -NoProfile -ExecutionPolicy Bypass -File "scripts\dual_orchestrate.ps1" -Action run -Project <Project> -TaskId <TaskId> -Feature <Feature> -Mode <Mode> [-MaxCycles 2]
 ```
+
+Never invoke the bridge with only `-Mode <Mode>`. The bridge is intentionally non-interactive and must fail fast when `-Action`, `-Project`, `-TaskId`, or `-Feature` is missing.
 
 5. Read status and reports:
 
