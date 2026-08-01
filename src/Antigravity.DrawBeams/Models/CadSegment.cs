@@ -4,8 +4,11 @@ namespace Antigravity.DrawBeams.Models
 {
     public class CadSegment
     {
-        public double[] StartPoint { get; set; }
-        public double[] EndPoint { get; set; }
+        public double StartX { get; set; }
+        public double StartY { get; set; }
+        public double EndX { get; set; }
+        public double EndY { get; set; }
+
         public string Id { get; set; }
         public string Layer { get; set; }
         public int Color { get; set; } = -1;
@@ -17,13 +20,13 @@ namespace Antigravity.DrawBeams.Models
         public string GroupId { get; set; } = null;
 
         // Vector hướng chuẩn hóa
-        public double DirectionX => EndPoint != null && StartPoint != null ? EndPoint[0] - StartPoint[0] : 0;
-        public double DirectionY => EndPoint != null && StartPoint != null ? EndPoint[1] - StartPoint[1] : 0;
+        public double DirectionX => EndX - StartX;
+        public double DirectionY => EndY - StartY;
         public double Length => Math.Sqrt(DirectionX * DirectionX + DirectionY * DirectionY);
 
         // Trung điểm
-        public double MidX => EndPoint != null && StartPoint != null ? (StartPoint[0] + EndPoint[0]) / 2.0 : 0;
-        public double MidY => EndPoint != null && StartPoint != null ? (StartPoint[1] + EndPoint[1]) / 2.0 : 0;
+        public double MidX => (StartX + EndX) / 2.0;
+        public double MidY => (StartY + EndY) / 2.0;
 
         // Góc hướng chuẩn hóa [0, π)
         public double Angle
@@ -39,7 +42,7 @@ namespace Antigravity.DrawBeams.Models
         }
 
         // Vector pháp tuyến (vuông góc với hướng)
-        public double NormalX => Length > 0 ? -DirectionY / Length : 0;
-        public double NormalY => Length > 0 ? DirectionX / Length : 0;
+        public double NormalX => Length > 1e-9 ? -DirectionY / Length : 0;
+        public double NormalY => Length > 1e-9 ? DirectionX / Length : 0;
     }
 }

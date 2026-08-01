@@ -5,9 +5,12 @@ namespace Antigravity.DrawBeams.Models
 {
     public class CadText
     {
+        public string Id { get; set; }
         public string TextString { get; set; }
-        public double[] InsertionPoint { get; set; }
+        public double X { get; set; }
+        public double Y { get; set; }
         public double Rotation { get; set; }
+        public double TextHeight { get; set; }
         public string Layer { get; set; }
         public string ObjectName { get; set; }
 

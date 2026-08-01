@@ -103,14 +103,49 @@ namespace Antigravity.DrawBeams.Services
         }
 
         // ================================================================
-        // PHASE 1: CAD SCENE EXTRACTION & ISOLATION
+        // PHASE 1: CAD SCENE EXTRACTION & ISOLATION (CLOSED COM BOUNDARY)
         // ================================================================
 
         /// <summary>
-        /// Extract pure C# CadScene (Segments + Texts) from an AutoCAD selection set.
-        /// Decouples COM interaction from beam recognition.
+        /// Public API to capture CAD scene from AutoCAD selection set.
+        /// Selection set cleanup is guaranteed in finally block.
+        /// Pure C# DTO return without COM references.
         /// </summary>
-        public CadScene ExtractScene(dynamic sset, string textLayer = null)
+        public CadScene CaptureCadScene(string textLayer = null)
+        {
+            if (_acadDoc == null && !Connect())
+            {
+                throw new InvalidOperationException("AutoCAD connection unavailable.");
+            }
+
+            dynamic ssets = _acadDoc.SelectionSets;
+            string ssetName = "BeamsSet_" + DateTime.Now.Ticks;
+            dynamic sset = null;
+
+            try
+            {
+                try { sset = ssets.Add(ssetName); }
+                catch { sset = ssets.Item(ssetName); }
+
+                _acadDoc.Utility.Prompt("\nV12: Quét chọn vùng dầm cần vẽ... ");
+                sset.SelectOnScreen();
+
+                return ExtractSceneFromSelectionSet(sset, textLayer);
+            }
+            finally
+            {
+                if (sset != null)
+                {
+                    try { sset.Delete(); }
+                    catch { /* Safe selection set cleanup */ }
+                }
+            }
+        }
+
+        /// <summary>
+        /// Private COM interop function extracting entities into CadScene DTO.
+        /// </summary>
+        private CadScene ExtractSceneFromSelectionSet(dynamic sset, string textLayer)
         {
             var scene = new CadScene();
             if (sset == null) return scene;
@@ -123,10 +158,15 @@ namespace Antigravity.DrawBeams.Services
 
                 if (objName == "AcDbLine")
                 {
+                    double[] startPt = entity.StartPoint;
+                    double[] endPt = entity.EndPoint;
+
                     scene.Segments.Add(new CadSegment
                     {
-                        StartPoint = entity.StartPoint,
-                        EndPoint = entity.EndPoint,
+                        StartX = startPt[0],
+                        StartY = startPt[1],
+                        EndX = endPt[0],
+                        EndY = endPt[1],
                         Id = entity.Handle,
                         Layer = entLayer,
                         Color = GetEntityColor(entity)
@@ -149,11 +189,24 @@ namespace Antigravity.DrawBeams.Services
                         double rot = 0;
                         try { rot = (double)entity.Rotation; } catch { }
 
+                        double textHeight = 0;
+                        try { textHeight = (double)entity.Height; }
+                        catch
+                        {
+                            try { textHeight = (double)entity.TextHeight; }
+                            catch { textHeight = 0; }
+                        }
+
+                        double[] insPt = entity.InsertionPoint;
+
                         scene.Texts.Add(new CadText
                         {
+                            Id = entity.Handle,
                             TextString = entity.TextString,
-                            InsertionPoint = entity.InsertionPoint,
+                            X = insPt[0],
+                            Y = insPt[1],
                             Rotation = rot,
+                            TextHeight = textHeight,
                             Layer = entLayer,
                             ObjectName = objName
                         });
@@ -165,26 +218,13 @@ namespace Antigravity.DrawBeams.Services
         }
 
         /// <summary>
-        /// Legacy entry point for CAD selection. Extracts scene and processes it.
+        /// Entry point for CAD beam processing. Captures scene and processes it.
         /// </summary>
         public List<CadBeamData> GetCadBeams(string beamLayer = null, string textLayer = null)
         {
             try
             {
-                dynamic utility = _acadDoc.Utility;
-                dynamic ssets = _acadDoc.SelectionSets;
-
-                string ssetName = "BeamsSet_" + DateTime.Now.Ticks;
-                dynamic sset = null;
-                try { sset = ssets.Add(ssetName); }
-                catch { sset = ssets.Item(ssetName); }
-
-                utility.Prompt("\nV12: Quét chọn vùng dầm cần vẽ... ");
-                sset.SelectOnScreen();
-
-                CadScene scene = ExtractScene(sset, textLayer);
-                sset.Delete();
-
+                CadScene scene = CaptureCadScene(textLayer);
                 return ProcessScene(scene, beamLayer, textLayer);
             }
             catch (Exception ex)
@@ -197,21 +237,20 @@ namespace Antigravity.DrawBeams.Services
         // V12: CẤU TRÚC DỮ LIỆU LINH HOẠT & THUẬT TOÁN BEAM PROCESSING
         // ================================================================
 
-        /// <summary>Cặp cạnh dầm: Nét chuẩn (Layer A) + Nét song song (Layer bất kỳ)</summary>
         private class BeamCandidate
         {
-            public CadSegment MainLine { get; set; }        // Nét thuộc Layer chuẩn (beam layer)
-            public CadSegment SubLine { get; set; }         // Nét song song tìm được (layer bất kỳ)
-            public double MeasuredWidth { get; set; }       // Khoảng cách hình học giữa 2 nét
-            public double TextWidth { get; set; }           // Giá trị B lấy từ Text (ưu tiên)
-            public double TextHeight { get; set; }          // Giá trị H lấy từ Text
-            public string TextContent { get; set; }         // Nội dung text gốc
-            public double OverlapLength { get; set; }       // Chiều dài chồng lấn
-            public double Confidence { get; set; }          // Điểm tin cậy
+            public CadSegment MainLine { get; set; }
+            public CadSegment SubLine { get; set; }
+            public double MeasuredWidth { get; set; }
+            public double TextWidth { get; set; }
+            public double TextHeight { get; set; }
+            public string TextContent { get; set; }
+            public double OverlapLength { get; set; }
+            public double Confidence { get; set; }
         }
 
         /// <summary>
-        /// Process pure CadScene into recognized CadBeamData list without COM dependencies.
+        /// Pure scene processing API operating strictly on CadScene DTOs.
         /// </summary>
         public List<CadBeamData> ProcessScene(CadScene scene, string beamLayer = null, string textLayer = null)
         {
@@ -228,7 +267,6 @@ namespace Antigravity.DrawBeams.Services
                     .ToList();
             }
 
-            // ── Bước 2: Phân loại Anchor Lines (nét trên beam layer) vs All Lines ──
             allSegments = PreProcessSegments(allSegments);
 
             List<CadSegment> anchorLines;
@@ -237,19 +275,16 @@ namespace Antigravity.DrawBeams.Services
             if (!string.IsNullOrEmpty(beamLayer))
             {
                 anchorLines = allSegments.Where(s => string.Equals(s.Layer, beamLayer, StringComparison.OrdinalIgnoreCase)).ToList();
-                // Fallback: nếu không có nét nào trên beamLayer, thử nhận Layer "0"
                 if (anchorLines.Count == 0)
                     anchorLines = allSegments.Where(s => s.Layer == "0").ToList();
-                potentialPartners = allSegments; // Tất cả nét đều có thể là partner
+                potentialPartners = allSegments;
             }
             else
             {
-                // Nếu không chọn beam layer → tất cả đều là anchor
                 anchorLines = allSegments;
                 potentialPartners = allSegments;
             }
 
-            // ── Bước 3: Duyệt từng Anchor Line → Tìm Text → Tìm Partner ──
             HashSet<string> usedIds = new HashSet<string>();
             var confirmedCandidates = new List<BeamCandidate>();
             var commonWidths = GetCommonBeamWidths(allTexts);
@@ -257,14 +292,13 @@ namespace Antigravity.DrawBeams.Services
             foreach (var anchor in anchorLines)
             {
                 if (usedIds.Contains(anchor.Id)) continue;
-                if (anchor.Length < 500) continue; // Bỏ nét quá ngắn
+                if (anchor.Length < 500) continue;
 
-                // ── Fast-path: Polyline có bề dày thực sự (>=100mm) → tạo dầm ngay từ 1 nét ──
                 if (anchor.PolylineWidth >= 100 && anchor.PolylineWidth < 3000)
                 {
                     var plTexts = FindParallelTexts(anchor, allTexts);
                     double beamB = anchor.PolylineWidth;
-                    double beamH = 500; // fallback mặc định
+                    double beamH = 500;
                     string beamContent = "";
                     if (plTexts.Count > 0)
                     {
@@ -274,10 +308,10 @@ namespace Antigravity.DrawBeams.Services
                     }
                     var plBeam = new CadBeamData
                     {
-                        StartX = anchor.StartPoint[0],
-                        StartY = anchor.StartPoint[1],
-                        EndX = anchor.EndPoint[0],
-                        EndY = anchor.EndPoint[1],
+                        StartX = anchor.StartX,
+                        StartY = anchor.StartY,
+                        EndX = anchor.EndX,
+                        EndY = anchor.EndY,
                         Width = beamB,
                         Height = beamH,
                         TextContent = beamContent,
@@ -292,7 +326,6 @@ namespace Antigravity.DrawBeams.Services
                     continue;
                 }
 
-                // ── Fast-path: Closed Rect Polyline – cặp segment theo GroupId ──
                 if (anchor.GroupId != null)
                 {
                     CadSegment groupPartner = potentialPartners
@@ -300,7 +333,7 @@ namespace Antigravity.DrawBeams.Services
                     if (groupPartner != null)
                     {
                         double overlapLen = GetSegmentOverlapLength(anchor, groupPartner);
-                        double measuredW = GetPerpendicularDistance(anchor.StartPoint, anchor.EndPoint, groupPartner.StartPoint);
+                        double measuredW = GetPerpendicularDistance(anchor.StartX, anchor.StartY, anchor.EndX, anchor.EndY, groupPartner.StartX, groupPartner.StartY);
                         if (overlapLen > 200 && measuredW > 50)
                         {
                             var plTexts2 = FindParallelTexts(anchor, allTexts);
@@ -325,7 +358,6 @@ namespace Antigravity.DrawBeams.Services
                     continue;
                 }
 
-                // 3a. Tìm Text song song gần nhất
                 var nearbyTexts = FindParallelTexts(anchor, allTexts);
                 if (nearbyTexts.Count == 0)
                 {
@@ -335,7 +367,7 @@ namespace Antigravity.DrawBeams.Services
                         if (partner != null)
                         {
                             double overlapLen = GetSegmentOverlapLength(anchor, partner);
-                            double measuredWidth = GetPerpendicularDistance(anchor.StartPoint, anchor.EndPoint, partner.StartPoint);
+                            double measuredWidth = GetPerpendicularDistance(anchor.StartX, anchor.StartY, anchor.EndX, anchor.EndY, partner.StartX, partner.StartY);
                             double matchedWidth = commonWidths
                                 .Where(w => Math.Abs(w - measuredWidth) / w < 0.15)
                                 .OrderBy(w => Math.Abs(w - measuredWidth))
@@ -359,7 +391,6 @@ namespace Antigravity.DrawBeams.Services
                     continue;
                 }
 
-                // 3b. Với mỗi Text, lấy giá trị B → Tìm nét Partner cách anchor đúng B (±20mm)
                 foreach (var textInfo in nearbyTexts)
                 {
                     double expectedWidth = textInfo.Width;
@@ -370,7 +401,7 @@ namespace Antigravity.DrawBeams.Services
                         double overlapLen = GetSegmentOverlapLength(anchor, partner);
                         if (overlapLen > 200 && IsProjectionWithinRange(anchor, partner))
                         {
-                            double measuredWidth = GetPerpendicularDistance(anchor.StartPoint, anchor.EndPoint, partner.StartPoint);
+                            double measuredWidth = GetPerpendicularDistance(anchor.StartX, anchor.StartY, anchor.EndX, anchor.EndY, partner.StartX, partner.StartY);
                             if (measuredWidth > 1200 || anchor.Length < measuredWidth * 1.2) continue;
 
                             confirmedCandidates.Add(new BeamCandidate
@@ -389,7 +420,6 @@ namespace Antigravity.DrawBeams.Services
                 }
             }
 
-            // ── Bước 4: Xử lý & loại trùng ──
             foreach (var candidate in confirmedCandidates.OrderByDescending(c => c.Confidence))
             {
                 if (usedIds.Contains(candidate.MainLine.Id) || usedIds.Contains(candidate.SubLine.Id)) continue;
@@ -413,7 +443,6 @@ namespace Antigravity.DrawBeams.Services
                 }
             }
 
-            // ── Bước 5 (Fallback): Xử lý nét Anchor chưa có partner ──
             if (!string.IsNullOrEmpty(beamLayer))
             {
                 foreach (var anchor in anchorLines)
@@ -429,10 +458,10 @@ namespace Antigravity.DrawBeams.Services
                         beam.TextContent = bestText.Content;
                         beam.Width = bestText.Width;
                         beam.Height = bestText.Height;
-                        beam.StartX = anchor.StartPoint[0];
-                        beam.StartY = anchor.StartPoint[1];
-                        beam.EndX = anchor.EndPoint[0];
-                        beam.EndY = anchor.EndPoint[1];
+                        beam.StartX = anchor.StartX;
+                        beam.StartY = anchor.StartY;
+                        beam.EndX = anchor.EndX;
+                        beam.EndY = anchor.EndY;
                         beam.IsPaired = false;
                         ExtractMark(beam);
 
@@ -472,7 +501,6 @@ namespace Antigravity.DrawBeams.Services
 
             foreach (var txt in allTexts)
             {
-                double[] p = txt.InsertionPoint;
                 string content = txt.CleanText;
 
                 if (!Regex.IsMatch(content, @"(\d+[\.,]?\d*)\s*[xX\*\-\/]\s*(\d+[\.,]?\d*)", RegexOptions.IgnoreCase))
@@ -482,7 +510,7 @@ namespace Antigravity.DrawBeams.Services
                 ParseDimensionsV12(tempBeam);
                 if (tempBeam.Width <= 0 || tempBeam.Height <= 0) continue;
 
-                double distToLine = GetPerpendicularDistance(anchor.StartPoint, anchor.EndPoint, p);
+                double distToLine = GetPerpendicularDistance(anchor.StartX, anchor.StartY, anchor.EndX, anchor.EndY, txt.X, txt.Y);
                 double dynamicRadius = Math.Max(searchRadius, tempBeam.Width * 3.0);
                 if (distToLine > dynamicRadius) continue;
 
@@ -497,7 +525,7 @@ namespace Antigravity.DrawBeams.Services
                 double dx = anchor.DirectionX, dy = anchor.DirectionY;
                 double len = anchor.Length;
                 double ux = dx / len, uy = dy / len;
-                double proj = ((p[0] - anchor.StartPoint[0]) * ux + (p[1] - anchor.StartPoint[1]) * uy) / len;
+                double proj = ((txt.X - anchor.StartX) * ux + (txt.Y - anchor.StartY) * uy) / len;
                 if (proj < -0.5 || proj > 1.5) continue;
 
                 result.Add(new TextInfo
@@ -550,7 +578,7 @@ namespace Antigravity.DrawBeams.Services
             double dot = Math.Abs((anchor.DirectionX * candidate.DirectionX + anchor.DirectionY * candidate.DirectionY) / (anchorLen * candidateLen));
             if (dot < 0.999) return double.NegativeInfinity;
 
-            double measuredWidth = GetPerpendicularDistance(anchor.StartPoint, anchor.EndPoint, candidate.StartPoint);
+            double measuredWidth = GetPerpendicularDistance(anchor.StartX, anchor.StartY, anchor.EndX, anchor.EndY, candidate.StartX, candidate.StartY);
             if (measuredWidth < 50 || measuredWidth > 3000) return double.NegativeInfinity;
 
             double widthScore = 1.0 - (Math.Abs(measuredWidth - expectedWidth) / expectedWidth);
@@ -587,7 +615,7 @@ namespace Antigravity.DrawBeams.Services
                 double dot = Math.Abs((anchorDx * lineDx + anchorDy * lineDy) / (anchorLen * lineLen));
                 if (dot < 0.999) continue;
 
-                double dist = GetPerpendicularDistance(anchor.StartPoint, anchor.EndPoint, line.StartPoint);
+                double dist = GetPerpendicularDistance(anchor.StartX, anchor.StartY, anchor.EndX, anchor.EndY, line.StartX, line.StartY);
                 if (dist > 2000.0) continue;
 
                 double overlap = GetSegmentOverlapLength(anchor, line);
@@ -627,7 +655,7 @@ namespace Antigravity.DrawBeams.Services
                 double dot = Math.Abs((anchorDx * lineDx + anchorDy * lineDy) / (anchorLen * lineLen));
                 if (dot < 0.999) continue;
 
-                double dist = GetPerpendicularDistance(anchor.StartPoint, anchor.EndPoint, line.StartPoint);
+                double dist = GetPerpendicularDistance(anchor.StartX, anchor.StartY, anchor.EndX, anchor.EndY, line.StartX, line.StartY);
                 if (dist < 50.0 || dist > 3000.0) continue;
 
                 double overlap = GetSegmentOverlapLength(anchor, line);
@@ -658,31 +686,31 @@ namespace Antigravity.DrawBeams.Services
             if (len < 10) return false;
             double ux = dx / len, uy = dy / len;
 
-            double proj = ((partner.MidX - anchor.StartPoint[0]) * ux + (partner.MidY - anchor.StartPoint[1]) * uy) / len;
+            double proj = ((partner.MidX - anchor.StartX) * ux + (partner.MidY - anchor.StartY) * uy) / len;
             return proj > -0.3 && proj < 1.3;
         }
 
         private void SetupBeamCenterline(CadBeamData beam, CadSegment main, CadSegment sub)
         {
-            double[] s1 = main.StartPoint, e1 = main.EndPoint;
-            double[] s2 = sub.StartPoint, e2 = sub.EndPoint;
+            double s1x = main.StartX, s1y = main.StartY, e1x = main.EndX, e1y = main.EndY;
+            double s2x = sub.StartX, s2y = sub.StartY, e2x = sub.EndX, e2y = sub.EndY;
 
-            double d1 = Math.Sqrt(Math.Pow(s1[0] - s2[0], 2) + Math.Pow(s1[1] - s2[1], 2));
-            double d2 = Math.Sqrt(Math.Pow(s1[0] - e2[0], 2) + Math.Pow(s1[1] - e2[1], 2));
+            double d1 = Math.Sqrt(Math.Pow(s1x - s2x, 2) + Math.Pow(s1y - s2y, 2));
+            double d2 = Math.Sqrt(Math.Pow(s1x - e2x, 2) + Math.Pow(s1y - e2y, 2));
 
             if (d1 < d2)
             {
-                beam.StartX = (s1[0] + s2[0]) / 2.0;
-                beam.StartY = (s1[1] + s2[1]) / 2.0;
-                beam.EndX = (e1[0] + e2[0]) / 2.0;
-                beam.EndY = (e1[1] + e2[1]) / 2.0;
+                beam.StartX = (s1x + s2x) / 2.0;
+                beam.StartY = (s1y + s2y) / 2.0;
+                beam.EndX = (e1x + e2x) / 2.0;
+                beam.EndY = (e1y + e2y) / 2.0;
             }
             else
             {
-                beam.StartX = (s1[0] + e2[0]) / 2.0;
-                beam.StartY = (s1[1] + e2[1]) / 2.0;
-                beam.EndX = (e1[0] + s2[0]) / 2.0;
-                beam.EndY = (e1[1] + s2[1]) / 2.0;
+                beam.StartX = (s1x + e2x) / 2.0;
+                beam.StartY = (s1y + e2y) / 2.0;
+                beam.EndX = (e1x + s2x) / 2.0;
+                beam.EndY = (e1y + s2y) / 2.0;
             }
         }
 
@@ -763,16 +791,18 @@ namespace Antigravity.DrawBeams.Services
                         if (segmentWidth <= 0) try { segmentWidth = (double)pline.GetStartWidthAt(i); } catch { }
                     }
 
-                    double[] s = new double[] { p1[0], p1[1], 0 };
-                    double[] e = new double[] { p2[0], p2[1], 0 };
+                    double sX = p1[0], sY = p1[1];
+                    double eX = p2[0], eY = p2[1];
 
-                    double len = Math.Sqrt(Math.Pow(s[0] - e[0], 2) + Math.Pow(s[1] - e[1], 2));
+                    double len = Math.Sqrt(Math.Pow(sX - eX, 2) + Math.Pow(sY - eY, 2));
                     if (len > 50)
                     {
                         result.Add(new CadSegment
                         {
-                            StartPoint = s,
-                            EndPoint = e,
+                            StartX = sX,
+                            StartY = sY,
+                            EndX = eX,
+                            EndY = eY,
                             Id = $"{parentHandle}_{i}",
                             Layer = layer,
                             Color = GetEntityColor(pline),
@@ -825,10 +855,15 @@ namespace Antigravity.DrawBeams.Services
 
                                 if (objName == "AcDbLine")
                                 {
+                                    double[] sPt = ent.StartPoint;
+                                    double[] ePt = ent.EndPoint;
+
                                     result.Add(new CadSegment
                                     {
-                                        StartPoint = ent.StartPoint,
-                                        EndPoint = ent.EndPoint,
+                                        StartX = sPt[0],
+                                        StartY = sPt[1],
+                                        EndX = ePt[0],
+                                        EndY = ePt[1],
                                         Id = $"{parentHandle}_h{i}_{j}",
                                         Layer = layer,
                                         Color = color,
@@ -858,17 +893,20 @@ namespace Antigravity.DrawBeams.Services
                     double[] min = (double[])minPt;
                     double[] max = (double[])maxPt;
                     double[][] pts = new double[][] {
-                        new double[] { min[0], min[1], 0 },
-                        new double[] { max[0], min[1], 0 },
-                        new double[] { max[0], max[1], 0 },
-                        new double[] { min[0], max[1], 0 }
+                        new double[] { min[0], min[1] },
+                        new double[] { max[0], min[1] },
+                        new double[] { max[0], max[1] },
+                        new double[] { min[0], max[1] }
                     };
                     for (int i = 0; i < 4; i++)
                     {
+                        int next = (i + 1) % 4;
                         result.Add(new CadSegment
                         {
-                            StartPoint = pts[i],
-                            EndPoint = pts[(i + 1) % 4],
+                            StartX = pts[i][0],
+                            StartY = pts[i][1],
+                            EndX = pts[next][0],
+                            EndY = pts[next][1],
                             Id = $"{parentHandle}_fb{i}",
                             Layer = layer,
                             Color = color,
@@ -881,23 +919,23 @@ namespace Antigravity.DrawBeams.Services
             return result;
         }
 
-        private double GetPerpendicularDistance(double[] s, double[] e, double[] p)
+        private double GetPerpendicularDistance(double startX, double startY, double endX, double endY, double pointX, double pointY)
         {
-            double dx = e[0] - s[0];
-            double dy = e[1] - s[1];
+            double dx = endX - startX;
+            double dy = endY - startY;
             double L2 = dx * dx + dy * dy;
             if (L2 == 0) return 0;
-            return Math.Abs(dy * p[0] - dx * p[1] + e[0] * s[1] - e[1] * s[0]) / Math.Sqrt(L2);
+            return Math.Abs(dy * pointX - dx * pointY + endX * startY - endY * startX) / Math.Sqrt(L2);
         }
 
         private double GetSegmentOverlapLength(CadSegment s1, CadSegment s2)
         {
-            double dx = s1.EndPoint[0] - s1.StartPoint[0], dy = s1.EndPoint[1] - s1.StartPoint[1];
+            double dx = s1.EndX - s1.StartX, dy = s1.EndY - s1.StartY;
             double L = Math.Sqrt(dx * dx + dy * dy);
             if (L < 1) return 0;
             double ux = dx / L, uy = dy / L;
-            double t1 = ((s2.StartPoint[0] - s1.StartPoint[0]) * ux + (s2.StartPoint[1] - s1.StartPoint[1]) * uy) / L;
-            double t2 = ((s2.EndPoint[0] - s1.StartPoint[0]) * ux + (s2.EndPoint[1] - s1.StartPoint[1]) * uy) / L;
+            double t1 = ((s2.StartX - s1.StartX) * ux + (s2.StartY - s1.StartY) * uy) / L;
+            double t2 = ((s2.EndX - s1.StartX) * ux + (s2.EndY - s1.StartY) * uy) / L;
             double start = Math.Max(0, Math.Min(t1, t2)), end = Math.Min(1, Math.Max(t1, t2));
             if (start < end) return (end - start) * L;
             return 0;
@@ -926,7 +964,7 @@ namespace Antigravity.DrawBeams.Services
                 double angleKey = Math.Round(s.Angle / 0.01);
                 double normalX = -Math.Sin(s.Angle);
                 double normalY = Math.Cos(s.Angle);
-                double distanceKey = Math.Round(((s.StartPoint[0] * normalX) + (s.StartPoint[1] * normalY)) / 20.0);
+                double distanceKey = Math.Round(((s.StartX * normalX) + (s.StartY * normalY)) / 20.0);
                 return $"{s.Layer}|{s.Color}|{angleKey}|{distanceKey}";
             });
 
@@ -946,8 +984,8 @@ namespace Antigravity.DrawBeams.Services
                 var intervals = items
                     .Select(s =>
                     {
-                        double t1 = s.StartPoint[0] * ux + s.StartPoint[1] * uy;
-                        double t2 = s.EndPoint[0] * ux + s.EndPoint[1] * uy;
+                        double t1 = s.StartX * ux + s.StartY * uy;
+                        double t2 = s.EndX * ux + s.EndY * uy;
                         return new
                         {
                             Segment = s,
@@ -989,12 +1027,14 @@ namespace Antigravity.DrawBeams.Services
             var first = cluster[0];
             double nx = -uy;
             double ny = ux;
-            double offset = cluster.Average(s => s.StartPoint[0] * nx + s.StartPoint[1] * ny);
+            double offset = cluster.Average(s => s.StartX * nx + s.StartY * ny);
 
             return new CadSegment
             {
-                StartPoint = new[] { minT * ux + offset * nx, minT * uy + offset * ny, 0.0 },
-                EndPoint = new[] { maxT * ux + offset * nx, maxT * uy + offset * ny, 0.0 },
+                StartX = minT * ux + offset * nx,
+                StartY = minT * uy + offset * ny,
+                EndX = maxT * ux + offset * nx,
+                EndY = maxT * uy + offset * ny,
                 Id = string.Join("+", cluster.Select(s => s.Id)),
                 Layer = first.Layer,
                 Color = first.Color
@@ -1150,8 +1190,7 @@ namespace Antigravity.DrawBeams.Services
                     string content = txt.CleanText;
                     if (string.IsNullOrWhiteSpace(content)) continue;
 
-                    double[] p = txt.InsertionPoint;
-                    double dist = Math.Sqrt(Math.Pow(p[0] - midX, 2) + Math.Pow(p[1] - midY, 2));
+                    double dist = Math.Sqrt(Math.Pow(txt.X - midX, 2) + Math.Pow(txt.Y - midY, 2));
                     if (dist < minDist)
                     {
                         double txtRot = txt.Rotation;
