@@ -145,10 +145,140 @@ namespace Antigravity.DrawBeams.Tests
             var candidates = _generator.GenerateCandidates(scene);
             var groupCandidates = candidates.Where(c => c.Kind == BeamCandidateKind.ClosedPolylinePair).ToList();
 
-            Assert.True(groupCandidates.Count >= 1);
-            // Deduplicated A+B and B+A
-            var ids = groupCandidates.Select(c => c.Id).Distinct().ToList();
-            Assert.Equal(groupCandidates.Count, ids.Count);
+            Assert.Single(groupCandidates);
+            var cand = groupCandidates[0];
+            Assert.Equal("PL_0", cand.MainSegment.Id);
+            Assert.Equal("PL_2", cand.PartnerSegment.Id);
+            Assert.Equal(300, cand.MeasuredWidth);
+            Assert.Equal(300, cand.ParsedWidth);
+            Assert.Equal(600, cand.ParsedHeight);
+            Assert.Equal("DB1", cand.Mark);
+            Assert.Equal("TXT_RECT", cand.TextMatch.Text.Id);
+        }
+
+        [Fact]
+        public void ClosedPolylineWithoutValidText_DoesNotGenerateCandidate()
+        {
+            var scene = new CadScene();
+            scene.Segments.Add(new CadSegment { Id = "PL_0", StartX = 0, StartY = 0, EndX = 5000, EndY = 0, GroupId = "RECT_1_pairA" });
+            scene.Segments.Add(new CadSegment { Id = "PL_1", StartX = 5000, StartY = 0, EndX = 5000, EndY = 300, GroupId = "RECT_1_pairB" });
+            scene.Segments.Add(new CadSegment { Id = "PL_2", StartX = 5000, StartY = 300, EndX = 0, EndY = 300, GroupId = "RECT_1_pairA" });
+            scene.Segments.Add(new CadSegment { Id = "PL_3", StartX = 0, StartY = 300, EndX = 0, EndY = 0, GroupId = "RECT_1_pairB" });
+
+            // No texts added in scene
+
+            var candidates = _generator.GenerateCandidates(scene);
+            var groupCandidates = candidates.Where(c => c.Kind == BeamCandidateKind.ClosedPolylinePair).ToList();
+
+            Assert.Empty(groupCandidates);
+        }
+
+        [Fact]
+        public void ClosedPolyline_TextNotParallel_DoesNotGenerateCandidate()
+        {
+            var scene = new CadScene();
+            scene.Segments.Add(new CadSegment { Id = "PL_0", StartX = 0, StartY = 0, EndX = 5000, EndY = 0, GroupId = "RECT_1_pairA" });
+            scene.Segments.Add(new CadSegment { Id = "PL_1", StartX = 5000, StartY = 0, EndX = 5000, EndY = 300, GroupId = "RECT_1_pairB" });
+            scene.Segments.Add(new CadSegment { Id = "PL_2", StartX = 5000, StartY = 300, EndX = 0, EndY = 300, GroupId = "RECT_1_pairA" });
+            scene.Segments.Add(new CadSegment { Id = "PL_3", StartX = 0, StartY = 300, EndX = 0, EndY = 0, GroupId = "RECT_1_pairB" });
+
+            // Text rotated perpendicular (PI / 2)
+            scene.Texts.Add(new CadText { Id = "TXT_RECT", TextString = "300x600 DB1", X = 2500, Y = 150, Rotation = System.Math.PI / 2.0 });
+
+            var candidates = _generator.GenerateCandidates(scene);
+            var groupCandidates = candidates.Where(c => c.Kind == BeamCandidateKind.ClosedPolylinePair).ToList();
+
+            Assert.Empty(groupCandidates);
+        }
+
+        [Fact]
+        public void ClosedPolyline_WidthMismatch_DoesNotGenerateCandidate()
+        {
+            var scene = new CadScene();
+            scene.Segments.Add(new CadSegment { Id = "PL_0", StartX = 0, StartY = 0, EndX = 5000, EndY = 0, GroupId = "RECT_1_pairA" });
+            scene.Segments.Add(new CadSegment { Id = "PL_1", StartX = 5000, StartY = 0, EndX = 5000, EndY = 300, GroupId = "RECT_1_pairB" });
+            scene.Segments.Add(new CadSegment { Id = "PL_2", StartX = 5000, StartY = 300, EndX = 0, EndY = 300, GroupId = "RECT_1_pairA" });
+            scene.Segments.Add(new CadSegment { Id = "PL_3", StartX = 0, StartY = 300, EndX = 0, EndY = 0, GroupId = "RECT_1_pairB" });
+
+            // Text specifies width 600, but measured width is 300
+            scene.Texts.Add(new CadText { Id = "TXT_RECT", TextString = "600x600 DB1", X = 2500, Y = 150 });
+
+            var candidates = _generator.GenerateCandidates(scene);
+            var groupCandidates = candidates.Where(c => c.Kind == BeamCandidateKind.ClosedPolylinePair).ToList();
+
+            Assert.Empty(groupCandidates);
+        }
+
+        [Fact]
+        public void FullDeterminism_ReversedInputOrder_ProducesIdenticalCandidateAndEvidence()
+        {
+            var scene1 = new CadScene();
+            scene1.Segments.Add(new CadSegment { Id = "SEG_A", StartX = 0, StartY = 0, EndX = 4000, EndY = 0 });
+            scene1.Segments.Add(new CadSegment { Id = "SEG_B", StartX = 0, StartY = 200, EndX = 4000, EndY = 200 });
+            scene1.Texts.Add(new CadText { Id = "TXT1", TextString = "200x500", X = 2000, Y = 100 });
+
+            var scene2 = new CadScene();
+            scene2.Segments.Add(new CadSegment { Id = "SEG_B", StartX = 0, StartY = 200, EndX = 4000, EndY = 200 });
+            scene2.Segments.Add(new CadSegment { Id = "SEG_A", StartX = 0, StartY = 0, EndX = 4000, EndY = 0 });
+            scene2.Texts.Add(new CadText { Id = "TXT1", TextString = "200x500", X = 2000, Y = 100 });
+
+            var cand1 = _generator.GenerateCandidates(scene1).FirstOrDefault(c => c.Kind == BeamCandidateKind.PairedEdges);
+            var cand2 = _generator.GenerateCandidates(scene2).FirstOrDefault(c => c.Kind == BeamCandidateKind.PairedEdges);
+
+            Assert.NotNull(cand1);
+            Assert.NotNull(cand2);
+            Assert.Equal(cand1.Id, cand2.Id);
+            Assert.Equal(cand1.Kind, cand2.Kind);
+            Assert.Equal("SEG_A", cand1.MainSegment.Id);
+            Assert.Equal("SEG_A", cand2.MainSegment.Id);
+            Assert.Equal("SEG_B", cand1.PartnerSegment.Id);
+            Assert.Equal("SEG_B", cand2.PartnerSegment.Id);
+            Assert.Equal(cand1.TextMatch.Text.Id, cand2.TextMatch.Text.Id);
+            Assert.Equal(cand1.MeasuredWidth, cand2.MeasuredWidth, 4);
+            Assert.Equal(cand1.ParsedWidth, cand2.ParsedWidth, 4);
+            Assert.Equal(cand1.ParsedHeight, cand2.ParsedHeight, 4);
+            Assert.Equal(cand1.OverlapLength, cand2.OverlapLength, 4);
+            Assert.Equal(cand1.OverlapRatio, cand2.OverlapRatio, 4);
+            Assert.Equal(cand1.AngleDifference, cand2.AngleDifference, 4);
+            Assert.Equal(cand1.TextContent, cand2.TextContent);
+            Assert.Equal(cand1.Mark, cand2.Mark);
+        }
+
+        [Fact]
+        public void CommonWidthFallback_CanonicalOrder()
+        {
+            var scene1 = new CadScene();
+            scene1.Segments.Add(new CadSegment { Id = "LINE_REF1", StartX = 0, StartY = 20000, EndX = 4000, EndY = 20000 });
+            scene1.Segments.Add(new CadSegment { Id = "LINE_REF2", StartX = 0, StartY = 20200, EndX = 4000, EndY = 20200 });
+            scene1.Texts.Add(new CadText { Id = "TXT_REF", TextString = "200x500", X = 2000, Y = 20100 });
+            scene1.Segments.Add(new CadSegment { Id = "SEG_B", StartX = 0, StartY = 200, EndX = 4000, EndY = 200 });
+            scene1.Segments.Add(new CadSegment { Id = "SEG_A", StartX = 0, StartY = 0, EndX = 4000, EndY = 0 });
+
+            var candidates = _generator.GenerateCandidates(scene1);
+            var fallbacks = candidates.Where(c => c.Kind == BeamCandidateKind.CommonWidthFallback).ToList();
+
+            Assert.Single(fallbacks);
+            Assert.Equal("SEG_A", fallbacks[0].MainSegment.Id);
+            Assert.Equal("SEG_B", fallbacks[0].PartnerSegment.Id);
+        }
+
+        [Fact]
+        public void ClosedPolylinePair_CanonicalOrder()
+        {
+            var scene = new CadScene();
+            scene.Segments.Add(new CadSegment { Id = "PL_2", StartX = 5000, StartY = 300, EndX = 0, EndY = 300, GroupId = "RECT_1_pairA" });
+            scene.Segments.Add(new CadSegment { Id = "PL_3", StartX = 0, StartY = 300, EndX = 0, EndY = 0, GroupId = "RECT_1_pairB" });
+            scene.Segments.Add(new CadSegment { Id = "PL_0", StartX = 0, StartY = 0, EndX = 5000, EndY = 0, GroupId = "RECT_1_pairA" });
+            scene.Segments.Add(new CadSegment { Id = "PL_1", StartX = 5000, StartY = 0, EndX = 5000, EndY = 300, GroupId = "RECT_1_pairB" });
+
+            scene.Texts.Add(new CadText { Id = "TXT_RECT", TextString = "300x600 DB1", X = 2500, Y = 150 });
+
+            var candidates = _generator.GenerateCandidates(scene);
+            var groupCandidates = candidates.Where(c => c.Kind == BeamCandidateKind.ClosedPolylinePair).ToList();
+
+            Assert.Single(groupCandidates);
+            Assert.Equal("PL_0", groupCandidates[0].MainSegment.Id);
+            Assert.Equal("PL_2", groupCandidates[0].PartnerSegment.Id);
         }
 
         [Fact]
@@ -236,7 +366,7 @@ namespace Antigravity.DrawBeams.Tests
             var pairedList = candidates.Where(c => c.Kind == BeamCandidateKind.PairedEdges).ToList();
 
             var uniqueIds = pairedList.Select(c => c.Id).Distinct().ToList();
-            Assert.Equal(pairedList.Count, uniqueIds.Count);
+            Assert.True(pairedList.Count == uniqueIds.Count);
         }
 
         [Fact]
@@ -278,7 +408,7 @@ namespace Antigravity.DrawBeams.Tests
             _generator.GenerateCandidates(scene, "L1", "TL1");
 
             Assert.Equal(2, scene.Segments.Count);
-            Assert.Equal(1, scene.Texts.Count);
+            Assert.Single(scene.Texts);
             Assert.Equal("S1", scene.Segments[0].Id);
             Assert.Equal(0, scene.Segments[0].StartX);
             Assert.Equal(4000, scene.Segments[0].EndX);
