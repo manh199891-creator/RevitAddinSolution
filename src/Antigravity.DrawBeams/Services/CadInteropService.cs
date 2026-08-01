@@ -237,7 +237,7 @@ namespace Antigravity.DrawBeams.Services
         // V12: CẤU TRÚC DỮ LIỆU LINH HOẠT & THUẬT TOÁN BEAM PROCESSING
         // ================================================================
 
-        private class BeamCandidate
+        private class LegacyBeamCandidate
         {
             public CadSegment MainLine { get; set; }
             public CadSegment SubLine { get; set; }
@@ -286,7 +286,7 @@ namespace Antigravity.DrawBeams.Services
             }
 
             HashSet<string> usedIds = new HashSet<string>();
-            var confirmedCandidates = new List<BeamCandidate>();
+            var confirmedCandidates = new List<LegacyBeamCandidate>();
             var commonWidths = GetCommonBeamWidths(allTexts);
 
             foreach (var anchor in anchorLines)
@@ -341,7 +341,7 @@ namespace Antigravity.DrawBeams.Services
                             {
                                 double gB = plTexts2[0].Width, gH = plTexts2[0].Height;
                                 string gContent = plTexts2[0].Content;
-                                confirmedCandidates.Add(new BeamCandidate
+                                confirmedCandidates.Add(new LegacyBeamCandidate
                                 {
                                     MainLine = anchor,
                                     SubLine = groupPartner,
@@ -374,7 +374,7 @@ namespace Antigravity.DrawBeams.Services
                                 .FirstOrDefault();
                             if (matchedWidth > 0 && overlapLen > 200 && IsProjectionWithinRange(anchor, partner))
                             {
-                                confirmedCandidates.Add(new BeamCandidate
+                                confirmedCandidates.Add(new LegacyBeamCandidate
                                 {
                                     MainLine = anchor,
                                     SubLine = partner,
@@ -404,7 +404,7 @@ namespace Antigravity.DrawBeams.Services
                             double measuredWidth = GetPerpendicularDistance(anchor.StartX, anchor.StartY, anchor.EndX, anchor.EndY, partner.StartX, partner.StartY);
                             if (measuredWidth > 1200 || anchor.Length < measuredWidth * 1.2) continue;
 
-                            confirmedCandidates.Add(new BeamCandidate
+                            confirmedCandidates.Add(new LegacyBeamCandidate
                             {
                                 MainLine = anchor,
                                 SubLine = partner,
