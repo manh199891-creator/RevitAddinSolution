@@ -182,7 +182,7 @@ namespace Antigravity.DrawBeams.Services
                 {
                     foreach (var textMatch in textMatches)
                     {
-                        double expectedWidth = textMatch.ParsedWidth;
+                        if (textMatch?.Text == null || string.IsNullOrEmpty(textMatch.Text.Id)) continue;
 
                         foreach (var partner in potentialPartners)
                         {
@@ -191,11 +191,21 @@ namespace Antigravity.DrawBeams.Services
 
                             CanonicalizeSegments(anchor, partner, out var canonicalMain, out var canonicalPartner);
 
+                            var mainMatches = _textMatcher.FindMatches(canonicalMain, allTexts);
+                            var matchOnMain = mainMatches.FirstOrDefault(
+                                m => m.Text != null &&
+                                     string.Equals(m.Text.Id, textMatch.Text.Id, StringComparison.Ordinal));
+
+                            if (matchOnMain == null) continue;
+
+                            double expectedWidth = matchOnMain.ParsedWidth;
+                            if (expectedWidth <= 0) continue;
+
                             if (!_geometryService.AreParallel(canonicalMain, canonicalPartner, 0.999)) continue;
 
                             double measuredWidth = _geometryService.GetPerpendicularDistance(canonicalMain, canonicalPartner);
                             if (measuredWidth < 50 || measuredWidth > 1200) continue;
-                            if (anchor.Length < measuredWidth * 1.2) continue;
+                            if (canonicalMain.Length < measuredWidth * 1.2 && canonicalPartner.Length < measuredWidth * 1.2) continue;
 
                             double widthScore = 1.0 - (Math.Abs(measuredWidth - expectedWidth) / expectedWidth);
                             if (widthScore < 0.7) continue;
@@ -204,11 +214,6 @@ namespace Antigravity.DrawBeams.Services
                             if (overlap < 200) continue;
 
                             if (!_geometryService.IsProjectionWithinRange(canonicalMain, canonicalPartner)) continue;
-
-                            var mainMatches = _textMatcher.FindMatches(canonicalMain, allTexts);
-                            var matchOnMain = mainMatches.FirstOrDefault(m => m.Text.Id == textMatch.Text.Id)
-                                              ?? mainMatches.FirstOrDefault()
-                                              ?? textMatch;
 
                             string textId = matchOnMain.Text.Id;
                             string candidateId = $"PAIR:{canonicalMain.Id}:{canonicalPartner.Id}:{textId}";

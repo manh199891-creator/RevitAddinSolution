@@ -423,5 +423,115 @@ namespace Antigravity.DrawBeams.Tests
             Assert.Equal(0.5, scene.Texts[0].Rotation);
             Assert.Equal(250, scene.Texts[0].TextHeight);
         }
+
+        [Fact]
+        public void PairedEdges_DoesNotReplaceOriginalTextWithDifferentCanonicalMainText()
+        {
+            var scene = new CadScene();
+
+            // Segment A is canonical main (ID "SEG_A" < "SEG_B")
+            scene.Segments.Add(new CadSegment
+            {
+                Id = "SEG_A",
+                StartX = 0,
+                StartY = 0,
+                EndX = 1000,
+                EndY = 0
+            });
+
+            // Segment B
+            scene.Segments.Add(new CadSegment
+            {
+                Id = "SEG_B",
+                StartX = -1000,
+                StartY = 200,
+                EndX = 3000,
+                EndY = 200
+            });
+
+            // TXT_300 matches SEG_A (at X=500, Y=0) but width is 300 (mismatches measured 200)
+            scene.Texts.Add(new CadText
+            {
+                Id = "TXT_300",
+                TextString = "300x500",
+                X = 500,
+                Y = 0,
+                Rotation = 0
+            });
+
+            // TXT_200 matches SEG_B (at X=2500, Y=200) with width 200, but is outside SEG_A projection (0..1000)
+            scene.Texts.Add(new CadText
+            {
+                Id = "TXT_200",
+                TextString = "200x500",
+                X = 2500,
+                Y = 200,
+                Rotation = 0
+            });
+
+            var candidates = _generator.GenerateCandidates(scene);
+
+            var pairCandidates = candidates
+                .Where(c =>
+                    c.Kind == BeamCandidateKind.PairedEdges &&
+                    c.MainSegment?.Id == "SEG_A" &&
+                    c.PartnerSegment?.Id == "SEG_B")
+                .ToList();
+
+            Assert.Empty(pairCandidates);
+        }
+
+        [Fact]
+        public void PairedEdges_UsesSameTextIdentityOnCanonicalMain()
+        {
+            var scene = new CadScene();
+
+            scene.Segments.Add(new CadSegment
+            {
+                Id = "SEG_A",
+                StartX = 0,
+                StartY = 0,
+                EndX = 4000,
+                EndY = 0
+            });
+
+            scene.Segments.Add(new CadSegment
+            {
+                Id = "SEG_B",
+                StartX = 0,
+                StartY = 200,
+                EndX = 4000,
+                EndY = 200
+            });
+
+            scene.Texts.Add(new CadText
+            {
+                Id = "TXT_200",
+                TextString = "200x500 B1",
+                X = 2000,
+                Y = 100,
+                Rotation = 0
+            });
+
+            var candidates = _generator.GenerateCandidates(scene);
+
+            var pairCandidates = candidates
+                .Where(c =>
+                    c.Kind == BeamCandidateKind.PairedEdges &&
+                    c.MainSegment?.Id == "SEG_A" &&
+                    c.PartnerSegment?.Id == "SEG_B")
+                .ToList();
+
+            Assert.Single(pairCandidates);
+            var cand = pairCandidates[0];
+            Assert.Equal("PAIR:SEG_A:SEG_B:TXT_200", cand.Id);
+            Assert.Equal("SEG_A", cand.MainSegment.Id);
+            Assert.Equal("SEG_B", cand.PartnerSegment.Id);
+            Assert.Equal("TXT_200", cand.TextMatch.Text.Id);
+            Assert.Equal(200, cand.ParsedWidth);
+            Assert.Equal(500, cand.ParsedHeight);
+            Assert.Equal(200, cand.MeasuredWidth);
+            Assert.Equal("B1", cand.Mark);
+        }
     }
 }
