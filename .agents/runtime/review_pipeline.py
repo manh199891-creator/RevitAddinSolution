@@ -714,7 +714,7 @@ def evaluate_focused_retry_progress(previous_manifest: dict, current_findings: l
     return status, reason, reason_code, progress_data
 
 def is_review_success(status):
-    return status in (ReviewStatus.PASS, ReviewStatus.PASS_WITH_ADVISORIES, ReviewStatus.SMOKE_PASS)
+    return status in (ReviewStatus.PASS, ReviewStatus.PASS_WITH_ADVISORIES)
 
 def classify_review_status(findings):
     if not findings:

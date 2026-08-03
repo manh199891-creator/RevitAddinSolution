@@ -26,6 +26,15 @@ if (Test-Path $manifestPath) {
     } catch {}
 }
 
+if ($FindingsOnly) {
+    if ($manifest -and $manifest.findings) {
+        $manifest.findings | Select-Object finding_id, severity, status, file, line, title, body, required_test | ConvertTo-Json -Depth 5
+    } else {
+        Write-Output "[]"
+    }
+    exit 0
+}
+
 if ($AsJson) {
     $result = [ordered]@{
         project = $projectName
@@ -86,15 +95,6 @@ if ($manifest) {
         }
     }
     Write-Output ""
-}
-
-if ($FindingsOnly) {
-    if ($manifest -and $manifest.findings) {
-        $manifest.findings | Select-Object finding_id, severity, status, file, line, title, body, required_test | ConvertTo-Json -Depth 5
-    } else {
-        Write-Output "[]"
-    }
-    exit 0
 }
 
 $reports = @(
