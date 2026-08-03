@@ -88,7 +88,11 @@
         "BLOCKED_NO_DELTA",
         "BLOCKED_BASELINE",
         "STALE",
-        "CANCELLED"
+        "CANCELLED",
+        "PASS_WITH_ADVISORIES",
+        "BLOCKED_NO_PROGRESS",
+        "BLOCKED_OSCILLATION",
+        "BLOCKED_NO_FIX_DELTA"
       ]
     },
     "pid": {
@@ -173,6 +177,51 @@
     },
     "fixer_invocations": {
       "type": "integer"
+    },
+    "previous_blocking_ids": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "current_blocking_ids": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "resolved_ids": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "remaining_ids": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "new_blocking_ids": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "reopened_ids": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "blocking_count_before": {
+      "type": "integer"
+    },
+    "blocking_count_after": {
+      "type": "integer"
+    },
+    "progress": {
+      "type": "boolean"
     }
   },
   "required": [

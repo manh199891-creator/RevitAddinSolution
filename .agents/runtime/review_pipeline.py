@@ -574,13 +574,20 @@ Tier contract:
         prompt += f"\n## Operational Memory (Compact)\n```\n{memory}\n```\n"
 
     if manifest.get("review_mode") == "FOCUSED_RETRY":
-        prompt += "\n## Previous Open Findings\n"
+        prompt += "\n## Previous Open Findings (Focus ONLY on verifying these)\n"
         for finding in manifest.get("previous_findings", []):
             prompt += (
-                f"- {finding.get('severity', 'UNKNOWN')} "
-                f"{finding.get('file', '?')}:{finding.get('line', '?')} — "
+                f"- ID: {finding.get('finding_id', 'unknown')} | "
+                f"Severity: {finding.get('severity', 'UNKNOWN')} | "
+                f"Location: {finding.get('file', '?')}:{finding.get('line', '?')} — "
                 f"{finding.get('title', '?')}: {finding.get('body', '')}\n"
             )
+        prompt += """
+This is a focused retry.
+Primary objective: Verify whether each previous finding has been resolved.
+For EACH finding_id listed above, you MUST return it in the FINDINGS list with its status set to one of: RESOLVED, STILL_OPEN, REOPENED, ADVISORY, or DEFERRED.
+"""
+
 
     # Retry reviews retain the complete current diff and acceptance criteria,
     # but omit unchanged planning boilerplate. Release reviews load everything.
@@ -620,6 +627,8 @@ You MUST output your review strictly in the following JSON format. Do not includ
   "REVIEWED_FILES": {reviewed_files_json},
   "FINDINGS": [
     {{
+      "finding_id": "the_finding_id",
+      "status": "STILL_OPEN",
       "severity": "P1",
       "file": "path/to/file",
       "line": 123,
@@ -886,6 +895,7 @@ This is a focused retry.
 
 Primary objective:
 Verify whether each previous blocking finding has been resolved.
+For EACH finding_id listed above, you MUST return it in the FINDINGS list with its status set to one of: RESOLVED, STILL_OPEN, REOPENED, ADVISORY, or DEFERRED.
 
 Do not restart a broad review from zero.
 
@@ -931,6 +941,8 @@ You MUST output your review strictly in the following JSON format. Do not includ
   "REVIEWED_FILES": {reviewed_files_json},
   "FINDINGS": [
     {{
+      "finding_id": "the_finding_id",
+      "status": "STILL_OPEN",
       "severity": "P1",
       "file": "path/to/file",
       "line": 123,
@@ -1561,6 +1573,75 @@ def run_codex_review(project_root, task_id, feature_name, codex_executable, revi
     status, findings = aggregate_batch_results(batches)
     manifest["findings"] = findings
     reason = ""
+    
+    # Progress tracking
+    if manifest.get("review_mode") == "FOCUSED_RETRY":
+        prev_findings = manifest.get("previous_findings", [])
+        prev_blocking = [f for f in prev_findings if f.get("severity") in {"P0", "P1", "P2"} and f.get("status") not in {"RESOLVED", "ADVISORY", "DEFERRED"}]
+        curr_blocking = [f for f in findings if f.get("severity") in {"P0", "P1", "P2"} and f.get("status") not in {"RESOLVED", "ADVISORY", "DEFERRED"}]
+        
+        prev_blocking_ids = {f.get("finding_id") for f in prev_blocking if f.get("finding_id")}
+        curr_blocking_ids = {f.get("finding_id") for f in curr_blocking if f.get("finding_id")}
+        
+        # Focused retry contract enforcement
+        for pf in prev_blocking:
+            pf_id = pf.get("finding_id")
+            if pf_id and pf_id not in {f.get("finding_id") for f in findings}:
+                # The finding was omitted by Codex output. This is a contract failure.
+                # In strict mode, we don't auto-resolve. We keep it as STILL_OPEN.
+                missing_f = pf.copy()
+                missing_f["status"] = "STILL_OPEN"
+                missing_f["body"] = "(Omitted by Codex in retry, assuming STILL_OPEN) " + pf.get("body", "")
+                findings.append(missing_f)
+                curr_blocking.append(missing_f)
+                curr_blocking_ids.add(pf_id)
+        
+        resolved_ids = list(prev_blocking_ids - curr_blocking_ids)
+        remaining_ids = list(prev_blocking_ids & curr_blocking_ids)
+        new_blocking_ids = list(curr_blocking_ids - prev_blocking_ids)
+        
+        # Check reopened (was not in prev_blocking but in curr_blocking, but known from before? simpler: we just track current vs prev)
+        reopened_ids = [f.get("finding_id") for f in curr_blocking if f.get("status") == "REOPENED"]
+        
+        blocking_count_before = len(prev_blocking)
+        blocking_count_after = len(curr_blocking)
+        
+        progress = len(resolved_ids) > 0 or blocking_count_after < blocking_count_before
+        
+        manifest.update({
+            "previous_blocking_ids": list(prev_blocking_ids),
+            "current_blocking_ids": list(curr_blocking_ids),
+            "resolved_ids": resolved_ids,
+            "remaining_ids": remaining_ids,
+            "new_blocking_ids": new_blocking_ids,
+            "reopened_ids": reopened_ids,
+            "blocking_count_before": blocking_count_before,
+            "blocking_count_after": blocking_count_after,
+            "progress": progress
+        })
+        
+        if status in (ReviewStatus.FAIL, ReviewStatus.PASS_WITH_ADVISORIES):
+            previous_manifest_path = project_root / ".agent/state/review_run.json"
+            if previous_manifest_path.exists():
+                import json
+                try:
+                    prev_man = json.loads(previous_manifest_path.read_text(encoding="utf-8"))
+                    # If prev also had no progress, and now we also have no progress -> BLOCKED_NO_PROGRESS
+                    if prev_man.get("review_mode") == "FOCUSED_RETRY" and not prev_man.get("progress", True) and not progress:
+                        status = "BLOCKED_NO_PROGRESS"
+                        reason = "Two consecutive runs showed no progress in resolving blocking findings."
+                        manifest["reason_code"] = "BLOCKING_FINDINGS_UNCHANGED"
+                    
+                    # Oscillation check A -> B -> A
+                    # If current blocking IDs == blocking IDs from 2 runs ago, and not equal to 1 run ago
+                    prev_prev_blocking_ids = set(prev_man.get("previous_blocking_ids", []))
+                    if prev_prev_blocking_ids and curr_blocking_ids == prev_prev_blocking_ids and curr_blocking_ids != prev_blocking_ids:
+                        status = "BLOCKED_OSCILLATION"
+                        reason = "Findings are oscillating back and forth between states."
+                        manifest["reason_code"] = "FINDING_OSCILLATION"
+                except Exception:
+                    pass
+
     
     def get_all_batches(b_list):
         for b in b_list:

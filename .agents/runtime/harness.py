@@ -783,7 +783,7 @@ def cmd_codex(project_name, project_root, *args):
     # Cập nhật state
     state = load_state(project_root)
     state["codex_status"] = status.lower() if status else "infra_fail"
-    if status == ReviewStatus.PASS:
+    if status in (ReviewStatus.PASS, ReviewStatus.PASS_WITH_ADVISORIES):
         state["next_step"] = "07_release"
         state["current_agent"] = "codex_done"
         state["retry_count"] = 0
@@ -801,7 +801,7 @@ def cmd_codex(project_name, project_root, *args):
     save_state(project_root, state)
 
     sep()
-    if status == ReviewStatus.PASS:
+    if status in (ReviewStatus.PASS, ReviewStatus.PASS_WITH_ADVISORIES):
         print("  ✅ CODEX PASS")
         print("  → Bước tiếp: python harness.py revit next")
     elif status == ReviewStatus.FAIL:
@@ -853,7 +853,10 @@ def parse_dual_args(args):
             opts["artifacts"].extend(split_list_arg(args[i + 1]))
             i += 2
         elif arg == "--max-cycles" and i + 1 < len(args):
-            opts["max_cycles"] = max(1, min(3, int(args[i + 1])))
+            val = int(args[i + 1])
+            if val < 1 or val > 3:
+                raise ValueError("max_cycles must be between 1 and 3")
+            opts["max_cycles"] = val
             i += 2
         elif arg == "--skip-verify":
             opts["skip_verify"] = True
@@ -1430,7 +1433,7 @@ def cmd_dual(project_name, project_root, *args):
             "status": codex_status,
             "detail": manifest.get("reason", ""),
         })
-        passed = codex_status == ReviewStatus.PASS
+        passed = codex_status in (ReviewStatus.PASS, ReviewStatus.PASS_WITH_ADVISORIES)
         final_status = "PASS" if passed else "BLOCKED"
         state = load_state(project_root)
         state["dual_mode"] = mode
@@ -1489,7 +1492,7 @@ def cmd_dual(project_name, project_root, *args):
 
     guardrails = cmd_guardrails(project_name, project_root)
     guardrail_status = guardrails.get("status", "FAIL")
-    gr_ok = guardrail_status == ReviewStatus.PASS
+    gr_ok = guardrail_status in (ReviewStatus.PASS, ReviewStatus.PASS_WITH_ADVISORIES)
     steps.append({"name": "guardrails", "status": guardrail_status, "detail": "Shared task-delta scope decision"})
     if not gr_ok:
         _record_blocked_guardrails(
@@ -1513,7 +1516,7 @@ def cmd_dual(project_name, project_root, *args):
         manifest = json.loads(manifest_file.read_text(encoding="utf-8")) if manifest_file.exists() else {}
         codex_status = manifest.get("status", "INFRA_FAIL")
         steps.append({"name": f"codex_cycle_{cycle}", "status": codex_status, "detail": manifest.get("reason", "")})
-        if codex_status == ReviewStatus.PASS:
+        if codex_status in (ReviewStatus.PASS, ReviewStatus.PASS_WITH_ADVISORIES):
             update_task_context(
                 project_root,
                 status="review_passed",
@@ -1596,18 +1599,18 @@ def cmd_dual(project_name, project_root, *args):
                     "status": refreshed_guardrails.get("status", "FAIL"),
                     "detail": "Post-fix scope validation",
                 })
-                if refreshed_guardrails.get("status") != ReviewStatus.PASS:
+                if refreshed_guardrails.get("status") not in (ReviewStatus.PASS, ReviewStatus.PASS_WITH_ADVISORIES):
                     break
                 continue
             print("  ⚠️ Codex chưa PASS. Hãy để Anti/Fixer sửa theo CODEX_REVIEW.md rồi chạy lại dual.")
             break
 
-    if steps and steps[-1]["name"].startswith("codex_cycle_") and steps[-1]["status"] != ReviewStatus.PASS and opts["max_cycles"] > 1 and not has_fixer:
+    if steps and steps[-1]["name"].startswith("codex_cycle_") and steps[-1]["status"] not in (ReviewStatus.PASS, ReviewStatus.PASS_WITH_ADVISORIES) and opts["max_cycles"] > 1 and not has_fixer:
         write_fixer_handoff(project_name, project_root, task_id, feature, opts["max_cycles"], steps[-1].get("detail", "Codex review did not pass"), mode, manifest)
         steps.append({"name": "fixer_handoff", "status": "BLOCKED", "detail": "No fixer command configured; wrote FIXER_HANDOFF.md"})
 
     if mode == "code":
-        code_ok = codex_status == ReviewStatus.PASS
+        code_ok = codex_status in (ReviewStatus.PASS, ReviewStatus.PASS_WITH_ADVISORIES)
         smoke_run = opts["skip_verify"]
         steps.append({
             "name": "code_gate",
