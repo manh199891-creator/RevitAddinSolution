@@ -80,8 +80,9 @@ $effectiveStatus = if ($authority) {
 }
 
 $terminalStatuses = @(
-    "PASS", "SMOKE_PASS", "FAIL", "BLOCKED", "BLOCKED_CODEX", "BLOCKED_HANDOFF",
+    "PASS", "PASS_WITH_ADVISORIES", "SMOKE_PASS", "FAIL", "BLOCKED", "BLOCKED_CODEX", "BLOCKED_HANDOFF",
     "BLOCKED_SCOPE", "BLOCKED_VERIFY", "BLOCKED_NO_DELTA", "BLOCKED_BASELINE",
+    "BLOCKED_NO_FIX_DELTA", "BLOCKED_NO_PROGRESS", "BLOCKED_OSCILLATION",
     "INFRA_FAIL", "STALE", "CANCELLED", "NOT_STARTED"
 )
 $terminal = if ($authority -and $null -ne $authority.terminal) { [bool]$authority.terminal } else { $terminalStatuses -contains $effectiveStatus }
@@ -106,6 +107,6 @@ if ($AsJson) {
     if ($result.run_id) { Write-Output "RunId: $($result.run_id)" }
 }
 
-if ($effectiveStatus -in @("PASS", "SMOKE_PASS")) { exit 0 }
+if ($effectiveStatus -in @("PASS", "PASS_WITH_ADVISORIES", "SMOKE_PASS")) { exit 0 }
 if ($terminal) { exit 2 }
 exit 0

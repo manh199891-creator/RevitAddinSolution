@@ -4,6 +4,7 @@ param(
     [Parameter(Mandatory=$true)][string]$Feature,
     [ValidateSet("research", "plan", "code", "release")][string]$Mode = "release",
     [string]$Artifacts = "",
+    [ValidateRange(1, 3)]
     [int]$MaxCycles = 2,
     [switch]$SkipVerify,
     [string]$FixCommand = "",

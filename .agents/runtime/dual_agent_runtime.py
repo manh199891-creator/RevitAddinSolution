@@ -244,8 +244,18 @@ def _scoped_writer_snapshot(project_root: Path, handoff: dict) -> str:
         for root in roots:
             try:
                 for path in root.glob(normalized):
-                    if path.is_file() and ".agent/state" not in path.as_posix() and ".agent/reports" not in path.as_posix():
-                        files[str(path.resolve()).lower()] = path
+                    posix_path = path.as_posix()
+                    if not path.is_file():
+                        continue
+                    if any(exclude in posix_path for exclude in [
+                        ".agent/state",
+                        ".agent/reports",
+                        "__pycache__",
+                        "/bin/",
+                        "/obj/"
+                    ]) or posix_path.endswith(".pyc"):
+                        continue
+                    files[str(path.resolve()).lower()] = path
             except (OSError, ValueError):
                 continue
     for key, path in sorted(files.items()):
@@ -257,7 +267,7 @@ def _scoped_writer_snapshot(project_root: Path, handoff: dict) -> str:
 
 
 def run_antigravity_fixer(project_root: Path, handoff: dict, *, timeout_seconds: int = 900,
-                           model: str | None = None, agent: str | None = None) -> tuple[bool, str]:
+                           model: str | None = None, agent: str | None = None) -> dict:
     """Run Antigravity non-interactively as the only writer.
 
     Authentication and home-directory permissions are intentionally treated as
@@ -268,7 +278,16 @@ def run_antigravity_fixer(project_root: Path, handoff: dict, *, timeout_seconds:
     reports = project_root / ".agent/reports"
     reports.mkdir(parents=True, exist_ok=True)
     if not executable:
-        return False, "ANTIGRAVITY_CLI_MISSING"
+        return {
+            "ok": False,
+            "status": "FAIL",
+            "reason": "Antigravity CLI not found on PATH.",
+            "reason_code": "ANTIGRAVITY_CLI_MISSING",
+            "artifact_changed": False,
+            "exit_code": -1,
+            "snapshot_before": None,
+            "snapshot_after": None,
+        }
 
     handoff_path = write_handoff(project_root, handoff)
     command = [
@@ -317,6 +336,13 @@ def run_antigravity_fixer(project_root: Path, handoff: dict, *, timeout_seconds:
         status, reason, reason_code = "INFRA_FAIL", f"Antigravity launch failed: {exc}", "WRITER_LAUNCH_FAILED"
 
     snapshot_after = _scoped_writer_snapshot(project_root, handoff)
+    artifact_changed = snapshot_before != snapshot_after
+
+    if status == "PASS" and not artifact_changed:
+        status = "BLOCKED_NO_FIX_DELTA"
+        reason_code = "WRITER_NO_DELTA"
+        reason = "Antigravity completed without changing scoped source artifacts."
+
     report = {
         "schema_version": 1,
         "started_at": started,
@@ -330,9 +356,15 @@ def run_antigravity_fixer(project_root: Path, handoff: dict, *, timeout_seconds:
         "output": combined[-20000:],
         "snapshot_before": snapshot_before,
         "snapshot_after": snapshot_after,
-        "artifact_changed": snapshot_before != snapshot_after,
+        "artifact_changed": artifact_changed,
     }
     (reports / "FIXER_COMMAND_REPORT.json").write_text(
         json.dumps(report, indent=2, ensure_ascii=False) + "\n", encoding="utf-8"
     )
-    return status == "PASS", reason
+    return {
+        "ok": status == "PASS",
+        "status": status,
+        "reason": reason,
+        "reason_code": reason_code,
+        "artifact_changed": artifact_changed,
+    }

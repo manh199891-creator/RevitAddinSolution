@@ -104,9 +104,9 @@ and release gate.
 ## Interpret results
 
 - Research/plan `PASS`: reviewed artifact is accepted for the next phase, not for release.
-- Code `PASS`: `READY_FOR_RELEASE`; run `release` separately.
+- Code `PASS` or `PASS_WITH_ADVISORIES`: `READY_FOR_RELEASE`; run `release` separately.
 - Code `SMOKE_PASS`: Codex review passed without verification; verify before release.
-- Release `PASS`: `ALLOW_RELEASE`.
+- Release `PASS` or `PASS_WITH_ADVISORIES`: `ALLOW_RELEASE`.
 - `FAIL`: revise the reviewed artifact or code using `CODEX_REVIEW.md`.
 - `INFRA_FAIL` or `STALE`: fix infrastructure or rerun against a stable snapshot.
 - `BLOCKED_SCOPE`: task-created changes are outside Allowed/inside Forbidden. Revert only task-owned changes or correct the original task boundary; never widen scope merely to pass.
@@ -114,6 +114,9 @@ and release gate.
 - `BLOCKED_BASELINE`: a pre-existing dirty file changed or was cleaned during the task. Stop and request an explicit ownership decision.
 - `BLOCKED_VERIFY`: a required build/test/lint stage failed, or release was invoked with `SkipVerify`. Codex review and release must not continue.
 - `BLOCKED_HANDOFF`: the failure budget is exhausted. Read `ROOT_CAUSE_HANDOFF.md` and resume only with a new testable hypothesis or new evidence.
+- `BLOCKED_NO_PROGRESS`: Hai vòng lặp liên tiếp không có tiến triển giảm số lượng lỗi blocking.
+- `BLOCKED_OSCILLATION`: Cảnh báo hội tụ lỗi xoay vòng (oscillating).
+- `BLOCKED_NO_FIX_DELTA`: Fixer chạy nhưng không thay đổi gì trong scope. Cần xem lại code logic.
 - When the project enables `evidence_policy.required_for_gate`, `EVIDENCE_MANIFEST.json` must match the current repository snapshot and every configured required stage must pass.
 
 If no `fixer_command` exists, stop at the handoff report and state that no fixer is running.
