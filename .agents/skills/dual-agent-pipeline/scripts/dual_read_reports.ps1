@@ -1,4 +1,4 @@
-param(
+﻿param(
     [Parameter(Mandatory=$true)][string]$Project,
     [switch]$AsJson,
     [switch]$Full,
@@ -47,15 +47,15 @@ if ($AsJson) {
         fixer_invocations = if ($manifest -and $null -ne $manifest.fixer_invocations) { $manifest.fixer_invocations } else { $null }
         fixer_result = $null
     }
-    
-    $handoffPath = Join-Path $projectRoot ".agent\reports\FIXER_HANDOFF.json"
+
+    $handoffPath = Join-Path $projectRoot ".agent\reports\FIXER_COMMAND_REPORT.json"
     if (Test-Path $handoffPath) {
         try {
             $handoff = Get-Content $handoffPath -Raw | ConvertFrom-Json
             $result.fixer_result = $handoff
         } catch {}
     }
-    
+
     $result | ConvertTo-Json -Depth 10 -Compress
     exit 0
 }
@@ -67,15 +67,15 @@ if ($manifest) {
     Write-Output "Status: $($manifest.status)"
     if ($manifest.reason_code) {
         if ($manifest.reason_code -match "BLOCKED_NO_PROGRESS" -or $manifest.reason_code -match "OSCILLATION") {
-            Write-Output "⚠️ WARNING: $($manifest.reason_code) - $($manifest.reason)"
+            Write-Output "âš ï¸ WARNING: $($manifest.reason_code) - $($manifest.reason)"
         } else {
             Write-Output "Reason Code: $($manifest.reason_code)"
         }
     }
-    
+
     if ($manifest.findings) {
-        $blocking = $manifest.findings | Where-Object { 
-            ($_.severity -in @("P0", "P1", "P2")) -and ($_.status -in @("OPEN", "STILL_OPEN", "REOPENED")) 
+        $blocking = $manifest.findings | Where-Object {
+            ($_.severity -in @("P0", "P1", "P2")) -and ($_.status -in @("OPEN", "STILL_OPEN", "REOPENED"))
         }
         if ($blocking) {
             Write-Output ""
@@ -89,6 +89,11 @@ if ($manifest) {
 }
 
 if ($FindingsOnly) {
+    if ($manifest -and $manifest.findings) {
+        $manifest.findings | Select-Object finding_id, severity, status, file, line, title, body, required_test | ConvertTo-Json -Depth 5
+    } else {
+        Write-Output "[]"
+    }
     exit 0
 }
 
@@ -104,7 +109,7 @@ foreach ($report in $reports) {
     if (Test-Path $path) {
         Write-Output "--- $report ---"
         Write-Output "Path: $path"
-        
+
         $content = Get-Content $path
         if ($Full) {
             Write-Output $content

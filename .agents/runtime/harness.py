@@ -129,6 +129,7 @@ def initialize_dual_run_state(project_root, task_id, feature, mode, next_step):
     )
 
 from review_pipeline import (
+    is_review_success,
     capture_task_baseline,
     evaluate_task_scope,
     run_codex_review,
@@ -429,7 +430,7 @@ def cmd_guardrails(project_name, project_root):
     scope_file = project_root / ".agent/context/TASK_SCOPE.json"
     reports_dir = project_root / ".agent/reports"
     source_code = project_root / "source-code"
-    
+
     scope = json.loads(scope_file.read_text(encoding="utf-8")) if scope_file.exists() else {}
     try:
         evaluation = evaluate_task_scope(
@@ -470,19 +471,19 @@ def cmd_runtime(project_name, project_root):
     header(f"RUNTIME VALIDATION — {project_name}")
     _, profile = load_project(project_name)
     rt = profile.get("runtime_validation", {})
-    
+
     is_required = rt.get("required", False) or rt.get("required_for_gate", False)
-    
+
     rt_type = rt.get("type", "manual_revit_test")
     report_rel_path = rt.get("report", ".agent/reports/RUNTIME_VALIDATION_REPORT.md")
     report_path = project_root / report_rel_path
     report_name = Path(report_rel_path).name
-    
+
     print(f"  Type: {rt_type}")
     print(f"  Required for Gate: {is_required}")
     reports_dir = project_root / ".agent/reports"
     reports_dir.mkdir(parents=True, exist_ok=True)
-    
+
     status = "FAIL"
     if rt_type == "manual_revit_test" or rt_type == "manual_navis_test":
         print("\n  👉 HƯỚNG DẪN TEST THỦ CÔNG:\n")
@@ -492,7 +493,7 @@ def cmd_runtime(project_name, project_root):
         if ans == 'p': status = "PASS"
     elif rt_type == "ricaun_revit_test":
         print("  Đang chạy ricaun.RevitTest via dotnet test...")
-        
+
         # Preflight check: Xem có InstallationLocation không để fast-fail (tránh đợi 3.5 phút)
         has_registry = False
         try:
@@ -503,7 +504,7 @@ def cmd_runtime(project_name, project_root):
                     has_registry = True
         except Exception:
             pass
-            
+
         if not has_registry:
             print("  ⚠️ [PREFLIGHT] Không tìm thấy HKLM\\...\\InstallationLocation.")
             print("  ⚠️ Bỏ qua test để tránh treo 3-4 phút (INFRA_FAIL).")
@@ -523,7 +524,7 @@ def cmd_runtime(project_name, project_root):
             except subprocess.TimeoutExpired as exc:
                 status = "FAIL (TIMEOUT)"
                 output_str = f"Lệnh test vượt quá 10 phút (600s).\n{exc}"
-            
+
         report = f"# {report_name}\n\n## Status: {status}\n\n## Type: {rt_type}\n\n## Output\n```\n{output_str}\n```\n"
         report_path.write_text(report, encoding="utf-8")
         print(f"  → Status: {status}")
@@ -543,9 +544,9 @@ def cmd_gate(project_name, project_root):
     reports_dir = project_root / ".agent/reports"
     state_dir = project_root / ".agent/state"
     context_dir = project_root / ".agent/context"
-    
+
     req = profile.get("release_requires", {})
-    
+
     # 1. Build pass
     build_pass = False
     if req.get("build_pass"):
@@ -559,7 +560,7 @@ def cmd_gate(project_name, project_root):
         qa_pass = report_status_is(reports_dir / "QA_REPORT.md", ["PASS", "EFFECTIVE PASS"])
     else:
         qa_pass = True
-        
+
     # 3. Codex real review pass (Rigorous Checks)
     codex_pass = False
     codex_real = False
@@ -567,7 +568,7 @@ def cmd_gate(project_name, project_root):
     task_id_match = False
     hash_match = False
     gate_issues = []
-    
+
     manifest_file = state_dir / "review_run.json"
     manifest = {}
     if manifest_file.exists():
@@ -584,7 +585,7 @@ def cmd_gate(project_name, project_root):
             schema_valid = True
         except Exception:
             schema_valid = False
-            
+
     # Check task scope task_id vs manifest task_id
     task_scope_file = context_dir / "TASK_SCOPE.json"
     scope = {}
@@ -614,7 +615,7 @@ def cmd_gate(project_name, project_root):
     except:
         current_hash = ""
         current_files = []
-        
+
     reviewed_hash = manifest.get("snapshot_hash", "")
     hash_match = (current_hash == reviewed_hash) and bool(current_hash)
     reviewed_files_match = current_files == manifest.get("included_files", [])
@@ -631,7 +632,7 @@ def cmd_gate(project_name, project_root):
     gate_issues.extend(evidence_issues)
 
     if req.get("codex_real_review_pass"):
-        if manifest.get("status") == "PASS" and schema_valid and task_id_match and hash_match and reviewed_files_match:
+        if manifest.get("status") in ("PASS", "PASS_WITH_ADVISORIES") and schema_valid and task_id_match and hash_match and reviewed_files_match:
             codex_pass = True
             if manifest.get("exit_code") == 0:
                 codex_real = True
@@ -642,11 +643,11 @@ def cmd_gate(project_name, project_root):
         task_id_match = True
         hash_match = True
         reviewed_files_match = True
-        
+
     evidence_complete = not manifest.get("evidence_truncated", False)
     if not evidence_complete:
         gate_issues.append("Evidence was truncated (too large).")
-        
+
     # 5. Runtime validation pass
     runtime_pass = False
     if req.get("runtime_validation_pass"):
@@ -666,18 +667,18 @@ def cmd_gate(project_name, project_root):
     guardrails_pass = report_status_is(reports_dir / "GUARDRAILS_REPORT.md", ["PASS", "WARN"])
 
     batches = manifest.get("batches", [])
-    
+
     def check_batch_pass(b):
         children = b.get("children")
         if children:
             return all(check_batch_pass(c) for c in children)
-        return b.get("status") == "PASS"
-        
+        return is_review_success(b.get("status"))
+
     if batches:
         batch_complete = all(check_batch_pass(b) for b in batches)
     else:
         batch_complete = True
-        
+
     if not batch_complete:
         gate_issues.append("One or more Codex review batches did not pass.")
 
@@ -697,7 +698,7 @@ def cmd_gate(project_name, project_root):
 
     all_pass = all(c[2] for c in checks if c[1] or c[0] == "Guardrails pass")
     status = "ALLOW_RELEASE" if all_pass else "BLOCK_RELEASE"
-    
+
     report = f"# RELEASE_GATE_REPORT.md\n\n## Status: {status}\n\n## Gate Checks\n\n| Check | Required | Status |\n|---|---|---|\n"
     for name, required, passed in checks:
         if not required and name != "Guardrails pass":
@@ -706,7 +707,7 @@ def cmd_gate(project_name, project_root):
             st = "PASS" if passed else "FAIL"
         report += f"| {name} | {'Yes' if required else 'No'} | {st} |\n"
         print(f"  {name:<25}: {st}")
-        
+
     report += f"\n## Decision\n- {status}\n"
     if gate_issues:
         report += "\n## Gate Issues\n"
@@ -715,7 +716,7 @@ def cmd_gate(project_name, project_root):
             report += f"- {issue}\n"
             print(f"    - {issue}")
     (reports_dir / "RELEASE_GATE_REPORT.md").write_text(report, encoding="utf-8")
-    
+
     sep()
     if status == "ALLOW_RELEASE":
         print("  ✅ ALLOW_RELEASE")
@@ -755,13 +756,13 @@ def cmd_codex(project_name, project_root, *args):
             cycle = int(args[i+1])
         if a == "--max-cycles" and i + 1 < len(args):
             max_cycles = int(args[i+1])
-            
+
     if not task_id:
         state = load_state(project_root)
         task_id = state.get("task_id", "unknown_task_id")
 
     feature_name = requested_feature or "Autodetected Feature"
-    
+
     ctx = project_root / ".agent/context/PROJECT_CONTEXT.md"
     if not requested_feature and ctx.exists():
         for line in ctx.read_text(encoding="utf-8").splitlines():
@@ -777,13 +778,13 @@ def cmd_codex(project_name, project_root, *args):
         cycle=cycle,
         max_cycles=max_cycles
     )
-    
+
     status = manifest.get("status")
 
     # Cập nhật state
     state = load_state(project_root)
     state["codex_status"] = status.lower() if status else "infra_fail"
-    if status in (ReviewStatus.PASS, ReviewStatus.PASS_WITH_ADVISORIES):
+    if is_review_success(status):
         state["next_step"] = "07_release"
         state["current_agent"] = "codex_done"
         state["retry_count"] = 0
@@ -797,11 +798,11 @@ def cmd_codex(project_name, project_root, *args):
             state["next_step"] = "gemini_fixer"
     else:
         state["next_step"] = "blocked" # Wait for manual fix
-        
+
     save_state(project_root, state)
 
     sep()
-    if status in (ReviewStatus.PASS, ReviewStatus.PASS_WITH_ADVISORIES):
+    if is_review_success(status):
         print("  ✅ CODEX PASS")
         print("  → Bước tiếp: python harness.py revit next")
     elif status == ReviewStatus.FAIL:
@@ -1452,6 +1453,15 @@ def cmd_dual(project_name, project_root, *args):
             )
             print(f"  DUAL PIPELINE PASS ({mode})")
             return True
+
+        # Terminal statuses that block retries
+        if codex_status in ("BLOCKED_NO_PROGRESS", "BLOCKED_OSCILLATION", "STALE", "INFRA_FAIL"):
+            steps.append({"name": f"codex_terminal_{cycle}", "status": "BLOCKED_HANDOFF", "detail": f"Terminal state: {codex_status}"})
+            write_dual_report(project_root, task_id, feature, "BLOCKED_HANDOFF", steps, manifest.get("reason", ""), mode)
+            save_dual_terminal_state(project_root, task_id, mode, "BLOCKED_HANDOFF", "root_cause_handoff", f"Terminal state: {codex_status}")
+            print(f"  ❌ DUAL PIPELINE STOPPED: {codex_status}")
+            sys.exit(1)
+
         _, exhausted = record_failed_attempt(
             project_root,
             stage=f"{mode}_review",
@@ -1525,6 +1535,15 @@ def cmd_dual(project_name, project_root, *args):
                 detail=f"run_id={manifest.get('run_id', 'unknown')}",
             )
             break
+
+        # Terminal statuses that block retries
+        if codex_status in ("BLOCKED_NO_PROGRESS", "BLOCKED_OSCILLATION", "STALE", "INFRA_FAIL"):
+            steps.append({"name": f"codex_terminal_{cycle}", "status": "BLOCKED_HANDOFF", "detail": f"Terminal state: {codex_status}"})
+            write_dual_report(project_root, task_id, feature, "BLOCKED_HANDOFF", steps, manifest.get("reason", ""), mode)
+            save_dual_terminal_state(project_root, task_id, mode, "BLOCKED_HANDOFF", "root_cause_handoff", f"Terminal state: {codex_status}")
+            print(f"  ❌ DUAL PIPELINE STOPPED: {codex_status}")
+            sys.exit(1)
+
         _, exhausted = record_failed_attempt(
             project_root,
             stage="codex_review",
@@ -1557,9 +1576,17 @@ def cmd_dual(project_name, project_root, *args):
             if fix_command:
                 fixer_ok, fixer_detail = run_fixer_command(project_root, fix_command)
                 steps.append({"name": f"fixer_cycle_{cycle}", "status": "PASS" if fixer_ok else "FAIL", "detail": fixer_detail})
+
                 if not fixer_ok:
                     write_fixer_handoff(project_name, project_root, task_id, feature, cycle, fixer_detail, mode, manifest)
+                    if "BLOCKED_NO_FIX_DELTA" in fixer_detail or "BLOCKED_NO_FIX_DELTA" in (manifest.get("reason", "") or ""):
+                        steps.append({"name": f"fixer_terminal_{cycle}", "status": "BLOCKED_HANDOFF", "detail": f"Terminal state: BLOCKED_NO_FIX_DELTA"})
+                        write_dual_report(project_root, task_id, feature, "BLOCKED_HANDOFF", steps, "Fixer made no changes", mode)
+                        save_dual_terminal_state(project_root, task_id, mode, "BLOCKED_HANDOFF", "root_cause_handoff", "BLOCKED_NO_FIX_DELTA")
+                        print(f"  ❌ DUAL PIPELINE STOPPED: BLOCKED_NO_FIX_DELTA")
+                        sys.exit(1)
                     break
+
                 if not opts["skip_verify"]:
                     cmd_verify(project_name, project_root)
                     steps.append({"name": f"verify_after_fix_{cycle}", "status": "DONE", "detail": "Build/test/lint reports refreshed"})
@@ -1582,8 +1609,16 @@ def cmd_dual(project_name, project_root, *args):
                     "status": "PASS" if fixer_ok else "BLOCKED",
                     "detail": fixer_detail,
                 })
+
                 if not fixer_ok:
+                    if "BLOCKED_NO_FIX_DELTA" in fixer_detail:
+                        steps.append({"name": f"fixer_terminal_{cycle}", "status": "BLOCKED_HANDOFF", "detail": f"Terminal state: BLOCKED_NO_FIX_DELTA"})
+                        write_dual_report(project_root, task_id, feature, "BLOCKED_HANDOFF", steps, "Fixer made no changes", mode)
+                        save_dual_terminal_state(project_root, task_id, mode, "BLOCKED_HANDOFF", "root_cause_handoff", "BLOCKED_NO_FIX_DELTA")
+                        print(f"  ❌ DUAL PIPELINE STOPPED: BLOCKED_NO_FIX_DELTA")
+                        sys.exit(1)
                     break
+
                 if not opts["skip_verify"]:
                     refreshed = cmd_verify(project_name, project_root)
                     steps.append({
@@ -1798,7 +1833,7 @@ def cmd_done(project_name, project_root, step_key=None):
         idx = STEP_ORDER.index(current) if current in STEP_ORDER else 0
         if idx + 1 < len(STEP_ORDER):
             state["next_step"] = STEP_ORDER[idx + 1]
-            
+
     state["status"] = "in_progress"
     save_state(project_root, state)
     log(f"Step '{current}' đánh dấu xong → next: {state['next_step']}")
@@ -1808,7 +1843,7 @@ def cmd_done(project_name, project_root, step_key=None):
 
 def cmd_promote(project_name, project_root):
     header(f"PROMOTION GATE — {project_name}")
-    
+
     # Deploy Lock (Check Review Status)
     manifest_file = project_root / ".agent/state/review_run.json"
     if manifest_file.exists():
@@ -1821,17 +1856,17 @@ def cmd_promote(project_name, project_root):
     if not gate_report.exists() or "Status: ALLOW_RELEASE" not in gate_report.read_text(encoding="utf-8"):
         print("  ❌ BLOCK_RELEASE: Release Gate chưa PASS. Chạy `python harness.py [project] gate` để kiểm tra.")
         return
-        
+
     source = project_root / "source-code"
     target = SOURCE_DIR.get(project_name)
-    
+
     print(f"  Bắt đầu promote code từ sandbox về {target}...\n")
     src_cs = source / "src"
     if src_cs.exists():
         print(f'  xcopy /E /I /Y "{src_cs}\\*" "{target}\\src\\"')
     else:
         print(f'  xcopy /E /I /Y "{source}\\*" "{target}\\"')
-        
+
     print(f"""
   [2] Kiểm tra diff:
   cd "{target}"

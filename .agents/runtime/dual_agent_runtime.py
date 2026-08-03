@@ -244,8 +244,18 @@ def _scoped_writer_snapshot(project_root: Path, handoff: dict) -> str:
         for root in roots:
             try:
                 for path in root.glob(normalized):
-                    if path.is_file() and ".agent/state" not in path.as_posix() and ".agent/reports" not in path.as_posix():
-                        files[str(path.resolve()).lower()] = path
+                    posix_path = path.as_posix()
+                    if not path.is_file():
+                        continue
+                    if any(exclude in posix_path for exclude in [
+                        ".agent/state",
+                        ".agent/reports",
+                        "__pycache__",
+                        "/bin/",
+                        "/obj/"
+                    ]) or posix_path.endswith(".pyc"):
+                        continue
+                    files[str(path.resolve()).lower()] = path
             except (OSError, ValueError):
                 continue
     for key, path in sorted(files.items()):
@@ -318,12 +328,12 @@ def run_antigravity_fixer(project_root: Path, handoff: dict, *, timeout_seconds:
 
     snapshot_after = _scoped_writer_snapshot(project_root, handoff)
     artifact_changed = snapshot_before != snapshot_after
-    
+
     if status == "PASS" and not artifact_changed:
         status = "BLOCKED_NO_FIX_DELTA"
         reason_code = "WRITER_NO_DELTA"
         reason = "Antigravity completed without changing scoped source artifacts."
-        
+
     report = {
         "schema_version": 1,
         "started_at": started,
