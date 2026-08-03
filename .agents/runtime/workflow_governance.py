@@ -188,18 +188,25 @@ def record_failed_attempt(
         "failure_budget",
         {"limit": 3, "used": 0, "remaining": 3, "failed_attempts": []},
     )
-    if not snapshot_hash:
-        manifest_path = project_root / ".agent/state/review_run.json"
-        if manifest_path.exists():
-            try:
-                snapshot_hash = json.loads(manifest_path.read_text(encoding="utf-8")).get("snapshot_hash")
-            except (OSError, ValueError):
-                snapshot_hash = None
-    normalized_hypothesis = " ".join(hypothesis.lower().split())
-    normalized_evidence = " ".join(evidence.lower().split())
-    fingerprint = sha256_text(
-        f"{snapshot_hash or 'unknown'}\0{stage.lower()}\0{normalized_hypothesis}\0{normalized_evidence}"
-    )[:16]
+    manifest_path = project_root / ".agent/state/review_run.json"
+    blocking_finding_ids = []
+    if manifest_path.exists():
+        try:
+            manifest_data = json.loads(manifest_path.read_text(encoding="utf-8"))
+            if not snapshot_hash:
+                snapshot_hash = manifest_data.get("snapshot_hash")
+            findings = manifest_data.get("findings", [])
+            for f in findings:
+                if f.get("severity") in {"P0", "P1", "P2"} and f.get("status", "OPEN") not in {"RESOLVED", "ADVISORY", "DEFERRED"}:
+                    if "finding_id" in f:
+                        blocking_finding_ids.append(f["finding_id"])
+        except (OSError, ValueError):
+            pass
+
+    task_id = context.get("task_id", "unknown")
+    blocking_finding_ids.sort()
+    fingerprint_source = f"{task_id}\0{stage.lower()}\0{snapshot_hash or 'unknown'}\0{','.join(blocking_finding_ids)}"
+    fingerprint = sha256_text(fingerprint_source)[:16]
     attempts = failure.setdefault("failed_attempts", [])
     if any(item.get("fingerprint") == fingerprint for item in attempts):
         context["last_attempt_result"] = "DUPLICATE_ATTEMPT"

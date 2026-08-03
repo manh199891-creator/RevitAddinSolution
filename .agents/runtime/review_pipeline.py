@@ -9,6 +9,7 @@ class ReviewStatus:
     PREPARING = "PREPARING"
     RUNNING = "RUNNING"
     PASS = "PASS"
+    PASS_WITH_ADVISORIES = "PASS_WITH_ADVISORIES"
     FAIL = "FAIL"
     INFRA_FAIL = "INFRA_FAIL"
     STALE = "STALE"
@@ -16,6 +17,8 @@ class ReviewStatus:
     BLOCKED_SCOPE = "BLOCKED_SCOPE"
     BLOCKED_NO_DELTA = "BLOCKED_NO_DELTA"
     BLOCKED_BASELINE = "BLOCKED_BASELINE"
+    BLOCKED_NO_PROGRESS = "BLOCKED_NO_PROGRESS"
+    BLOCKED_OSCILLATION = "BLOCKED_OSCILLATION"
 
 
 def _terminate_timed_out_process(proc, grace_seconds=10):
@@ -631,6 +634,21 @@ If there is any issue, VERDICT must be "FAIL".
 """
     return prompt
 
+def _normalize_string(s):
+    import re
+    return re.sub(r'\W+', '', str(s).lower())
+
+def generate_finding_id(finding):
+    if "finding_id" in finding:
+        return finding["finding_id"]
+    rule = finding.get("rule_id", "")
+    f = finding.get("file", "")
+    sym = finding.get("symbol", "")
+    title = finding.get("title", "")
+    
+    raw = f"{_normalize_string(rule)}\0{_normalize_string(f)}\0{_normalize_string(sym)}\0{_normalize_string(title)}"
+    return hashlib.sha256(raw.encode("utf-8")).hexdigest()[:16]
+
 def parse_codex_result(stdout, stderr, exit_code, expected_run_id, expected_hash, expected_files=None):
     if exit_code != 0:
         return ReviewStatus.INFRA_FAIL, "Codex exited with non-zero code.", []
@@ -657,13 +675,23 @@ def parse_codex_result(stdout, stderr, exit_code, expected_run_id, expected_hash
         verdict = data.get("VERDICT")
         findings = data.get("FINDINGS", [])
         
-        if verdict == "PASS" and len(findings) == 0:
+        for finding in findings:
+            if "finding_id" not in finding:
+                finding["finding_id"] = generate_finding_id(finding)
+            finding.setdefault("status", "OPEN")
+
+        blocking_findings = [
+            f for f in findings
+            if f.get("severity") in {"P0", "P1", "P2"}
+            and f.get("status", "OPEN") not in {"RESOLVED", "ADVISORY", "DEFERRED"}
+        ]
+        
+        if not blocking_findings and len(findings) > 0:
+            return ReviewStatus.PASS_WITH_ADVISORIES, "Review passed with advisories.", findings
+        elif not blocking_findings:
             return ReviewStatus.PASS, "Review passed with 0 findings.", []
-        elif verdict == "PASS" and len(findings) > 0:
-            # Conflict: PASS but has findings
-            return ReviewStatus.FAIL, "Review marked PASS but contains findings.", findings
         else:
-            return ReviewStatus.FAIL, "Review found issues.", findings
+            return ReviewStatus.FAIL, f"Review found {len(blocking_findings)} blocking issues.", findings
             
     except json.JSONDecodeError:
         return ReviewStatus.INFRA_FAIL, "Failed to parse JSON output contract from Codex.", []
@@ -838,6 +866,31 @@ Tier contract:
     if memory_path.exists():
         memory = memory_path.read_text(encoding="utf-8", errors="replace")
         prompt += f"\n## Operational Memory (Compact)\n```\n{memory}\n```\n"
+
+    if manifest.get("review_mode") == "FOCUSED_RETRY":
+        batch_previous_findings = [
+            f for f in manifest.get("previous_findings", [])
+            if f.get("file") in batch_files
+        ]
+        if batch_previous_findings:
+            prompt += "\n## Previous Open Findings (Focus ONLY on verifying these)\n"
+            for finding in batch_previous_findings:
+                prompt += (
+                    f"- ID: {finding.get('finding_id', 'unknown')} | "
+                    f"Severity: {finding.get('severity', 'UNKNOWN')} | "
+                    f"Location: {finding.get('file', '?')}:{finding.get('line', '?')} — "
+                    f"{finding.get('title', '?')}: {finding.get('body', '')}\n"
+                )
+            prompt += """
+This is a focused retry.
+
+Primary objective:
+Verify whether each previous blocking finding has been resolved.
+
+Do not restart a broad review from zero.
+
+A new finding may block only when it is P0/P1 or a direct regression introduced by the fix.
+"""
 
     # Load context files
     for context_file in manifest['plan_files'] + manifest['acceptance_files']:
@@ -1076,6 +1129,14 @@ def aggregate_batch_results(batches):
         final_status = ReviewStatus.STALE
     elif has_fail:
         final_status = ReviewStatus.FAIL
+    elif all_findings:
+        blocking_findings = [
+            f for f in all_findings
+            if f.get("severity") in {"P0", "P1", "P2"}
+            and f.get("status", "OPEN") not in {"RESOLVED", "ADVISORY", "DEFERRED"}
+        ]
+        if not blocking_findings:
+            final_status = ReviewStatus.PASS_WITH_ADVISORIES
         
     return final_status, all_findings
 
@@ -1379,7 +1440,7 @@ Use VERDICT="FAIL" when there is one or more finding. Valid severities are P0, P
     return manifest
 
 
-def run_codex_review(project_root, task_id, feature_name, codex_executable, review_purpose="release"):
+def run_codex_review(project_root, task_id, feature_name, codex_executable, review_purpose="release", cycle=1, max_cycles=1):
     """
     Orchestrates the entire review pipeline.
     """
@@ -1457,6 +1518,11 @@ def run_codex_review(project_root, task_id, feature_name, codex_executable, revi
         "review_mode": "FOCUSED_RETRY" if focused_retry else "FULL",
         "previous_findings": previous_findings if focused_retry else [],
         "review_metrics": routing,
+        "pipeline_cycle": cycle,
+        "pipeline_cycles_total": max_cycles,
+        "codex_batch_count": 0,
+        "codex_process_invocations": 0,
+        "fixer_invocations": cycle - 1,
         "learning_guard": {
             "matched_rule_count": learning_guard.get("matched_rule_count", 0),
             "context": ".agent/context/MEMORY_CONTEXT.md",
@@ -1503,6 +1569,9 @@ def run_codex_review(project_root, task_id, feature_name, codex_executable, revi
                 yield from get_all_batches(b.get("children"))
                 
     all_batches_flat = list(get_all_batches(batches))
+    manifest["codex_batch_count"] = len(all_batches_flat)
+    manifest["codex_process_invocations"] = len(all_batches_flat)
+
 
     # 7.5 Check post-run snapshot
     if status == ReviewStatus.PASS:

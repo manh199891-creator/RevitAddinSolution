@@ -317,6 +317,13 @@ def run_antigravity_fixer(project_root: Path, handoff: dict, *, timeout_seconds:
         status, reason, reason_code = "INFRA_FAIL", f"Antigravity launch failed: {exc}", "WRITER_LAUNCH_FAILED"
 
     snapshot_after = _scoped_writer_snapshot(project_root, handoff)
+    artifact_changed = snapshot_before != snapshot_after
+    
+    if status == "PASS" and not artifact_changed:
+        status = "BLOCKED_NO_FIX_DELTA"
+        reason_code = "WRITER_NO_DELTA"
+        reason = "Antigravity completed without changing scoped source artifacts."
+        
     report = {
         "schema_version": 1,
         "started_at": started,
@@ -330,7 +337,7 @@ def run_antigravity_fixer(project_root: Path, handoff: dict, *, timeout_seconds:
         "output": combined[-20000:],
         "snapshot_before": snapshot_before,
         "snapshot_after": snapshot_after,
-        "artifact_changed": snapshot_before != snapshot_after,
+        "artifact_changed": artifact_changed,
     }
     (reports / "FIXER_COMMAND_REPORT.json").write_text(
         json.dumps(report, indent=2, ensure_ascii=False) + "\n", encoding="utf-8"

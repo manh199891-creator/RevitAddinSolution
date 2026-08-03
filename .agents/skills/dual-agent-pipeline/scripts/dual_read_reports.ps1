@@ -15,6 +15,40 @@ $aliases = @{
 $projectName = if ($aliases.ContainsKey($Project)) { $aliases[$Project] } else { $Project }
 $projectRoot = Join-Path $factoryRoot $projectName
 
+$manifestPath = Join-Path $projectRoot ".agent\state\review_run.json"
+if (Test-Path $manifestPath) {
+    try {
+        $manifest = Get-Content $manifestPath -Raw | ConvertFrom-Json
+        Write-Output "--- PIPELINE METRICS ---"
+        Write-Output "Cycle: $($manifest.pipeline_cycle) / $($manifest.pipeline_cycles_total)"
+        Write-Output "Exit Code: $($manifest.exit_code)"
+        Write-Output "Status: $($manifest.status)"
+        if ($manifest.reason_code) {
+            if ($manifest.reason_code -match "BLOCKED_NO_PROGRESS" -or $manifest.reason_code -match "OSCILLATION") {
+                Write-Output "⚠️ WARNING: $($manifest.reason_code) - $($manifest.reason)"
+            } else {
+                Write-Output "Reason Code: $($manifest.reason_code)"
+            }
+        }
+        
+        if ($manifest.findings) {
+            $blocking = $manifest.findings | Where-Object { 
+                ($_.severity -in @("P0", "P1", "P2")) -and ($_.status -in @("OPEN", "STILL_OPEN", "REOPENED")) 
+            }
+            if ($blocking) {
+                Write-Output ""
+                Write-Output "--- BLOCKING FINDINGS ---"
+                foreach ($f in $blocking) {
+                    Write-Output "[$($f.severity)] $($f.file):$($f.line) - $($f.title)"
+                }
+            }
+        }
+        Write-Output ""
+    } catch {
+        Write-Output "Failed to parse review_run.json"
+    }
+}
+
 $reports = @(
     "DUAL_AGENT_REPORT.md",
     "CODEX_REVIEW.md",

@@ -742,6 +742,8 @@ def cmd_codex(project_name, project_root, *args):
     task_id = None
     requested_feature = None
     review_purpose = "release"
+    cycle = 1
+    max_cycles = 1
     for i, a in enumerate(args):
         if a == "--task-id" and i + 1 < len(args):
             task_id = args[i+1]
@@ -749,6 +751,10 @@ def cmd_codex(project_name, project_root, *args):
             requested_feature = args[i+1]
         if a == "--review-purpose" and i + 1 < len(args):
             review_purpose = args[i+1]
+        if a == "--cycle" and i + 1 < len(args):
+            cycle = int(args[i+1])
+        if a == "--max-cycles" and i + 1 < len(args):
+            max_cycles = int(args[i+1])
             
     if not task_id:
         state = load_state(project_root)
@@ -768,6 +774,8 @@ def cmd_codex(project_name, project_root, *args):
     manifest = run_codex_review(
         project_root, task_id, feature_name, codex_path,
         review_purpose=review_purpose,
+        cycle=cycle,
+        max_cycles=max_cycles
     )
     
     status = manifest.get("status")
@@ -845,7 +853,7 @@ def parse_dual_args(args):
             opts["artifacts"].extend(split_list_arg(args[i + 1]))
             i += 2
         elif arg == "--max-cycles" and i + 1 < len(args):
-            opts["max_cycles"] = max(1, int(args[i + 1]))
+            opts["max_cycles"] = max(1, min(3, int(args[i + 1])))
             i += 2
         elif arg == "--skip-verify":
             opts["skip_verify"] = True
@@ -1498,6 +1506,8 @@ def cmd_dual(project_name, project_root, *args):
             "--task-id", task_id,
             "--feature", feature,
             "--review-purpose", mode,
+            "--cycle", str(cycle),
+            "--max-cycles", str(opts["max_cycles"]),
         )
         manifest_file = project_root / ".agent/state/review_run.json"
         manifest = json.loads(manifest_file.read_text(encoding="utf-8")) if manifest_file.exists() else {}

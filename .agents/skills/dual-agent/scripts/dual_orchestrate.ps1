@@ -13,6 +13,7 @@ param(
     [string]$Allowed = "",
     [string]$Forbidden = "",
     [string]$Artifacts = "",
+    [ValidateRange(1, 3)]
     [int]$MaxCycles = 2,
     [switch]$SkipVerify,
     [switch]$Force,

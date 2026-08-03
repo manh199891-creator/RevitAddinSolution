@@ -32,21 +32,29 @@
     },
     "included_files": {
       "type": "array",
-      "items": { "type": "string" },
+      "items": {
+        "type": "string"
+      },
       "description": "List of files identified as changed and within scope."
     },
     "excluded_files": {
       "type": "array",
-      "items": { "type": "string" },
+      "items": {
+        "type": "string"
+      },
       "description": "List of changed files that were excluded from review (out of scope)."
     },
     "plan_files": {
       "type": "array",
-      "items": { "type": "string" }
+      "items": {
+        "type": "string"
+      }
     },
     "acceptance_files": {
       "type": "array",
-      "items": { "type": "string" }
+      "items": {
+        "type": "string"
+      }
     },
     "snapshot_hash": {
       "type": "string",
@@ -54,7 +62,11 @@
     },
     "review_tier": {
       "type": "string",
-      "enum": ["QUICK", "STANDARD", "DEEP"]
+      "enum": [
+        "QUICK",
+        "STANDARD",
+        "DEEP"
+      ]
     },
     "review_metrics": {
       "type": "object"
@@ -80,22 +92,37 @@
       ]
     },
     "pid": {
-      "type": ["integer", "null"]
+      "type": [
+        "integer",
+        "null"
+      ]
     },
     "started_at": {
-      "type": ["string", "null"],
+      "type": [
+        "string",
+        "null"
+      ],
       "format": "date-time"
     },
     "heartbeat_at": {
-      "type": ["string", "null"],
+      "type": [
+        "string",
+        "null"
+      ],
       "format": "date-time"
     },
     "completed_at": {
-      "type": ["string", "null"],
+      "type": [
+        "string",
+        "null"
+      ],
       "format": "date-time"
     },
     "exit_code": {
-      "type": ["integer", "null"]
+      "type": [
+        "integer",
+        "null"
+      ]
     },
     "reason": {
       "type": "string"
@@ -111,13 +138,41 @@
       "items": {
         "type": "object",
         "properties": {
-          "batch_id": { "type": "integer" },
-          "files": { "type": "array", "items": { "type": "string" } },
-          "status": { "type": "string" },
-          "duration_seconds": { "type": "number" },
-          "reason": { "type": "string" }
+          "batch_id": {
+            "type": "integer"
+          },
+          "files": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "status": {
+            "type": "string"
+          },
+          "duration_seconds": {
+            "type": "number"
+          },
+          "reason": {
+            "type": "string"
+          }
         }
       }
+    },
+    "pipeline_cycle": {
+      "type": "integer"
+    },
+    "pipeline_cycles_total": {
+      "type": "integer"
+    },
+    "codex_batch_count": {
+      "type": "integer"
+    },
+    "codex_process_invocations": {
+      "type": "integer"
+    },
+    "fixer_invocations": {
+      "type": "integer"
     }
   },
   "required": [
