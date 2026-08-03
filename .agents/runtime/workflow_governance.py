@@ -188,6 +188,7 @@ def record_failed_attempt(
         "failure_budget",
         {"limit": 3, "used": 0, "remaining": 3, "failed_attempts": []},
     )
+<<<<<<< HEAD
     if not snapshot_hash:
         manifest_path = project_root / ".agent/state/review_run.json"
         if manifest_path.exists():
@@ -200,6 +201,27 @@ def record_failed_attempt(
     fingerprint = sha256_text(
         f"{snapshot_hash or 'unknown'}\0{stage.lower()}\0{normalized_hypothesis}\0{normalized_evidence}"
     )[:16]
+=======
+    manifest_path = project_root / ".agent/state/review_run.json"
+    blocking_finding_ids = []
+    if manifest_path.exists():
+        try:
+            manifest_data = json.loads(manifest_path.read_text(encoding="utf-8"))
+            if not snapshot_hash:
+                snapshot_hash = manifest_data.get("snapshot_hash")
+            findings = manifest_data.get("findings", [])
+            for f in findings:
+                if f.get("severity") in {"P0", "P1", "P2"} and f.get("status", "OPEN") not in {"RESOLVED", "ADVISORY", "DEFERRED"}:
+                    if "finding_id" in f:
+                        blocking_finding_ids.append(f["finding_id"])
+        except (OSError, ValueError):
+            pass
+
+    task_id = context.get("task_id", "unknown")
+    blocking_finding_ids.sort()
+    fingerprint_source = f"{task_id}\0{stage.lower()}\0{snapshot_hash or 'unknown'}\0{','.join(blocking_finding_ids)}"
+    fingerprint = sha256_text(fingerprint_source)[:16]
+>>>>>>> a7ab32cf6d761ef39ae4917f81a9a40ca088e26e
     attempts = failure.setdefault("failed_attempts", [])
     if any(item.get("fingerprint") == fingerprint for item in attempts):
         context["last_attempt_result"] = "DUPLICATE_ATTEMPT"
@@ -465,3 +487,45 @@ def write_root_cause_handoff(project_root: Path, context: dict) -> Path:
     )
     path.write_text("\n".join(lines), encoding="utf-8")
     return path
+<<<<<<< HEAD
+=======
+
+
+import os
+
+class ReviewLifecycleGuard:
+    def __init__(self, project_root: Path, task_id: str, mode: str, checkpoint_authorization: dict | None = None):
+        if checkpoint_authorization is None:
+            raise ValueError("checkpoint_authorization cannot be None")
+        self.project_root = project_root
+        self.task_id = task_id
+        self.mode = mode
+        self.checkpoint_authorization = checkpoint_authorization
+        self.lock_path = self.project_root / ".agent" / "state" / f"{task_id}_{mode}.lock"
+        self._fd = None
+
+    def acquire(self):
+        try:
+            # os.O_CREAT | os.O_EXCL | os.O_WRONLY is cross-platform atomic file creation
+            self._fd = os.open(str(self.lock_path), os.O_CREAT | os.O_EXCL | os.O_WRONLY)
+            os.write(self._fd, str(os.getpid()).encode())
+        except FileExistsError:
+            raise RuntimeError("RUN_ALREADY_ACTIVE")
+
+    def release(self):
+        if self._fd is not None:
+            os.close(self._fd)
+            try:
+                os.remove(str(self.lock_path))
+            except OSError:
+                pass
+            self._fd = None
+
+    def __enter__(self):
+        self.acquire()
+        return self
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        self.release()
+
+>>>>>>> a7ab32cf6d761ef39ae4917f81a9a40ca088e26e

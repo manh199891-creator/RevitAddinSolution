@@ -16,6 +16,7 @@
       "items": {
         "type": "object",
         "required": ["severity", "file", "line", "title", "body"],
+<<<<<<< HEAD
         "additionalProperties": false,
         "properties": {
           "severity": {"enum": ["P0", "P1", "P2", "P3"]},
@@ -23,6 +24,20 @@
           "line": {"type": "integer", "minimum": 1},
           "title": {"type": "string", "minLength": 1},
           "body": {"type": "string", "minLength": 1}
+=======
+        "additionalProperties": true,
+        "properties": {
+          "finding_id": {"type": "string"},
+          "rule_id": {"type": "string"},
+          "severity": {"enum": ["P0", "P1", "P2", "P3", "UNKNOWN"]},
+          "file": {"type": "string"},
+          "line": {"type": "integer", "minimum": 1},
+          "symbol": {"type": "string"},
+          "title": {"type": "string", "minLength": 1},
+          "body": {"type": "string", "minLength": 1},
+          "status": {"enum": ["OPEN", "RESOLVED", "STILL_OPEN", "REOPENED", "ADVISORY", "DEFERRED", "UNKNOWN"]},
+          "required_test": {"type": "string"}
+>>>>>>> a7ab32cf6d761ef39ae4917f81a9a40ca088e26e
         }
       }
     }

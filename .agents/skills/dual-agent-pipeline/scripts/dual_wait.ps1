@@ -11,7 +11,11 @@ do {
     $state = $jsonText | ConvertFrom-Json
     if ($state.terminal) {
         Write-Output $jsonText
+<<<<<<< HEAD
         if ($state.status -in @("PASS", "SMOKE_PASS")) { exit 0 }
+=======
+        if ($state.status -in @("PASS", "PASS_WITH_ADVISORIES", "SMOKE_PASS")) { exit 0 }
+>>>>>>> a7ab32cf6d761ef39ae4917f81a9a40ca088e26e
         exit 2
     }
     Start-Sleep -Seconds $PollSeconds

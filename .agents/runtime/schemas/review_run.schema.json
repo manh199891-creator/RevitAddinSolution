@@ -32,21 +32,45 @@
     },
     "included_files": {
       "type": "array",
+<<<<<<< HEAD
       "items": { "type": "string" },
+=======
+      "items": {
+        "type": "string"
+      },
+>>>>>>> a7ab32cf6d761ef39ae4917f81a9a40ca088e26e
       "description": "List of files identified as changed and within scope."
     },
     "excluded_files": {
       "type": "array",
+<<<<<<< HEAD
       "items": { "type": "string" },
+=======
+      "items": {
+        "type": "string"
+      },
+>>>>>>> a7ab32cf6d761ef39ae4917f81a9a40ca088e26e
       "description": "List of changed files that were excluded from review (out of scope)."
     },
     "plan_files": {
       "type": "array",
+<<<<<<< HEAD
       "items": { "type": "string" }
     },
     "acceptance_files": {
       "type": "array",
       "items": { "type": "string" }
+=======
+      "items": {
+        "type": "string"
+      }
+    },
+    "acceptance_files": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+>>>>>>> a7ab32cf6d761ef39ae4917f81a9a40ca088e26e
     },
     "snapshot_hash": {
       "type": "string",
@@ -54,7 +78,15 @@
     },
     "review_tier": {
       "type": "string",
+<<<<<<< HEAD
       "enum": ["QUICK", "STANDARD", "DEEP"]
+=======
+      "enum": [
+        "QUICK",
+        "STANDARD",
+        "DEEP"
+      ]
+>>>>>>> a7ab32cf6d761ef39ae4917f81a9a40ca088e26e
     },
     "review_metrics": {
       "type": "object"
@@ -76,6 +108,7 @@
         "BLOCKED_NO_DELTA",
         "BLOCKED_BASELINE",
         "STALE",
+<<<<<<< HEAD
         "CANCELLED"
       ]
     },
@@ -96,6 +129,47 @@
     },
     "exit_code": {
       "type": ["integer", "null"]
+=======
+        "CANCELLED",
+        "PASS_WITH_ADVISORIES",
+        "BLOCKED_NO_PROGRESS",
+        "BLOCKED_OSCILLATION",
+        "BLOCKED_NO_FIX_DELTA"
+      ]
+    },
+    "pid": {
+      "type": [
+        "integer",
+        "null"
+      ]
+    },
+    "started_at": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "format": "date-time"
+    },
+    "heartbeat_at": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "format": "date-time"
+    },
+    "completed_at": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "format": "date-time"
+    },
+    "exit_code": {
+      "type": [
+        "integer",
+        "null"
+      ]
+>>>>>>> a7ab32cf6d761ef39ae4917f81a9a40ca088e26e
     },
     "reason": {
       "type": "string"
@@ -111,6 +185,7 @@
       "items": {
         "type": "object",
         "properties": {
+<<<<<<< HEAD
           "batch_id": { "type": "integer" },
           "files": { "type": "array", "items": { "type": "string" } },
           "status": { "type": "string" },
@@ -118,6 +193,88 @@
           "reason": { "type": "string" }
         }
       }
+=======
+          "batch_id": {
+            "type": "integer"
+          },
+          "files": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "status": {
+            "type": "string"
+          },
+          "duration_seconds": {
+            "type": "number"
+          },
+          "reason": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "pipeline_cycle": {
+      "type": "integer"
+    },
+    "pipeline_cycles_total": {
+      "type": "integer"
+    },
+    "codex_batch_count": {
+      "type": "integer"
+    },
+    "codex_process_invocations": {
+      "type": "integer"
+    },
+    "fixer_invocations": {
+      "type": "integer"
+    },
+    "previous_blocking_ids": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "current_blocking_ids": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "resolved_ids": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "remaining_ids": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "new_blocking_ids": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "reopened_ids": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "blocking_count_before": {
+      "type": "integer"
+    },
+    "blocking_count_after": {
+      "type": "integer"
+    },
+    "progress": {
+      "type": "boolean"
+>>>>>>> a7ab32cf6d761ef39ae4917f81a9a40ca088e26e
     }
   },
   "required": [
@@ -130,4 +287,8 @@
     "snapshot_hash",
     "status"
   ]
+<<<<<<< HEAD
 }
+=======
+}
+>>>>>>> a7ab32cf6d761ef39ae4917f81a9a40ca088e26e

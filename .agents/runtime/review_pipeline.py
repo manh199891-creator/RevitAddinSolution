@@ -9,6 +9,10 @@ class ReviewStatus:
     PREPARING = "PREPARING"
     RUNNING = "RUNNING"
     PASS = "PASS"
+<<<<<<< HEAD
+=======
+    PASS_WITH_ADVISORIES = "PASS_WITH_ADVISORIES"
+>>>>>>> a7ab32cf6d761ef39ae4917f81a9a40ca088e26e
     FAIL = "FAIL"
     INFRA_FAIL = "INFRA_FAIL"
     STALE = "STALE"
@@ -16,6 +20,11 @@ class ReviewStatus:
     BLOCKED_SCOPE = "BLOCKED_SCOPE"
     BLOCKED_NO_DELTA = "BLOCKED_NO_DELTA"
     BLOCKED_BASELINE = "BLOCKED_BASELINE"
+<<<<<<< HEAD
+=======
+    BLOCKED_NO_PROGRESS = "BLOCKED_NO_PROGRESS"
+    BLOCKED_OSCILLATION = "BLOCKED_OSCILLATION"
+>>>>>>> a7ab32cf6d761ef39ae4917f81a9a40ca088e26e
 
 
 def _terminate_timed_out_process(proc, grace_seconds=10):
@@ -121,12 +130,20 @@ def get_deterministic_snapshot(repo_root, included_files=None):
     raw = _run_git(repo_root, status_args)
     base_rev_result = subprocess.run(["git", "rev-parse", "--verify", "HEAD"], cwd=repo_root, capture_output=True)
     base_rev = base_rev_result.stdout.strip() if base_rev_result.returncode == 0 else b"UNBORN_HEAD"
+<<<<<<< HEAD
     
+=======
+
+>>>>>>> a7ab32cf6d761ef39ae4917f81a9a40ca088e26e
     # -z separates records with \0.
     # Note: Renames in v2 format use two \0 separated fields: path \0 origPath.
     # We will manually iterate the null-terminated strings.
     parts = raw.split(b'\0')
+<<<<<<< HEAD
     
+=======
+
+>>>>>>> a7ab32cf6d761ef39ae4917f81a9a40ca088e26e
     records = []
     changed_files = set()
     i = 0
@@ -136,7 +153,11 @@ def get_deterministic_snapshot(repo_root, included_files=None):
         if not part:
             i += 1
             continue
+<<<<<<< HEAD
             
+=======
+
+>>>>>>> a7ab32cf6d761ef39ae4917f81a9a40ca088e26e
         if part.startswith('? '):
             # Untracked: "? <path>"
             path = part[2:]
@@ -162,7 +183,11 @@ def get_deterministic_snapshot(repo_root, included_files=None):
             i += 2 # Skip the origPath
         else:
             i += 1
+<<<<<<< HEAD
             
+=======
+
+>>>>>>> a7ab32cf6d761ef39ae4917f81a9a40ca088e26e
     # Hash calculation
     # We hash the sorted paths and their contents to ensure determinism
     sorted_files = sorted(list(changed_files))
@@ -178,7 +203,11 @@ def get_deterministic_snapshot(repo_root, included_files=None):
         if orig is not None:
             hasher.update(orig.encode("utf-8", errors="surrogateescape"))
         hasher.update(b"\0")
+<<<<<<< HEAD
     
+=======
+
+>>>>>>> a7ab32cf6d761ef39ae4917f81a9a40ca088e26e
     for f in sorted_files:
         f_path = repo_root / f
         hasher.update(f.encode('utf-8', errors="surrogateescape"))
@@ -202,7 +231,11 @@ def get_deterministic_snapshot(repo_root, included_files=None):
             # File was deleted
             hasher.update(b'DELETED')
         hasher.update(b'\0')
+<<<<<<< HEAD
         
+=======
+
+>>>>>>> a7ab32cf6d761ef39ae4917f81a9a40ca088e26e
     return hasher.hexdigest(), sorted_files
 
 
@@ -347,7 +380,11 @@ def get_review_config(repo_root):
             "**/*secret*", "**/*credential*", "**/migrations/**"
         ],
     }
+<<<<<<< HEAD
     
+=======
+
+>>>>>>> a7ab32cf6d761ef39ae4917f81a9a40ca088e26e
     profile_path = repo_root / ".agent/project_profile.json"
     if profile_path.exists():
         try:
@@ -358,7 +395,11 @@ def get_review_config(repo_root):
                 default_config.update(profile["review_routing"])
         except:
             pass
+<<<<<<< HEAD
             
+=======
+
+>>>>>>> a7ab32cf6d761ef39ae4917f81a9a40ca088e26e
     # Env var overrides
     if "CODEX_TIMEOUT_SECONDS" in os.environ:
         try: default_config["timeout_seconds"] = int(os.environ["CODEX_TIMEOUT_SECONDS"])
@@ -369,7 +410,11 @@ def get_review_config(repo_root):
     if "CODEX_REVIEW_MAX_FILE_CHARS" in os.environ:
         try: default_config["max_file_chars"] = int(os.environ["CODEX_REVIEW_MAX_FILE_CHARS"])
         except: pass
+<<<<<<< HEAD
         
+=======
+
+>>>>>>> a7ab32cf6d761ef39ae4917f81a9a40ca088e26e
     return default_config
 
 
@@ -436,12 +481,20 @@ def determine_review_tier(repo_root, included_files, config):
 def validate_scope(repo_root, changed_files, task_scope_path, expected_task_id=None):
     if not task_scope_path.exists():
         return False, ["TASK_SCOPE.json is missing. Guardrail validation failed."]
+<<<<<<< HEAD
         
+=======
+
+>>>>>>> a7ab32cf6d761ef39ae4917f81a9a40ca088e26e
     try:
         scope = json.loads(task_scope_path.read_text(encoding="utf-8"))
     except Exception as e:
         return False, [f"Failed to parse TASK_SCOPE.json: {e}"]
+<<<<<<< HEAD
         
+=======
+
+>>>>>>> a7ab32cf6d761ef39ae4917f81a9a40ca088e26e
     try:
         import jsonschema
         schema_path = Path(__file__).parent / "schemas" / "task_scope.schema.json"
@@ -451,6 +504,7 @@ def validate_scope(repo_root, changed_files, task_scope_path, expected_task_id=N
         jsonschema.validate(instance=scope, schema=schema)
     except Exception as e:
         return False, [f"Schema validation failed: {e}"]
+<<<<<<< HEAD
         
     if expected_task_id and scope.get("task_id") != expected_task_id:
         return False, [f"Task ID mismatch. Expected '{expected_task_id}', found '{scope.get('task_id')}' in TASK_SCOPE.json"]
@@ -461,6 +515,18 @@ def validate_scope(repo_root, changed_files, task_scope_path, expected_task_id=N
     # Path traversal check
     repo_abs = repo_root.resolve()
     
+=======
+
+    if expected_task_id and scope.get("task_id") != expected_task_id:
+        return False, [f"Task ID mismatch. Expected '{expected_task_id}', found '{scope.get('task_id')}' in TASK_SCOPE.json"]
+
+    allowed = scope.get("allowed_files", [])
+    forbidden = scope.get("forbidden", [])
+
+    # Path traversal check
+    repo_abs = repo_root.resolve()
+
+>>>>>>> a7ab32cf6d761ef39ae4917f81a9a40ca088e26e
     issues = []
     for f in changed_files:
         # Resolve path
@@ -470,18 +536,30 @@ def validate_scope(repo_root, changed_files, task_scope_path, expected_task_id=N
         except ValueError:
             issues.append(f"PATH_TRAVERSAL: {f}")
             continue
+<<<<<<< HEAD
             
+=======
+
+>>>>>>> a7ab32cf6d761ef39ae4917f81a9a40ca088e26e
         f_norm = f.replace('\\', '/')
         # Strict glob match
         is_forbidden = any(fnmatch.fnmatchcase(f_norm, p) or fnmatch.fnmatchcase(f_norm, p + "/*") for p in forbidden)
         if is_forbidden:
             issues.append(f"FORBIDDEN: {f}")
             continue
+<<<<<<< HEAD
             
         is_allowed = any(fnmatch.fnmatchcase(f_norm, p) or fnmatch.fnmatchcase(f_norm, p + "/*") for p in allowed)
         if not is_allowed:
             issues.append(f"OUT_OF_SCOPE: {f}")
             
+=======
+
+        is_allowed = any(fnmatch.fnmatchcase(f_norm, p) or fnmatch.fnmatchcase(f_norm, p + "/*") for p in allowed)
+        if not is_allowed:
+            issues.append(f"OUT_OF_SCOPE: {f}")
+
+>>>>>>> a7ab32cf6d761ef39ae4917f81a9a40ca088e26e
     if issues:
         return False, issues
     return True, []
@@ -500,7 +578,11 @@ def collect_review_diff(repo_root, included_files, max_diff_chars=120000, max_fi
     is_truncated = False
     file_truncated = False
     current_len = 0
+<<<<<<< HEAD
     
+=======
+
+>>>>>>> a7ab32cf6d761ef39ae4917f81a9a40ca088e26e
     def append_chunk(chunk):
         nonlocal current_len, is_truncated
         if is_truncated: return
@@ -571,6 +653,7 @@ Tier contract:
         prompt += f"\n## Operational Memory (Compact)\n```\n{memory}\n```\n"
 
     if manifest.get("review_mode") == "FOCUSED_RETRY":
+<<<<<<< HEAD
         prompt += "\n## Previous Open Findings\n"
         for finding in manifest.get("previous_findings", []):
             prompt += (
@@ -578,6 +661,22 @@ Tier contract:
                 f"{finding.get('file', '?')}:{finding.get('line', '?')} — "
                 f"{finding.get('title', '?')}: {finding.get('body', '')}\n"
             )
+=======
+        prompt += "\n## Previous Open Findings (Focus ONLY on verifying these)\n"
+        for finding in manifest.get("previous_findings", []):
+            prompt += (
+                f"- ID: {finding.get('finding_id', 'unknown')} | "
+                f"Severity: {finding.get('severity', 'UNKNOWN')} | "
+                f"Location: {finding.get('file', '?')}:{finding.get('line', '?')} — "
+                f"{finding.get('title', '?')}: {finding.get('body', '')}\n"
+            )
+        prompt += """
+This is a focused retry.
+Primary objective: Verify whether each previous finding has been resolved.
+For EACH finding_id listed above, you MUST return it in the FINDINGS list with its status set to one of: RESOLVED, STILL_OPEN, REOPENED, ADVISORY, or DEFERRED.
+"""
+
+>>>>>>> a7ab32cf6d761ef39ae4917f81a9a40ca088e26e
 
     # Retry reviews retain the complete current diff and acceptance criteria,
     # but omit unchanged planning boilerplate. Release reviews load everything.
@@ -593,8 +692,13 @@ Tier contract:
     repo_root = Path(manifest["repository_root"])
     prompt += "\n## Changed File Evidence\n"
     diff_str, is_truncated, file_truncated = collect_review_diff(
+<<<<<<< HEAD
         repo_root, 
         manifest["included_files"], 
+=======
+        repo_root,
+        manifest["included_files"],
+>>>>>>> a7ab32cf6d761ef39ae4917f81a9a40ca088e26e
         max_diff_chars=config.get("max_diff_chars", 120000),
         max_file_chars=config.get("max_file_chars", 40000)
     )
@@ -617,6 +721,11 @@ You MUST output your review strictly in the following JSON format. Do not includ
   "REVIEWED_FILES": {reviewed_files_json},
   "FINDINGS": [
     {{
+<<<<<<< HEAD
+=======
+      "finding_id": "the_finding_id",
+      "status": "STILL_OPEN",
+>>>>>>> a7ab32cf6d761ef39ae4917f81a9a40ca088e26e
       "severity": "P1",
       "file": "path/to/file",
       "line": 123,
@@ -631,6 +740,7 @@ If there is any issue, VERDICT must be "FAIL".
 """
     return prompt
 
+<<<<<<< HEAD
 def parse_codex_result(stdout, stderr, exit_code, expected_run_id, expected_hash, expected_files=None):
     if exit_code != 0:
         return ReviewStatus.INFRA_FAIL, "Codex exited with non-zero code.", []
@@ -638,6 +748,110 @@ def parse_codex_result(stdout, stderr, exit_code, expected_run_id, expected_hash
     if not stdout.strip():
         return ReviewStatus.INFRA_FAIL, "Empty output from Codex.", []
         
+=======
+def _normalize_string(s):
+    import re
+    return re.sub(r'\W+', '', str(s).lower())
+
+
+def evaluate_focused_retry_progress(previous_manifest: dict, current_findings: list) -> tuple:
+    prev_findings = previous_manifest.get("findings", [])
+    prev_blocking = [f for f in prev_findings if f.get("severity") in {"P0", "P1", "P2"} and f.get("status") not in {"RESOLVED", "ADVISORY", "DEFERRED"}]
+    curr_blocking = [f for f in current_findings if f.get("severity") in {"P0", "P1", "P2"} and f.get("status") not in {"RESOLVED", "ADVISORY", "DEFERRED"}]
+
+    prev_blocking_ids = {f.get("finding_id") for f in prev_blocking if f.get("finding_id")}
+    curr_blocking_ids = {f.get("finding_id") for f in curr_blocking if f.get("finding_id")}
+
+    contract_failed = False
+    for pf in prev_blocking:
+        pf_id = pf.get("finding_id")
+        if pf_id and pf_id not in {f.get("finding_id") for f in current_findings}:
+            missing_f = pf.copy()
+            missing_f["status"] = "STILL_OPEN"
+            missing_f["body"] = "(Omitted by Codex in retry, assuming STILL_OPEN) " + pf.get("body", "")
+            current_findings.append(missing_f)
+            curr_blocking.append(missing_f)
+            curr_blocking_ids.add(pf_id)
+            contract_failed = True
+
+    status = classify_review_status(current_findings)
+    reason = ""
+    reason_code = ""
+
+    if contract_failed:
+        status = ReviewStatus.FAIL
+        reason = "Codex omitted previous blocking findings in FOCUSED_RETRY."
+        reason_code = "FOCUSED_RETRY_CONTRACT_INCOMPLETE"
+
+    resolved_ids = list(prev_blocking_ids - curr_blocking_ids)
+    remaining_ids = list(prev_blocking_ids & curr_blocking_ids)
+    new_blocking_ids = list(curr_blocking_ids - prev_blocking_ids)
+    reopened_ids = [f.get("finding_id") for f in curr_blocking if f.get("status") == "REOPENED"]
+
+    blocking_count_before = len(prev_blocking)
+    blocking_count_after = len(curr_blocking)
+
+    progress = len(resolved_ids) > 0 or blocking_count_after < blocking_count_before
+
+    progress_data = {
+        "previous_blocking_ids": list(prev_blocking_ids),
+        "current_blocking_ids": list(curr_blocking_ids),
+        "resolved_ids": resolved_ids,
+        "remaining_ids": remaining_ids,
+        "new_blocking_ids": new_blocking_ids,
+        "reopened_ids": reopened_ids,
+        "blocking_count_before": blocking_count_before,
+        "blocking_count_after": blocking_count_after,
+        "progress": progress
+    }
+
+    if status in (ReviewStatus.FAIL, ReviewStatus.PASS_WITH_ADVISORIES):
+        if previous_manifest.get("review_mode") == "FOCUSED_RETRY" and not previous_manifest.get("progress", True) and not progress and curr_blocking_ids:
+            status = "BLOCKED_NO_PROGRESS"
+            reason = "Two consecutive runs showed no progress in resolving blocking findings."
+            reason_code = "BLOCKING_FINDINGS_UNCHANGED"
+
+        prev_prev_blocking_ids = set(previous_manifest.get("previous_blocking_ids", []))
+        if prev_prev_blocking_ids and curr_blocking_ids == prev_prev_blocking_ids and curr_blocking_ids != prev_blocking_ids:
+            status = "BLOCKED_OSCILLATION"
+            reason = "Findings are oscillating back and forth between states."
+            reason_code = "FINDING_OSCILLATION"
+
+    return status, reason, reason_code, progress_data
+
+def is_review_success(status):
+    return status in (ReviewStatus.PASS, ReviewStatus.PASS_WITH_ADVISORIES)
+
+def classify_review_status(findings):
+    if not findings:
+        return ReviewStatus.PASS
+    blocking = [f for f in findings if f.get("severity") in {"P0", "P1", "P2"} and f.get("status") not in {"RESOLVED", "ADVISORY", "DEFERRED"}]
+    if blocking:
+        return ReviewStatus.FAIL
+    open_findings = [f for f in findings if f.get("status") not in {"RESOLVED", "DEFERRED"}]
+    if open_findings:
+        return ReviewStatus.PASS_WITH_ADVISORIES
+    return ReviewStatus.PASS
+
+def generate_finding_id(finding):
+    if "finding_id" in finding:
+        return finding["finding_id"]
+    rule = finding.get("rule_id", "")
+    f = finding.get("file", "")
+    sym = finding.get("symbol", "")
+    title = finding.get("title", "")
+
+    raw = f"{_normalize_string(rule)}\0{_normalize_string(f)}\0{_normalize_string(sym)}\0{_normalize_string(title)}"
+    return hashlib.sha256(raw.encode("utf-8")).hexdigest()[:16]
+
+def parse_codex_result(stdout, stderr, exit_code, expected_run_id, expected_hash, expected_files=None):
+    if exit_code != 0:
+        return ReviewStatus.INFRA_FAIL, "Codex exited with non-zero code.", []
+
+    if not stdout.strip():
+        return ReviewStatus.INFRA_FAIL, "Empty output from Codex.", []
+
+>>>>>>> a7ab32cf6d761ef39ae4917f81a9a40ca088e26e
     # Attempt to parse JSON from stdout
     try:
         # Extract json block if they wrap it in markdown
@@ -646,13 +860,20 @@ def parse_codex_result(stdout, stderr, exit_code, expected_run_id, expected_hash
             json_str = json_str.split("```json")[1].split("```")[0]
         elif "```" in json_str:
             json_str = json_str.split("```")[1].split("```")[0]
+<<<<<<< HEAD
             
         data = json.loads(json_str.strip())
         
+=======
+
+        data = json.loads(json_str.strip())
+
+>>>>>>> a7ab32cf6d761ef39ae4917f81a9a40ca088e26e
         if data.get("REVIEWED_RUN_ID") != expected_run_id or data.get("REVIEWED_SNAPSHOT_HASH") != expected_hash:
             return ReviewStatus.STALE, "Run ID or Hash mismatch in Codex output.", data.get("FINDINGS", [])
         if expected_files is not None and data.get("REVIEWED_FILES") != expected_files:
             return ReviewStatus.STALE, "Reviewed files mismatch in Codex output.", data.get("FINDINGS", [])
+<<<<<<< HEAD
             
         verdict = data.get("VERDICT")
         findings = data.get("FINDINGS", [])
@@ -665,6 +886,30 @@ def parse_codex_result(stdout, stderr, exit_code, expected_run_id, expected_hash
         else:
             return ReviewStatus.FAIL, "Review found issues.", findings
             
+=======
+
+        verdict = data.get("VERDICT")
+        findings = data.get("FINDINGS", [])
+
+        for finding in findings:
+            if "finding_id" not in finding:
+                finding["finding_id"] = generate_finding_id(finding)
+            finding.setdefault("status", "OPEN")
+
+        blocking_findings = [
+            f for f in findings
+            if f.get("severity") in {"P0", "P1", "P2"}
+            and f.get("status", "OPEN") not in {"RESOLVED", "ADVISORY", "DEFERRED"}
+        ]
+
+        if not blocking_findings and len(findings) > 0:
+            return ReviewStatus.PASS_WITH_ADVISORIES, "Review passed with advisories.", findings
+        elif not blocking_findings:
+            return ReviewStatus.PASS, "Review passed with 0 findings.", []
+        else:
+            return ReviewStatus.FAIL, f"Review found {len(blocking_findings)} blocking issues.", findings
+
+>>>>>>> a7ab32cf6d761ef39ae4917f81a9a40ca088e26e
     except json.JSONDecodeError:
         return ReviewStatus.INFRA_FAIL, "Failed to parse JSON output contract from Codex.", []
     except Exception as e:
@@ -721,7 +966,11 @@ def _ensure_review_report(project_root, manifest, status, reason, stdout="", std
                 for child in b.get("children"):
                     res += format_batch_summary(child, level + 1)
             return res
+<<<<<<< HEAD
             
+=======
+
+>>>>>>> a7ab32cf6d761ef39ae4917f81a9a40ca088e26e
         for b in batches:
             report_md += format_batch_summary(b)
 
@@ -743,6 +992,7 @@ def build_review_batches(repo_root, included_files, config):
     batch_max_files = config.get("batch_max_files", 3)
     batch_max_chars = config.get("batch_max_chars", 70000)
     batches = []
+<<<<<<< HEAD
     
     current_batch_files = []
     current_batch_chars = 0
@@ -752,6 +1002,17 @@ def build_review_batches(repo_root, included_files, config):
         diff_str, _, file_truncated = collect_review_diff(repo_root, [f], max_diff_chars=batch_max_chars, max_file_chars=config.get("max_file_chars", 40000))
         f_len = len(diff_str)
         
+=======
+
+    current_batch_files = []
+    current_batch_chars = 0
+    batch_id = 1
+
+    for f in included_files:
+        diff_str, _, file_truncated = collect_review_diff(repo_root, [f], max_diff_chars=batch_max_chars, max_file_chars=config.get("max_file_chars", 40000))
+        f_len = len(diff_str)
+
+>>>>>>> a7ab32cf6d761ef39ae4917f81a9a40ca088e26e
         if f_len >= batch_max_chars:
             if current_batch_files:
                 batches.append({
@@ -766,7 +1027,11 @@ def build_review_batches(repo_root, included_files, config):
                 batch_id += 1
                 current_batch_files = []
                 current_batch_chars = 0
+<<<<<<< HEAD
             
+=======
+
+>>>>>>> a7ab32cf6d761ef39ae4917f81a9a40ca088e26e
             batches.append({
                 "batch_id": batch_id,
                 "files": [f],
@@ -779,7 +1044,11 @@ def build_review_batches(repo_root, included_files, config):
             })
             batch_id += 1
             continue
+<<<<<<< HEAD
             
+=======
+
+>>>>>>> a7ab32cf6d761ef39ae4917f81a9a40ca088e26e
         if len(current_batch_files) >= batch_max_files or current_batch_chars + f_len > batch_max_chars:
             batches.append({
                 "batch_id": batch_id,
@@ -796,7 +1065,11 @@ def build_review_batches(repo_root, included_files, config):
         else:
             current_batch_files.append(f)
             current_batch_chars += f_len
+<<<<<<< HEAD
             
+=======
+
+>>>>>>> a7ab32cf6d761ef39ae4917f81a9a40ca088e26e
     if current_batch_files:
         batches.append({
             "batch_id": batch_id,
@@ -807,7 +1080,11 @@ def build_review_batches(repo_root, included_files, config):
             "run_id": None,
             "duration_seconds": 0
         })
+<<<<<<< HEAD
         
+=======
+
+>>>>>>> a7ab32cf6d761ef39ae4917f81a9a40ca088e26e
     return batches
 
 def build_codex_prompt_batch(manifest, project_root, config, batch_files):
@@ -839,6 +1116,35 @@ Tier contract:
         memory = memory_path.read_text(encoding="utf-8", errors="replace")
         prompt += f"\n## Operational Memory (Compact)\n```\n{memory}\n```\n"
 
+<<<<<<< HEAD
+=======
+    if manifest.get("review_mode") == "FOCUSED_RETRY":
+        batch_previous_findings = [
+            f for f in manifest.get("previous_findings", [])
+            if f.get("file") in batch_files
+        ]
+        if batch_previous_findings:
+            prompt += "\n## Previous Open Findings (Focus ONLY on verifying these)\n"
+            for finding in batch_previous_findings:
+                prompt += (
+                    f"- ID: {finding.get('finding_id', 'unknown')} | "
+                    f"Severity: {finding.get('severity', 'UNKNOWN')} | "
+                    f"Location: {finding.get('file', '?')}:{finding.get('line', '?')} — "
+                    f"{finding.get('title', '?')}: {finding.get('body', '')}\n"
+                )
+            prompt += """
+This is a focused retry.
+
+Primary objective:
+Verify whether each previous blocking finding has been resolved.
+For EACH finding_id listed above, you MUST return it in the FINDINGS list with its status set to one of: RESOLVED, STILL_OPEN, REOPENED, ADVISORY, or DEFERRED.
+
+Do not restart a broad review from zero.
+
+A new finding may block only when it is P0/P1 or a direct regression introduced by the fix.
+"""
+
+>>>>>>> a7ab32cf6d761ef39ae4917f81a9a40ca088e26e
     # Load context files
     for context_file in manifest['plan_files'] + manifest['acceptance_files']:
         fpath = project_root / context_file
@@ -849,21 +1155,34 @@ Tier contract:
     repo_root = Path(manifest["repository_root"])
     prompt += "\n## Changed File Evidence\n"
     diff_str, is_truncated, file_truncated = collect_review_diff(
+<<<<<<< HEAD
         repo_root, 
         batch_files, 
+=======
+        repo_root,
+        batch_files,
+>>>>>>> a7ab32cf6d761ef39ae4917f81a9a40ca088e26e
         max_diff_chars=config.get("max_diff_chars", 120000),
         max_file_chars=config.get("max_file_chars", 40000)
     )
     prompt += diff_str
     prompt += "\n"
+<<<<<<< HEAD
     
+=======
+
+>>>>>>> a7ab32cf6d761ef39ae4917f81a9a40ca088e26e
     # We update manifest for truncation info
     # In batch mode, if any batch truncates, the manifest should mark it.
     if is_truncated or file_truncated:
         manifest["evidence_truncated"] = True
     if file_truncated:
         manifest["file_truncated"] = True
+<<<<<<< HEAD
         
+=======
+
+>>>>>>> a7ab32cf6d761ef39ae4917f81a9a40ca088e26e
     if is_truncated or file_truncated:
         manifest["evidence_snippet"] = diff_str[-200:]
 
@@ -878,6 +1197,11 @@ You MUST output your review strictly in the following JSON format. Do not includ
   "REVIEWED_FILES": {reviewed_files_json},
   "FINDINGS": [
     {{
+<<<<<<< HEAD
+=======
+      "finding_id": "the_finding_id",
+      "status": "STILL_OPEN",
+>>>>>>> a7ab32cf6d761ef39ae4917f81a9a40ca088e26e
       "severity": "P1",
       "file": "path/to/file",
       "line": 123,
@@ -896,16 +1220,27 @@ def _run_codex_review_batch_single(batch, manifest, project_root, repo_root, con
     prompt_started = time.perf_counter()
     prompt = build_codex_prompt_batch(manifest, project_root, config, batch_files)
     prompt_ms = int((time.perf_counter() - prompt_started) * 1000)
+<<<<<<< HEAD
     
+=======
+
+>>>>>>> a7ab32cf6d761ef39ae4917f81a9a40ca088e26e
     temp_review_dir = Path(tempfile.mkdtemp(prefix=f"codex_review_{manifest['run_id']}_b{batch_id}_"))
     review_cwd = temp_review_dir / "source-code"
     workspace_started = time.perf_counter()
     _copy_review_workspace(repo_root, review_cwd)
     workspace_ms = int((time.perf_counter() - workspace_started) * 1000)
+<<<<<<< HEAD
         
     last_message_path = temp_review_dir / "codex_last_message.txt"
     start_time = time.time()
     
+=======
+
+    last_message_path = temp_review_dir / "codex_last_message.txt"
+    start_time = time.time()
+
+>>>>>>> a7ab32cf6d761ef39ae4917f81a9a40ca088e26e
     try:
         codex_command = [
                 codex_executable,
@@ -935,7 +1270,11 @@ def _run_codex_review_batch_single(batch, manifest, project_root, repo_root, con
             errors="replace",
             creationflags=(subprocess.CREATE_NEW_PROCESS_GROUP if os.name == "nt" else 0),
         )
+<<<<<<< HEAD
         
+=======
+
+>>>>>>> a7ab32cf6d761ef39ae4917f81a9a40ca088e26e
         timeout = int(config.get("timeout_seconds", 180))
         codex_started = time.perf_counter()
         stdout, stderr = proc.communicate(input=prompt, timeout=timeout)
@@ -945,12 +1284,20 @@ def _run_codex_review_batch_single(batch, manifest, project_root, repo_root, con
             last_message = last_message_path.read_text(encoding="utf-8", errors="replace").strip()
             if last_message:
                 stdout = last_message
+<<<<<<< HEAD
                 
+=======
+
+>>>>>>> a7ab32cf6d761ef39ae4917f81a9a40ca088e26e
         # Parse result
         parse_started = time.perf_counter()
         status, reason, findings = parse_codex_result(stdout, stderr, exit_code, manifest['run_id'], manifest['snapshot_hash'], batch_files)
         parse_ms = int((time.perf_counter() - parse_started) * 1000)
+<<<<<<< HEAD
         
+=======
+
+>>>>>>> a7ab32cf6d761ef39ae4917f81a9a40ca088e26e
         batch["status"] = status
         batch["reason"] = reason
         batch["findings"] = findings
@@ -967,14 +1314,24 @@ def _run_codex_review_batch_single(batch, manifest, project_root, repo_root, con
             "total": int((time.perf_counter() - batch_started) * 1000),
         }
         batch["prompt_chars"] = len(prompt)
+<<<<<<< HEAD
         
         return batch
         
+=======
+
+        return batch
+
+>>>>>>> a7ab32cf6d761ef39ae4917f81a9a40ca088e26e
     except subprocess.TimeoutExpired:
         _terminate_process_tree(proc)
         stdout, stderr = proc.communicate()
         exit_code = -1
+<<<<<<< HEAD
         
+=======
+
+>>>>>>> a7ab32cf6d761ef39ae4917f81a9a40ca088e26e
         batch["status"] = ReviewStatus.INFRA_FAIL
         batch["reason"] = f"Timeout ({timeout}s)"
         batch["reason_code"] = "CODEX_TIMEOUT"
@@ -992,7 +1349,11 @@ def _run_codex_review_batch_single(batch, manifest, project_root, repo_root, con
         }
         batch["prompt_chars"] = len(prompt)
         return batch
+<<<<<<< HEAD
         
+=======
+
+>>>>>>> a7ab32cf6d761ef39ae4917f81a9a40ca088e26e
     except Exception as e:
         batch["status"] = ReviewStatus.INFRA_FAIL
         batch["reason"] = f"Error running codex: {e}"
@@ -1007,13 +1368,21 @@ def _run_codex_review_batch_single(batch, manifest, project_root, repo_root, con
         }
         batch["prompt_chars"] = len(prompt)
         return batch
+<<<<<<< HEAD
         
+=======
+
+>>>>>>> a7ab32cf6d761ef39ae4917f81a9a40ca088e26e
     finally:
         _cleanup_dir(temp_review_dir)
 
 def run_codex_review_batch(batch, manifest, project_root, repo_root, config, codex_executable, retry_count=0):
     result = _run_codex_review_batch_single(batch, manifest, project_root, repo_root, config, codex_executable)
+<<<<<<< HEAD
     
+=======
+
+>>>>>>> a7ab32cf6d761ef39ae4917f81a9a40ca088e26e
     if result.get("reason_code") == "CODEX_TIMEOUT":
         max_retries = config.get("max_timeout_retries", 2)
         if len(batch["files"]) > 1 and retry_count < max_retries:
@@ -1028,35 +1397,58 @@ def run_codex_review_batch(batch, manifest, project_root, repo_root, config, cod
                     child_batch, manifest, project_root, repo_root, config, codex_executable, retry_count + 1
                 )
                 child_results.append(child_res)
+<<<<<<< HEAD
             
+=======
+
+>>>>>>> a7ab32cf6d761ef39ae4917f81a9a40ca088e26e
             # Save children in parent
             batch["children"] = child_results
         elif len(batch["files"]) == 1:
             batch["status"] = ReviewStatus.INFRA_FAIL
             batch["reason_code"] = "CODEX_TIMEOUT_SINGLE_LARGE_FILE"
             batch["needs_chunk_review"] = True
+<<<<<<< HEAD
             
+=======
+
+>>>>>>> a7ab32cf6d761ef39ae4917f81a9a40ca088e26e
     return batch
 
 def aggregate_batch_results(batches):
     final_status = ReviewStatus.PASS
     all_findings = []
+<<<<<<< HEAD
     
+=======
+
+>>>>>>> a7ab32cf6d761ef39ae4917f81a9a40ca088e26e
     # Status Priority: INFRA_FAIL > STALE > FAIL > PASS
     # Note: parse_codex_result handles STALE_SOURCE_CHANGED which returns STALE
     has_infra_fail = False
     has_stale = False
     has_fail = False
+<<<<<<< HEAD
     
     def process_batch(b):
         nonlocal has_infra_fail, has_stale, has_fail, all_findings
         
+=======
+
+    def process_batch(b):
+        nonlocal has_infra_fail, has_stale, has_fail, all_findings
+
+>>>>>>> a7ab32cf6d761ef39ae4917f81a9a40ca088e26e
         children = b.get("children")
         if children:
             for child in children:
                 process_batch(child)
             return
+<<<<<<< HEAD
             
+=======
+
+>>>>>>> a7ab32cf6d761ef39ae4917f81a9a40ca088e26e
         st = b.get("status")
         if st == ReviewStatus.INFRA_FAIL:
             has_infra_fail = True
@@ -1064,19 +1456,40 @@ def aggregate_batch_results(batches):
             has_stale = True
         elif st == ReviewStatus.FAIL:
             has_fail = True
+<<<<<<< HEAD
             
         all_findings.extend(b.get("findings", []))
         
     for b in batches:
         process_batch(b)
         
+=======
+
+        all_findings.extend(b.get("findings", []))
+
+    for b in batches:
+        process_batch(b)
+
+>>>>>>> a7ab32cf6d761ef39ae4917f81a9a40ca088e26e
     if has_infra_fail:
         final_status = ReviewStatus.INFRA_FAIL
     elif has_stale:
         final_status = ReviewStatus.STALE
     elif has_fail:
         final_status = ReviewStatus.FAIL
+<<<<<<< HEAD
         
+=======
+    elif all_findings:
+        blocking_findings = [
+            f for f in all_findings
+            if f.get("severity") in {"P0", "P1", "P2"}
+            and f.get("status", "OPEN") not in {"RESOLVED", "ADVISORY", "DEFERRED"}
+        ]
+        if not blocking_findings:
+            final_status = ReviewStatus.PASS_WITH_ADVISORIES
+
+>>>>>>> a7ab32cf6d761ef39ae4917f81a9a40ca088e26e
     return final_status, all_findings
 
 
@@ -1199,7 +1612,11 @@ def reconcile_stale_review(project_root, stale_after_seconds=240, now=None):
     return authority
 
 
+<<<<<<< HEAD
 def run_codex_artifact_review(project_root, task_id, feature_name, codex_executable, mode, artifact_files):
+=======
+def _run_codex_artifact_review_impl(project_root, task_id, feature_name, codex_executable, mode, artifact_files):
+>>>>>>> a7ab32cf6d761ef39ae4917f81a9a40ca088e26e
     """Review research/plan artifacts against an immutable repository snapshot."""
     run_id = str(uuid.uuid4())
     repo_root = project_root / "source-code"
@@ -1354,7 +1771,11 @@ Use VERDICT="FAIL" when there is one or more finding. Valid severities are P0, P
     finally:
         _cleanup_dir(temp_review_dir)
 
+<<<<<<< HEAD
     if status == ReviewStatus.PASS:
+=======
+    if is_review_success(status):
+>>>>>>> a7ab32cf6d761ef39ae4917f81a9a40ca088e26e
         try:
             post_source_hash, _ = _artifact_source_snapshot(project_root)
             post_hash, _ = _artifact_snapshot(project_root, mode, artifact_files, post_source_hash)
@@ -1379,18 +1800,30 @@ Use VERDICT="FAIL" when there is one or more finding. Valid severities are P0, P
     return manifest
 
 
+<<<<<<< HEAD
 def run_codex_review(project_root, task_id, feature_name, codex_executable, review_purpose="release"):
+=======
+def run_codex_review(project_root, task_id, feature_name, codex_executable, review_purpose="release", cycle=1, max_cycles=1):
+>>>>>>> a7ab32cf6d761ef39ae4917f81a9a40ca088e26e
     """
     Orchestrates the entire review pipeline.
     """
     run_id = str(uuid.uuid4())
     pipeline_started = time.perf_counter()
     repo_root = project_root / "source-code"
+<<<<<<< HEAD
     
     # 1. Get Base Revision
     rev_res = subprocess.run(["git", "rev-parse", "HEAD"], cwd=repo_root, capture_output=True, text=True)
     base_rev = rev_res.stdout.strip() if rev_res.returncode == 0 else "unknown"
     
+=======
+
+    # 1. Get Base Revision
+    rev_res = subprocess.run(["git", "rev-parse", "HEAD"], cwd=repo_root, capture_output=True, text=True)
+    base_rev = rev_res.stdout.strip() if rev_res.returncode == 0 else "unknown"
+
+>>>>>>> a7ab32cf6d761ef39ae4917f81a9a40ca088e26e
     # 2. Evaluate the task delta against the immutable task baseline.
     try:
         task_scope = project_root / ".agent/context/TASK_SCOPE.json"
@@ -1414,7 +1847,11 @@ def run_codex_review(project_root, task_id, feature_name, codex_executable, revi
             snapshot_hash=snapshot_hash,
             excluded_files=evaluation["excluded_preexisting_files"],
         )
+<<<<<<< HEAD
         
+=======
+
+>>>>>>> a7ab32cf6d761ef39ae4917f81a9a40ca088e26e
     # 4. Route by risk and prepare manifest. Code retries may use compact
     # context; release is always a full DEEP review.
     config = get_review_config(project_root)
@@ -1457,6 +1894,14 @@ def run_codex_review(project_root, task_id, feature_name, codex_executable, revi
         "review_mode": "FOCUSED_RETRY" if focused_retry else "FULL",
         "previous_findings": previous_findings if focused_retry else [],
         "review_metrics": routing,
+<<<<<<< HEAD
+=======
+        "pipeline_cycle": cycle,
+        "pipeline_cycles_total": max_cycles,
+        "codex_batch_count": 0,
+        "codex_process_invocations": 0,
+        "fixer_invocations": cycle - 1,
+>>>>>>> a7ab32cf6d761ef39ae4917f81a9a40ca088e26e
         "learning_guard": {
             "matched_rule_count": learning_guard.get("matched_rule_count", 0),
             "context": ".agent/context/MEMORY_CONTEXT.md",
@@ -1470,12 +1915,17 @@ def run_codex_review(project_root, task_id, feature_name, codex_executable, revi
         "completed_at": None,
         "exit_code": None
     }
+<<<<<<< HEAD
     
+=======
+
+>>>>>>> a7ab32cf6d761ef39ae4917f81a9a40ca088e26e
     state_dir = project_root / ".agent/state"
     state_dir.mkdir(parents=True, exist_ok=True)
     reports_dir = project_root / ".agent/reports"
     reviews_dir = reports_dir / "codex-reviews"
     reviews_dir.mkdir(parents=True, exist_ok=True)
+<<<<<<< HEAD
     
     manifest_path = state_dir / "review_run.json"
     manifest_path.write_text(json.dumps(manifest, indent=2), encoding="utf-8")
@@ -1491,21 +1941,64 @@ def run_codex_review(project_root, task_id, feature_name, codex_executable, revi
         run_codex_review_batch(batch, manifest, project_root, repo_root, config, codex_executable)
         manifest_path.write_text(json.dumps(manifest, indent=2), encoding="utf-8")
         
+=======
+
+    manifest_path = state_dir / "review_run.json"
+    manifest_path.write_text(json.dumps(manifest, indent=2), encoding="utf-8")
+
+    # 5. Build and Execute Batches
+    batches = build_review_batches(repo_root, changed_files, config)
+
+    manifest["batches"] = batches
+    manifest["status"] = ReviewStatus.RUNNING
+    manifest_path.write_text(json.dumps(manifest, indent=2), encoding="utf-8")
+
+    for batch in batches:
+        run_codex_review_batch(batch, manifest, project_root, repo_root, config, codex_executable)
+        manifest_path.write_text(json.dumps(manifest, indent=2), encoding="utf-8")
+
+>>>>>>> a7ab32cf6d761ef39ae4917f81a9a40ca088e26e
     # 7. Aggregate and Parse Result
     status, findings = aggregate_batch_results(batches)
     manifest["findings"] = findings
     reason = ""
+<<<<<<< HEAD
     
+=======
+
+    # Progress tracking
+    if manifest.get("review_mode") == "FOCUSED_RETRY":
+        status, reason_out, reason_code, progress_data = evaluate_focused_retry_progress(previous_manifest, findings)
+        manifest.update(progress_data)
+        if reason_out:
+            reason = reason_out
+        if reason_code:
+            manifest["reason_code"] = reason_code
+
+
+
+>>>>>>> a7ab32cf6d761ef39ae4917f81a9a40ca088e26e
     def get_all_batches(b_list):
         for b in b_list:
             yield b
             if b.get("children"):
                 yield from get_all_batches(b.get("children"))
+<<<<<<< HEAD
                 
     all_batches_flat = list(get_all_batches(batches))
 
     # 7.5 Check post-run snapshot
     if status == ReviewStatus.PASS:
+=======
+
+    all_batches_flat = list(get_all_batches(batches))
+    manifest["codex_batch_count"] = len(all_batches_flat)
+    manifest["codex_process_invocations"] = len(all_batches_flat)
+
+
+    # 7.5 Check post-run snapshot
+    if status in (ReviewStatus.PASS, ReviewStatus.PASS_WITH_ADVISORIES):
+>>>>>>> a7ab32cf6d761ef39ae4917f81a9a40ca088e26e
         try:
             post_evaluation = evaluate_task_scope(
                 repo_root,
@@ -1521,9 +2014,15 @@ def run_codex_review(project_root, task_id, feature_name, codex_executable, revi
         except Exception as e:
             status = ReviewStatus.INFRA_FAIL
             reason = f"Failed to get post-run snapshot: {e}"
+<<<<<<< HEAD
             
     if not reason:
         if status == ReviewStatus.PASS:
+=======
+
+    if not reason:
+        if is_review_success(status):
+>>>>>>> a7ab32cf6d761ef39ae4917f81a9a40ca088e26e
             reason = f"Review passed with {len(findings)} findings."
         elif status == ReviewStatus.FAIL:
             reason = f"Review failed with {len(findings)} findings."
@@ -1537,7 +2036,11 @@ def run_codex_review(project_root, task_id, feature_name, codex_executable, revi
         elif status == ReviewStatus.STALE:
             reasons = [b.get("reason", "") for b in all_batches_flat if b.get("status") == ReviewStatus.STALE]
             reason = "STALE: " + " | ".join(filter(None, reasons))
+<<<<<<< HEAD
     
+=======
+
+>>>>>>> a7ab32cf6d761ef39ae4917f81a9a40ca088e26e
     # 8. Write Report
     ts_now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     report_md = f"""# CODEX_REVIEW.md
@@ -1608,6 +2111,7 @@ def run_codex_review(project_root, task_id, feature_name, codex_executable, revi
 
     for b in batches:
         report_md += format_batch_raw(b)
+<<<<<<< HEAD
         
     report_file = reviews_dir / f"{run_id}.md"
     report_file.write_text(report_md, encoding="utf-8")
@@ -1620,11 +2124,29 @@ def run_codex_review(project_root, task_id, feature_name, codex_executable, revi
     if status == ReviewStatus.PASS:
         (state_dir / "reviewed_diff_hash.txt").write_text(snapshot_hash, encoding="utf-8")
         
+=======
+
+    report_file = reviews_dir / f"{run_id}.md"
+    report_file.write_text(report_md, encoding="utf-8")
+
+    # Update canonical pointer
+    canonical_report = reports_dir / "CODEX_REVIEW.md"
+    canonical_report.write_text(report_md, encoding="utf-8")
+
+    # Write diff hash if PASS
+    if is_review_success(status):
+        (state_dir / "reviewed_diff_hash.txt").write_text(snapshot_hash, encoding="utf-8")
+
+>>>>>>> a7ab32cf6d761ef39ae4917f81a9a40ca088e26e
     batch_exit_codes = [b.get("exit_code", 0) for b in batches]
     exit_code = max(batch_exit_codes) if batch_exit_codes else 0
     if -1 in batch_exit_codes:
         exit_code = -1
+<<<<<<< HEAD
         
+=======
+
+>>>>>>> a7ab32cf6d761ef39ae4917f81a9a40ca088e26e
     manifest["pipeline_total_ms"] = int((time.perf_counter() - pipeline_started) * 1000)
     return _write_finished(project_root, manifest, status, reason, "", "", exit_code)
 
@@ -1653,7 +2175,11 @@ def _write_terminal_failure(project_root, run_id, status, reason, task_id="unkno
         "exit_code": -1,
         "reason": reason
     }
+<<<<<<< HEAD
     
+=======
+
+>>>>>>> a7ab32cf6d761ef39ae4917f81a9a40ca088e26e
     try:
         import jsonschema
         schema_path = Path(__file__).parent / "schemas" / "review_run.schema.json"
@@ -1664,7 +2190,11 @@ def _write_terminal_failure(project_root, run_id, status, reason, task_id="unkno
     except Exception as e:
         manifest["status"] = ReviewStatus.INFRA_FAIL
         manifest["reason"] = f"Manifest schema validation failed: {e}"
+<<<<<<< HEAD
         
+=======
+
+>>>>>>> a7ab32cf6d761ef39ae4917f81a9a40ca088e26e
     (state_dir / "review_run.json").write_text(json.dumps(manifest, indent=2), encoding="utf-8")
     _ensure_review_report(project_root, manifest, manifest["status"], manifest["reason"], "", "", manifest["exit_code"])
     return manifest
@@ -1684,7 +2214,11 @@ def _write_finished(project_root, manifest, status, reason, stdout, stderr, exit
     manifest["reason"] = reason
     if reason_code:
         manifest["reason_code"] = reason_code
+<<<<<<< HEAD
     
+=======
+
+>>>>>>> a7ab32cf6d761ef39ae4917f81a9a40ca088e26e
     try:
         import jsonschema
         schema_path = Path(__file__).parent / "schemas" / "review_run.schema.json"
@@ -1695,15 +2229,42 @@ def _write_finished(project_root, manifest, status, reason, stdout, stderr, exit
     except Exception as e:
         manifest["status"] = ReviewStatus.INFRA_FAIL
         manifest["reason"] = f"Manifest schema validation failed: {e}"
+<<<<<<< HEAD
         
     state_dir = project_root / ".agent/state"
     (state_dir / "review_run.json").write_text(json.dumps(manifest, indent=2), encoding="utf-8")
     _ensure_review_report(project_root, manifest, status, reason, stdout, stderr, exit_code)
     
+=======
+
+    state_dir = project_root / ".agent/state"
+    (state_dir / "review_run.json").write_text(json.dumps(manifest, indent=2), encoding="utf-8")
+    _ensure_review_report(project_root, manifest, status, reason, stdout, stderr, exit_code)
+
+>>>>>>> a7ab32cf6d761ef39ae4917f81a9a40ca088e26e
     # Save a JSON copy for history
     reviews_dir = project_root / ".agent/reports/codex-reviews"
     reviews_dir.mkdir(parents=True, exist_ok=True)
     (reviews_dir / f"{manifest['run_id']}.json").write_text(json.dumps(manifest, indent=2), encoding="utf-8")
+<<<<<<< HEAD
     
     return manifest
 
+=======
+
+    return manifest
+
+
+def run_codex_artifact_review(project_root, task_id, feature_name, codex_executable, mode, artifact_files):
+    from workflow_governance import ReviewLifecycleGuard
+    # In .agents/runtime version, checkpoint_authorization might not be passed natively in this version of the signature,
+    # but we can pass None.
+    guard = ReviewLifecycleGuard(project_root, task_id, mode, None)
+    guard.acquire()
+    try:
+        return _run_codex_artifact_review_impl(project_root, task_id, feature_name, codex_executable, mode, artifact_files)
+    finally:
+        guard.release()
+
+
+>>>>>>> a7ab32cf6d761ef39ae4917f81a9a40ca088e26e

@@ -52,12 +52,21 @@ class WriterTimeoutTests(unittest.TestCase):
             with patch.object(runtime, "find_antigravity", return_value="agy"), \
                  patch.object(runtime.subprocess, "Popen", return_value=proc), \
                  patch.object(runtime, "_terminate_process_tree", return_value=("", "")) as terminate:
+<<<<<<< HEAD
                 ok, reason = runtime.run_antigravity_fixer(
                     root, {"handoff_id": "h1", "allowed_files": []}, timeout_seconds=1
                 )
             report = json.loads((root / ".agent/reports/FIXER_COMMAND_REPORT.json").read_text(encoding="utf-8"))
         self.assertFalse(ok)
         self.assertIn("timeout", reason.lower())
+=======
+                res = runtime.run_antigravity_fixer(
+                    root, {"handoff_id": "h1", "allowed_files": []}, timeout_seconds=1
+                )
+            report = json.loads((root / ".agent/reports/FIXER_COMMAND_REPORT.json").read_text(encoding="utf-8"))
+        self.assertFalse(res["ok"])
+        self.assertIn("timeout", res["reason"].lower())
+>>>>>>> a7ab32cf6d761ef39ae4917f81a9a40ca088e26e
         terminate.assert_called_once_with(proc)
         self.assertEqual("WRITER_TIMEOUT", report["reason_code"])
         self.assertTrue(report["completed_at"])

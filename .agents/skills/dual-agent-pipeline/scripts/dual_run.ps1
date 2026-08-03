@@ -4,6 +4,10 @@ param(
     [Parameter(Mandatory=$true)][string]$Feature,
     [ValidateSet("research", "plan", "code", "release")][string]$Mode = "release",
     [string]$Artifacts = "",
+<<<<<<< HEAD
+=======
+    [ValidateRange(1, 3)]
+>>>>>>> a7ab32cf6d761ef39ae4917f81a9a40ca088e26e
     [int]$MaxCycles = 2,
     [switch]$SkipVerify,
     [string]$FixCommand = "",

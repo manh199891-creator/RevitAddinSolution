@@ -1,0 +1,19 @@
+﻿FULL TEST ENVIRONMENT
+
+Date:
+2026-08-03 15:13:35
+
+Branch:
+fix/dual-agent-pipeline-convergence
+
+Commit:
+93d243722e66c06e789666b2b3526f58ae814179
+
+Python:
+Python 3.11.15
+
+Pytest:
+C:\Users\Admin\AppData\Local\hermes\hermes-agent\venv\Scripts\python.exe: No module named pytest
+
+PowerShell:
+5.1.26100.8875
