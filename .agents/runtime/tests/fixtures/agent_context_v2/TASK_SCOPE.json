@@ -1,0 +1,10 @@
+{
+  "task_id": "mock_task",
+  "allowed_files": [
+    "src/Antigravity.Core/MockComponent.cs",
+    "tests/Antigravity.Core.Tests/MockComponentTests.cs"
+  ],
+  "forbidden_paths": [
+    "src/Antigravity.Main"
+  ]
+}
