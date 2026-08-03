@@ -74,10 +74,42 @@ class TestConvergenceFull(unittest.TestCase):
     # CONVERGENCE TESTS
     # =========================================================================
 
+
+    def test_full_fail_to_focused_retry_empty(self):
+        prev = {
+            "review_mode": "FULL",
+            "status": "FAIL",
+            "findings": [
+                {"finding_id": "F1", "severity": "P1", "status": "OPEN", "title": "A"}
+            ],
+            "previous_findings": []
+        }
+        curr = []
+        from review_pipeline import evaluate_focused_retry_progress
+        status, reason, reason_code, data = evaluate_focused_retry_progress(prev, curr)
+        self.assertEqual(len(curr), 1)
+        self.assertEqual(curr[0]["status"], "STILL_OPEN")
+        self.assertEqual(status, "FAIL")
+        self.assertEqual(reason_code, "FOCUSED_RETRY_CONTRACT_INCOMPLETE")
+
+    def test_multi_retry_history(self):
+        prev = {
+            "review_mode": "FOCUSED_RETRY",
+            "progress": False,
+            "status": "FAIL",
+            "findings": [
+                {"finding_id": "F1", "severity": "P1", "status": "OPEN", "title": "A"}
+            ]
+        }
+        curr = [{"finding_id": "F1", "severity": "P1", "status": "OPEN", "title": "A"}]
+        from review_pipeline import evaluate_focused_retry_progress
+        status, reason, reason_code, data = evaluate_focused_retry_progress(prev, curr)
+        self.assertEqual(status, "BLOCKED_NO_PROGRESS")
+
     def test_missing_previous_finding_is_still_open(self):
         prev = {
             "review_mode": "FOCUSED_RETRY",
-            "previous_findings": [
+            "findings": [
                 {"finding_id": "F1", "severity": "P1", "status": "OPEN", "title": "A"}
             ]
         }
@@ -90,7 +122,7 @@ class TestConvergenceFull(unittest.TestCase):
     def test_missing_previous_finding_returns_fail(self):
         prev = {
             "review_mode": "FOCUSED_RETRY",
-            "previous_findings": [
+            "findings": [
                 {"finding_id": "F1", "severity": "P1", "status": "OPEN", "title": "A"}
             ]
         }
@@ -104,7 +136,7 @@ class TestConvergenceFull(unittest.TestCase):
             "progress": True, # First retry shows no progress
             "previous_blocking_ids": ["F1"],
             "current_blocking_ids": ["F1"],
-            "previous_findings": [{"finding_id": "F1", "severity": "P1", "status": "OPEN", "title": "A"}]
+            "findings": [{"finding_id": "F1", "severity": "P1", "status": "OPEN", "title": "A"}]
         }
         curr = [{"finding_id": "F1", "severity": "P1", "status": "OPEN", "title": "A"}]
         status, reason, reason_code, data = evaluate_focused_retry_progress(prev, curr)
@@ -117,7 +149,7 @@ class TestConvergenceFull(unittest.TestCase):
             "progress": False, # Previous run had no progress
             "previous_blocking_ids": ["F1"],
             "current_blocking_ids": ["F1"],
-            "previous_findings": [{"finding_id": "F1", "severity": "P1", "status": "OPEN", "title": "A"}]
+            "findings": [{"finding_id": "F1", "severity": "P1", "status": "OPEN", "title": "A"}]
         }
         curr = [{"finding_id": "F1", "severity": "P1", "status": "OPEN", "title": "A"}]
         status, reason, reason_code, data = evaluate_focused_retry_progress(prev, curr)
@@ -129,7 +161,7 @@ class TestConvergenceFull(unittest.TestCase):
             "review_mode": "FOCUSED_RETRY",
             "previous_blocking_ids": ["F1"],
             "current_blocking_ids": ["F1", "F2"],
-            "previous_findings": [
+            "findings": [
                 {"finding_id": "F1", "severity": "P1", "status": "OPEN", "title": "A"},
                 {"finding_id": "F2", "severity": "P1", "status": "OPEN", "title": "B"}
             ]
@@ -148,7 +180,7 @@ class TestConvergenceFull(unittest.TestCase):
             "progress": False,
             "previous_blocking_ids": ["F1", "F2"],
             "current_blocking_ids": ["F1", "F2"],
-            "previous_findings": [
+            "findings": [
                 {"finding_id": "F1", "severity": "P1", "status": "OPEN", "title": "A"},
                 {"finding_id": "F2", "severity": "P1", "status": "OPEN", "title": "B"}
             ]
@@ -167,7 +199,7 @@ class TestConvergenceFull(unittest.TestCase):
             "progress": False,
             "previous_blocking_ids": ["F1", "F2"],
             "current_blocking_ids": ["F1", "F2"],
-            "previous_findings": [
+            "findings": [
                 {"finding_id": "F1", "severity": "P1", "status": "OPEN", "title": "A"},
                 {"finding_id": "F2", "severity": "P1", "status": "OPEN", "title": "B"}
             ]
@@ -182,7 +214,7 @@ class TestConvergenceFull(unittest.TestCase):
     def test_p3_does_not_affect_blocking_progress(self):
         prev = {
             "review_mode": "FOCUSED_RETRY",
-            "previous_findings": [{"finding_id": "F1", "severity": "P3", "status": "OPEN", "title": "A"}]
+            "findings": [{"finding_id": "F1", "severity": "P3", "status": "OPEN", "title": "A"}]
         }
         curr = [{"finding_id": "F1", "severity": "P3", "status": "RESOLVED", "title": "A"}]
         status, reason, reason_code, data = evaluate_focused_retry_progress(prev, curr)
@@ -486,6 +518,78 @@ class TestConvergenceFull(unittest.TestCase):
         try:
             self.assertEqual(self._run_gate(), 1)
         finally:
+            harness.evaluate_task_scope = orig_eval
+            harness.load_project = orig_load
+
+
+    def test_missing_cli_structured_result(self):
+        from dual_agent_runtime import run_antigravity_fixer
+        import dual_agent_runtime
+        orig_find = dual_agent_runtime.find_antigravity
+        dual_agent_runtime.find_antigravity = lambda: None
+        try:
+            res = run_antigravity_fixer(self.project_root, {})
+            self.assertIsInstance(res, dict)
+            self.assertFalse(res["ok"])
+            self.assertEqual(res["reason_code"], "ANTIGRAVITY_CLI_MISSING")
+        finally:
+            dual_agent_runtime.find_antigravity = orig_find
+
+    def test_strict_release_gate_rejects_task_id_mismatch(self):
+        orig_eval, orig_load = self._setup_gate(task_id="wrong_id")
+        try:
+            self.assertEqual(self._run_gate(), 1)
+        finally:
+            import harness
+            harness.evaluate_task_scope = orig_eval
+            harness.load_project = orig_load
+
+    def test_strict_release_gate_rejects_schema_invalid(self):
+        orig_eval, orig_load = self._setup_gate(schema_version=999)
+        try:
+            self.assertEqual(self._run_gate(), 1)
+        finally:
+            import harness
+            harness.evaluate_task_scope = orig_eval
+            harness.load_project = orig_load
+
+    def test_strict_release_gate_rejects_exit_code_nonzero(self):
+        orig_eval, orig_load = self._setup_gate(exit_code=1)
+        try:
+            self.assertEqual(self._run_gate(), 1)
+        finally:
+            import harness
+            harness.evaluate_task_scope = orig_eval
+            harness.load_project = orig_load
+
+    def test_strict_release_gate_rejects_evidence_truncated(self):
+        orig_eval, orig_load = self._setup_gate(evidence_truncated=True)
+        try:
+            self.assertEqual(self._run_gate(), 1)
+        finally:
+            import harness
+            harness.evaluate_task_scope = orig_eval
+            harness.load_project = orig_load
+
+    def test_strict_release_gate_rejects_guardrails_fail(self):
+        orig_eval, orig_load = self._setup_gate()
+        (self.project_root / ".agent/reports/GUARDRAILS_REPORT.md").write_text("# Status: FAIL")
+        try:
+            self.assertEqual(self._run_gate(), 1)
+        finally:
+            import harness
+            harness.evaluate_task_scope = orig_eval
+            harness.load_project = orig_load
+
+    def test_strict_release_gate_rejects_child_batch_fail(self):
+        orig_eval, orig_load = self._setup_gate(
+            status="PASS",
+            batches=[{"batch_id": "b1", "status": "FAIL"}]
+        )
+        try:
+            self.assertEqual(self._run_gate(), 1)
+        finally:
+            import harness
             harness.evaluate_task_scope = orig_eval
             harness.load_project = orig_load
 

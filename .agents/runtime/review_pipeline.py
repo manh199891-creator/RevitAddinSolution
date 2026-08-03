@@ -649,7 +649,7 @@ def _normalize_string(s):
 
 
 def evaluate_focused_retry_progress(previous_manifest: dict, current_findings: list) -> tuple:
-    prev_findings = previous_manifest.get("previous_findings", [])
+    prev_findings = previous_manifest.get("findings", [])
     prev_blocking = [f for f in prev_findings if f.get("severity") in {"P0", "P1", "P2"} and f.get("status") not in {"RESOLVED", "ADVISORY", "DEFERRED"}]
     curr_blocking = [f for f in current_findings if f.get("severity") in {"P0", "P1", "P2"} and f.get("status") not in {"RESOLVED", "ADVISORY", "DEFERRED"}]
 
@@ -1507,7 +1507,7 @@ Use VERDICT="FAIL" when there is one or more finding. Valid severities are P0, P
     finally:
         _cleanup_dir(temp_review_dir)
 
-    if status == ReviewStatus.PASS:
+    if is_review_success(status):
         try:
             post_source_hash, _ = _artifact_source_snapshot(project_root)
             post_hash, _ = _artifact_snapshot(project_root, mode, artifact_files, post_source_hash)
@@ -1695,7 +1695,7 @@ def run_codex_review(project_root, task_id, feature_name, codex_executable, revi
             reason = f"Failed to get post-run snapshot: {e}"
 
     if not reason:
-        if status == ReviewStatus.PASS:
+        if is_review_success(status):
             reason = f"Review passed with {len(findings)} findings."
         elif status == ReviewStatus.FAIL:
             reason = f"Review failed with {len(findings)} findings."

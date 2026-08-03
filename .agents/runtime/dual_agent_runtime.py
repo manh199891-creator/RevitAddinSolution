@@ -278,7 +278,16 @@ def run_antigravity_fixer(project_root: Path, handoff: dict, *, timeout_seconds:
     reports = project_root / ".agent/reports"
     reports.mkdir(parents=True, exist_ok=True)
     if not executable:
-        return False, "ANTIGRAVITY_CLI_MISSING"
+        return {
+            "ok": False,
+            "status": "FAIL",
+            "reason": "Antigravity CLI not found on PATH.",
+            "reason_code": "ANTIGRAVITY_CLI_MISSING",
+            "artifact_changed": False,
+            "exit_code": -1,
+            "snapshot_before": None,
+            "snapshot_after": None,
+        }
 
     handoff_path = write_handoff(project_root, handoff)
     command = [

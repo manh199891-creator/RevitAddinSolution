@@ -1,4 +1,4 @@
-﻿param(
+param(
     [Parameter(Mandatory=$true)][string]$Project,
     [switch]$AsJson,
     [switch]$Full,
@@ -28,7 +28,8 @@ if (Test-Path $manifestPath) {
 
 if ($FindingsOnly) {
     if ($manifest -and $manifest.findings) {
-        $manifest.findings | Select-Object finding_id, severity, status, file, line, title, body, required_test | ConvertTo-Json -Depth 5
+        $arr = @($manifest.findings | Select-Object finding_id, severity, status, file, line, title, body, required_test)
+        ConvertTo-Json -InputObject $arr -Depth 5 -Compress
     } else {
         Write-Output "[]"
     }
@@ -76,7 +77,7 @@ if ($manifest) {
     Write-Output "Status: $($manifest.status)"
     if ($manifest.reason_code) {
         if ($manifest.reason_code -match "BLOCKED_NO_PROGRESS" -or $manifest.reason_code -match "OSCILLATION") {
-            Write-Output "âš ï¸ WARNING: $($manifest.reason_code) - $($manifest.reason)"
+            Write-Output "WARNING: $($manifest.reason_code) - $($manifest.reason)"
         } else {
             Write-Output "Reason Code: $($manifest.reason_code)"
         }
