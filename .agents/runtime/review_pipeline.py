@@ -647,6 +647,72 @@ def _normalize_string(s):
     import re
     return re.sub(r'\W+', '', str(s).lower())
 
+
+def evaluate_focused_retry_progress(previous_manifest: dict, current_findings: list) -> tuple:
+    prev_findings = previous_manifest.get("previous_findings", [])
+    prev_blocking = [f for f in prev_findings if f.get("severity") in {"P0", "P1", "P2"} and f.get("status") not in {"RESOLVED", "ADVISORY", "DEFERRED"}]
+    curr_blocking = [f for f in current_findings if f.get("severity") in {"P0", "P1", "P2"} and f.get("status") not in {"RESOLVED", "ADVISORY", "DEFERRED"}]
+
+    prev_blocking_ids = {f.get("finding_id") for f in prev_blocking if f.get("finding_id")}
+    curr_blocking_ids = {f.get("finding_id") for f in curr_blocking if f.get("finding_id")}
+
+    contract_failed = False
+    for pf in prev_blocking:
+        pf_id = pf.get("finding_id")
+        if pf_id and pf_id not in {f.get("finding_id") for f in current_findings}:
+            missing_f = pf.copy()
+            missing_f["status"] = "STILL_OPEN"
+            missing_f["body"] = "(Omitted by Codex in retry, assuming STILL_OPEN) " + pf.get("body", "")
+            current_findings.append(missing_f)
+            curr_blocking.append(missing_f)
+            curr_blocking_ids.add(pf_id)
+            contract_failed = True
+
+    status = classify_review_status(current_findings)
+    reason = ""
+    reason_code = ""
+
+    if contract_failed:
+        status = ReviewStatus.FAIL
+        reason = "Codex omitted previous blocking findings in FOCUSED_RETRY."
+        reason_code = "FOCUSED_RETRY_CONTRACT_INCOMPLETE"
+
+    resolved_ids = list(prev_blocking_ids - curr_blocking_ids)
+    remaining_ids = list(prev_blocking_ids & curr_blocking_ids)
+    new_blocking_ids = list(curr_blocking_ids - prev_blocking_ids)
+    reopened_ids = [f.get("finding_id") for f in curr_blocking if f.get("status") == "REOPENED"]
+
+    blocking_count_before = len(prev_blocking)
+    blocking_count_after = len(curr_blocking)
+
+    progress = len(resolved_ids) > 0 or blocking_count_after < blocking_count_before
+
+    progress_data = {
+        "previous_blocking_ids": list(prev_blocking_ids),
+        "current_blocking_ids": list(curr_blocking_ids),
+        "resolved_ids": resolved_ids,
+        "remaining_ids": remaining_ids,
+        "new_blocking_ids": new_blocking_ids,
+        "reopened_ids": reopened_ids,
+        "blocking_count_before": blocking_count_before,
+        "blocking_count_after": blocking_count_after,
+        "progress": progress
+    }
+
+    if status in (ReviewStatus.FAIL, ReviewStatus.PASS_WITH_ADVISORIES):
+        if previous_manifest.get("review_mode") == "FOCUSED_RETRY" and not previous_manifest.get("progress", True) and not progress and curr_blocking_ids:
+            status = "BLOCKED_NO_PROGRESS"
+            reason = "Two consecutive runs showed no progress in resolving blocking findings."
+            reason_code = "BLOCKING_FINDINGS_UNCHANGED"
+
+        prev_prev_blocking_ids = set(previous_manifest.get("previous_blocking_ids", []))
+        if prev_prev_blocking_ids and curr_blocking_ids == prev_prev_blocking_ids and curr_blocking_ids != prev_blocking_ids:
+            status = "BLOCKED_OSCILLATION"
+            reason = "Findings are oscillating back and forth between states."
+            reason_code = "FINDING_OSCILLATION"
+
+    return status, reason, reason_code, progress_data
+
 def is_review_success(status):
     return status in (ReviewStatus.PASS, ReviewStatus.PASS_WITH_ADVISORIES, ReviewStatus.SMOKE_PASS)
 
@@ -1590,69 +1656,12 @@ def run_codex_review(project_root, task_id, feature_name, codex_executable, revi
 
     # Progress tracking
     if manifest.get("review_mode") == "FOCUSED_RETRY":
-        prev_findings = manifest.get("previous_findings", [])
-        prev_blocking = [f for f in prev_findings if f.get("severity") in {"P0", "P1", "P2"} and f.get("status") not in {"RESOLVED", "ADVISORY", "DEFERRED"}]
-        curr_blocking = [f for f in findings if f.get("severity") in {"P0", "P1", "P2"} and f.get("status") not in {"RESOLVED", "ADVISORY", "DEFERRED"}]
-
-        prev_blocking_ids = {f.get("finding_id") for f in prev_blocking if f.get("finding_id")}
-        curr_blocking_ids = {f.get("finding_id") for f in curr_blocking if f.get("finding_id")}
-
-        contract_failed = False
-        # Focused retry contract enforcement
-        for pf in prev_blocking:
-            pf_id = pf.get("finding_id")
-            if pf_id and pf_id not in {f.get("finding_id") for f in findings}:
-                # The finding was omitted by Codex output. This is a contract failure.
-                missing_f = pf.copy()
-                missing_f["status"] = "STILL_OPEN"
-                missing_f["body"] = "(Omitted by Codex in retry, assuming STILL_OPEN) " + pf.get("body", "")
-                findings.append(missing_f)
-                curr_blocking.append(missing_f)
-                curr_blocking_ids.add(pf_id)
-                contract_failed = True
-
-        if contract_failed:
-            status = ReviewStatus.FAIL
-            reason = "Codex omitted previous blocking findings in FOCUSED_RETRY."
-            manifest["reason_code"] = "FOCUSED_RETRY_CONTRACT_INCOMPLETE"
-
-        status = classify_review_status(findings)
-
-        resolved_ids = list(prev_blocking_ids - curr_blocking_ids)
-        remaining_ids = list(prev_blocking_ids & curr_blocking_ids)
-        new_blocking_ids = list(curr_blocking_ids - prev_blocking_ids)
-
-        reopened_ids = [f.get("finding_id") for f in curr_blocking if f.get("status") == "REOPENED"]
-
-        blocking_count_before = len(prev_blocking)
-        blocking_count_after = len(curr_blocking)
-
-        progress = len(resolved_ids) > 0 or blocking_count_after < blocking_count_before
-
-        manifest.update({
-            "previous_blocking_ids": list(prev_blocking_ids),
-            "current_blocking_ids": list(curr_blocking_ids),
-            "resolved_ids": resolved_ids,
-            "remaining_ids": remaining_ids,
-            "new_blocking_ids": new_blocking_ids,
-            "reopened_ids": reopened_ids,
-            "blocking_count_before": blocking_count_before,
-            "blocking_count_after": blocking_count_after,
-            "progress": progress
-        })
-
-        if status in (ReviewStatus.FAIL, ReviewStatus.PASS_WITH_ADVISORIES):
-            if previous_manifest.get("review_mode") == "FOCUSED_RETRY" and not previous_manifest.get("progress", True) and not progress and curr_blocking_ids:
-                status = "BLOCKED_NO_PROGRESS"
-                reason = "Two consecutive runs showed no progress in resolving blocking findings."
-                manifest["reason_code"] = "BLOCKING_FINDINGS_UNCHANGED"
-
-            # Oscillation check A -> B -> A
-            prev_prev_blocking_ids = set(previous_manifest.get("previous_blocking_ids", []))
-            if prev_prev_blocking_ids and curr_blocking_ids == prev_prev_blocking_ids and curr_blocking_ids != prev_blocking_ids:
-                status = "BLOCKED_OSCILLATION"
-                reason = "Findings are oscillating back and forth between states."
-                manifest["reason_code"] = "FINDING_OSCILLATION"
+        status, reason_out, reason_code, progress_data = evaluate_focused_retry_progress(previous_manifest, findings)
+        manifest.update(progress_data)
+        if reason_out:
+            reason = reason_out
+        if reason_code:
+            manifest["reason_code"] = reason_code
 
 
 
@@ -1668,7 +1677,7 @@ def run_codex_review(project_root, task_id, feature_name, codex_executable, revi
 
 
     # 7.5 Check post-run snapshot
-    if status == ReviewStatus.PASS:
+    if status in (ReviewStatus.PASS, ReviewStatus.PASS_WITH_ADVISORIES):
         try:
             post_evaluation = evaluate_task_scope(
                 repo_root,

@@ -267,7 +267,7 @@ def _scoped_writer_snapshot(project_root: Path, handoff: dict) -> str:
 
 
 def run_antigravity_fixer(project_root: Path, handoff: dict, *, timeout_seconds: int = 900,
-                           model: str | None = None, agent: str | None = None) -> tuple[bool, str]:
+                           model: str | None = None, agent: str | None = None) -> dict:
     """Run Antigravity non-interactively as the only writer.
 
     Authentication and home-directory permissions are intentionally treated as
@@ -352,4 +352,10 @@ def run_antigravity_fixer(project_root: Path, handoff: dict, *, timeout_seconds:
     (reports / "FIXER_COMMAND_REPORT.json").write_text(
         json.dumps(report, indent=2, ensure_ascii=False) + "\n", encoding="utf-8"
     )
-    return status == "PASS", reason
+    return {
+        "ok": status == "PASS",
+        "status": status,
+        "reason": reason,
+        "reason_code": reason_code,
+        "artifact_changed": artifact_changed,
+    }

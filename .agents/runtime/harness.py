@@ -1597,13 +1597,16 @@ def cmd_dual(project_name, project_root, *args):
                     project_name, project_root, task_id, feature, cycle,
                     manifest.get("reason", codex_status), mode, manifest,
                 )
-                fixer_ok, fixer_detail = run_antigravity_fixer(
+                fixer_res = run_antigravity_fixer(
                     project_root,
                     handoff,
                     timeout_seconds=int(dual_agents.get("fixer_timeout_seconds", 900)),
                     model=dual_agents.get("antigravity_model") or None,
                     agent=dual_agents.get("antigravity_agent") or None,
                 )
+                fixer_ok = fixer_res.get("ok", False)
+                fixer_status = fixer_res.get("status", "")
+                fixer_detail = fixer_res.get("reason", "")
                 steps.append({
                     "name": f"antigravity_fixer_cycle_{cycle}",
                     "status": "PASS" if fixer_ok else "BLOCKED",
@@ -1611,7 +1614,7 @@ def cmd_dual(project_name, project_root, *args):
                 })
 
                 if not fixer_ok:
-                    if "BLOCKED_NO_FIX_DELTA" in fixer_detail:
+                    if fixer_status == "BLOCKED_NO_FIX_DELTA":
                         steps.append({"name": f"fixer_terminal_{cycle}", "status": "BLOCKED_HANDOFF", "detail": f"Terminal state: BLOCKED_NO_FIX_DELTA"})
                         write_dual_report(project_root, task_id, feature, "BLOCKED_HANDOFF", steps, "Fixer made no changes", mode)
                         save_dual_terminal_state(project_root, task_id, mode, "BLOCKED_HANDOFF", "root_cause_handoff", "BLOCKED_NO_FIX_DELTA")

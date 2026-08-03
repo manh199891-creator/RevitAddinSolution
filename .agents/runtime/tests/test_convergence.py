@@ -9,7 +9,7 @@ import hashlib
 import sys
 sys.path.insert(0, str(Path(__file__).parent.parent.resolve()))
 
-from review_pipeline import aggregate_batch_results, ReviewStatus, generate_finding_id, build_codex_prompt_batch, is_review_success, classify_review_status
+from review_pipeline import aggregate_batch_results, ReviewStatus, generate_finding_id, build_codex_prompt_batch, is_review_success, classify_review_status, evaluate_focused_retry_progress
 from harness import parse_dual_args, cmd_gate, _record_blocked_verify
 from dual_agent_runtime import _scoped_writer_snapshot
 
@@ -143,7 +143,7 @@ class TestConvergence(unittest.TestCase):
             findings = []
 
             # The logic inside review_pipeline aggregate_batch_results uses review_run.json in disk but wait, it uses the dict directly if patched? No, run_codex_review sets up manifest with previous_blocking_ids etc.
-            # We can test classify_review_status and the contract directly
+            # We can test classify_review_status, evaluate_focused_retry_progress and the contract directly
             # Contract enforcement adds STILL_OPEN findings
             prev_blocking = [f for f in prev_manifest["findings"] if f.get("severity") in {"P0", "P1", "P2"} and f.get("status") not in {"RESOLVED", "ADVISORY", "DEFERRED"}]
             curr_blocking = []
@@ -167,59 +167,53 @@ class TestConvergence(unittest.TestCase):
         self.assertEqual(status, "FAIL")
 
     def test_no_progress_logic(self):
-        # A run that shows no progress
         prev_manifest = {
-            "run_id": "run1",
             "review_mode": "FOCUSED_RETRY",
             "progress": False,
             "previous_blocking_ids": ["1"],
-            "current_blocking_ids": ["1"]
+            "current_blocking_ids": ["1"],
+            "previous_findings": [{"finding_id": "1", "severity": "P1", "status": "OPEN", "title": "A"}]
         }
-        (self.project_root / ".agent/state/review_run.json").write_text(json.dumps(prev_manifest))
 
-        # simulated logic
-        progress = False
-        curr_blocking_ids = {"1"}
-
-        status = "FAIL"
-        if prev_manifest.get("review_mode") == "FOCUSED_RETRY" and not prev_manifest.get("progress", True) and not progress and curr_blocking_ids:
-            status = "BLOCKED_NO_PROGRESS"
-
+        current_findings = [{"finding_id": "1", "severity": "P1", "status": "OPEN", "title": "A"}]
+        status, reason, reason_code, data = evaluate_focused_retry_progress(prev_manifest, current_findings)
         self.assertEqual(status, "BLOCKED_NO_PROGRESS")
+        self.assertEqual(reason_code, "BLOCKING_FINDINGS_UNCHANGED")
 
-        # test first no progress -> FAIL
         prev_manifest["progress"] = True
-        status = "FAIL"
-        if prev_manifest.get("review_mode") == "FOCUSED_RETRY" and not prev_manifest.get("progress", True) and not progress and curr_blocking_ids:
-            status = "BLOCKED_NO_PROGRESS"
+        status, reason, reason_code, data = evaluate_focused_retry_progress(prev_manifest, current_findings)
         self.assertEqual(status, "FAIL")
 
     def test_oscillation_logic(self):
         prev_manifest = {
-            "run_id": "run1",
             "review_mode": "FOCUSED_RETRY",
             "previous_blocking_ids": ["1"],
-            "current_blocking_ids": ["1", "2"]
+            "current_blocking_ids": ["1", "2"],
+            "previous_findings": [
+                {"finding_id": "1", "severity": "P1", "status": "OPEN", "title": "A"},
+                {"finding_id": "2", "severity": "P1", "status": "OPEN", "title": "B"}
+            ]
         }
-        (self.project_root / ".agent/state/review_run.json").write_text(json.dumps(prev_manifest))
 
-        prev_blocking_ids = {"1", "2"}
-        curr_blocking_ids = {"1"}
-
-        status = "FAIL"
-        prev_prev_blocking_ids = set(prev_manifest.get("previous_blocking_ids", []))
-        if prev_prev_blocking_ids and curr_blocking_ids == prev_prev_blocking_ids and curr_blocking_ids != prev_blocking_ids:
-            status = "BLOCKED_OSCILLATION"
-
+        current_findings = [
+            {"finding_id": "1", "severity": "P1", "status": "OPEN", "title": "A"},
+            {"finding_id": "2", "severity": "P1", "status": "RESOLVED", "title": "B"}
+        ]
+        status, reason, reason_code, data = evaluate_focused_retry_progress(prev_manifest, current_findings)
         self.assertEqual(status, "BLOCKED_OSCILLATION")
+        self.assertEqual(reason_code, "FINDING_OSCILLATION")
 
     def test_pass_with_advisories_release_gate(self):
-        # Prepare state for release gate
         manifest = {
+            "schema_version": 1,
+            "run_id": "test",
+            "task_id": "test",
+            "repository_root": "a",
+            "source_project_root": "b",
+            "base_revision": "c",
+            "snapshot_hash": "hash123",
             "status": "PASS_WITH_ADVISORIES",
             "exit_code": 0,
-            "task_id": "test",
-            "snapshot_hash": "hash123",
             "included_files": ["test.py"]
         }
         (self.project_root / ".agent/state/review_run.json").write_text(json.dumps(manifest))
@@ -230,26 +224,125 @@ class TestConvergence(unittest.TestCase):
         (self.project_root / ".agent/reports/BUILD_REPORT.md").write_text("# BUILD_REPORT.md\n\n## Status: PASS\n")
         (self.project_root / ".agent/reports/QA_REPORT.md").write_text("# QA_REPORT.md\n\n## Status: PASS\n")
 
-        # Mock get_deterministic_snapshot temporarily for this test
-        import review_pipeline
         import harness
-        orig = harness.evaluate_task_scope
+        orig_eval = harness.evaluate_task_scope
+        orig_load = harness.load_project
+
         def mock_eval(*args, **kwargs):
             return {"snapshot_hash": "hash123", "task_files": ["test.py"]}
+
+        def mock_load(project_name):
+            return self.project_root, {
+                "release_requires": {
+                    "build_pass": True,
+                    "qa_pass": True,
+                    "codex_real_review_pass": True,
+                    "diff_hash_match": True,
+                    "runtime_validation_pass": False
+                }
+            }
+
         harness.evaluate_task_scope = mock_eval
+        harness.load_project = mock_load
 
-        # Need to mock sys.exit to catch ALLOW_RELEASE?
-        # Actually cmd_gate does not raise sys.exit unless it fails
-        # It just returns successfully.
         try:
-            cmd_gate("project", self.project_root)
-            success = True
-        except SystemExit:
-            success = False
-        finally:
-            harness.evaluate_task_scope = orig
+            try:
+                cmd_gate("project", self.project_root)
+                success = True
+            except SystemExit:
+                success = False
+            self.assertTrue(success)
 
-        self.assertTrue(success)
+            # test fail when hash mismatch
+            manifest["snapshot_hash"] = "hash_diff"
+            (self.project_root / ".agent/state/review_run.json").write_text(json.dumps(manifest))
+            try:
+                cmd_gate("project", self.project_root)
+                success = True
+            except SystemExit:
+                success = False
+            self.assertFalse(success)
+
+        finally:
+            harness.evaluate_task_scope = orig_eval
+            harness.load_project = orig_load
+
+    def test_advisory_stale(self):
+        import review_pipeline
+        # We simulate the 7.5 Check post-run snapshot
+        repo_root = self.project_root / "source-code"
+        repo_root.mkdir()
+        (repo_root / "file.py").write_text("print('hello')", "utf-8")
+
+        # Original status is PASS_WITH_ADVISORIES
+        # but the evaluate_task_scope returns a different hash
+        import harness
+        orig_eval = harness.evaluate_task_scope
+
+        def mock_eval(*args, **kwargs):
+            return {"snapshot_hash": "hash999"}
+
+        try:
+            harness.evaluate_task_scope = mock_eval
+            # Inline snippet equivalent to 7.5 Check post-run snapshot
+            status = review_pipeline.ReviewStatus.PASS_WITH_ADVISORIES
+            snapshot_hash = "hash123"
+            reason = ""
+
+            if status in (review_pipeline.ReviewStatus.PASS, review_pipeline.ReviewStatus.PASS_WITH_ADVISORIES):
+                post_evaluation = harness.evaluate_task_scope(
+                    repo_root, None, None, expected_task_id="test", require_delta=True
+                )
+                post_hash = post_evaluation["snapshot_hash"]
+                if post_hash != snapshot_hash:
+                    status = review_pipeline.ReviewStatus.STALE
+                    reason = "Source code changed during review."
+
+            self.assertEqual(status, review_pipeline.ReviewStatus.STALE)
+            self.assertEqual(reason, "Source code changed during review.")
+        finally:
+            harness.evaluate_task_scope = orig_eval
+
+    def test_run_antigravity_fixer_no_delta(self):
+        from dual_agent_runtime import run_antigravity_fixer
+
+        # Test signature and return dictionary
+        repo_root = self.project_root / "source-code"
+        repo_root.mkdir()
+        (repo_root / "file.py").write_text("print('hello')", "utf-8")
+
+        handoff = {"allowed_files": ["**/*"]}
+        # Write dummy antigravity executable
+        (self.project_root / "antigravity").touch(mode=0o755)
+        # We can't really execute antigravity here, but we can verify harness logic
+        # by calling harness.py directly or just verifying the dict returned structure
+        import subprocess
+        # mock subprocess.Popen
+        orig_popen = subprocess.Popen
+        class MockProc:
+            returncode = 0
+            def communicate(self, timeout=None):
+                return "output", ""
+        def mock_popen(*args, **kwargs):
+            return MockProc()
+
+        subprocess.Popen = mock_popen
+
+        # mock find_antigravity
+        import dual_agent_runtime
+        orig_find = dual_agent_runtime.find_antigravity
+        dual_agent_runtime.find_antigravity = lambda: "dummy"
+
+        try:
+            res = run_antigravity_fixer(self.project_root, handoff)
+            self.assertIn("ok", res)
+            self.assertIn("status", res)
+            self.assertEqual(res["status"], "BLOCKED_NO_FIX_DELTA")
+            self.assertEqual(res["reason_code"], "WRITER_NO_DELTA")
+            self.assertFalse(res["artifact_changed"])
+        finally:
+            subprocess.Popen = orig_popen
+            dual_agent_runtime.find_antigravity = orig_find
 
 if __name__ == '__main__':
     unittest.main()
