@@ -129,10 +129,7 @@ def initialize_dual_run_state(project_root, task_id, feature, mode, next_step):
     )
 
 from review_pipeline import (
-<<<<<<< HEAD
-=======
     is_review_success,
->>>>>>> a7ab32cf6d761ef39ae4917f81a9a40ca088e26e
     capture_task_baseline,
     evaluate_task_scope,
     run_codex_review,
@@ -433,11 +430,7 @@ def cmd_guardrails(project_name, project_root):
     scope_file = project_root / ".agent/context/TASK_SCOPE.json"
     reports_dir = project_root / ".agent/reports"
     source_code = project_root / "source-code"
-<<<<<<< HEAD
-    
-=======
 
->>>>>>> a7ab32cf6d761ef39ae4917f81a9a40ca088e26e
     scope = json.loads(scope_file.read_text(encoding="utf-8")) if scope_file.exists() else {}
     try:
         evaluation = evaluate_task_scope(
@@ -478,33 +471,19 @@ def cmd_runtime(project_name, project_root):
     header(f"RUNTIME VALIDATION — {project_name}")
     _, profile = load_project(project_name)
     rt = profile.get("runtime_validation", {})
-<<<<<<< HEAD
-    
-    is_required = rt.get("required", False) or rt.get("required_for_gate", False)
-    
-=======
 
     is_required = rt.get("required", False) or rt.get("required_for_gate", False)
 
->>>>>>> a7ab32cf6d761ef39ae4917f81a9a40ca088e26e
     rt_type = rt.get("type", "manual_revit_test")
     report_rel_path = rt.get("report", ".agent/reports/RUNTIME_VALIDATION_REPORT.md")
     report_path = project_root / report_rel_path
     report_name = Path(report_rel_path).name
-<<<<<<< HEAD
-    
-=======
 
->>>>>>> a7ab32cf6d761ef39ae4917f81a9a40ca088e26e
     print(f"  Type: {rt_type}")
     print(f"  Required for Gate: {is_required}")
     reports_dir = project_root / ".agent/reports"
     reports_dir.mkdir(parents=True, exist_ok=True)
-<<<<<<< HEAD
-    
-=======
 
->>>>>>> a7ab32cf6d761ef39ae4917f81a9a40ca088e26e
     status = "FAIL"
     if rt_type == "manual_revit_test" or rt_type == "manual_navis_test":
         print("\n  👉 HƯỚNG DẪN TEST THỦ CÔNG:\n")
@@ -514,11 +493,7 @@ def cmd_runtime(project_name, project_root):
         if ans == 'p': status = "PASS"
     elif rt_type == "ricaun_revit_test":
         print("  Đang chạy ricaun.RevitTest via dotnet test...")
-<<<<<<< HEAD
-        
-=======
 
->>>>>>> a7ab32cf6d761ef39ae4917f81a9a40ca088e26e
         # Preflight check: Xem có InstallationLocation không để fast-fail (tránh đợi 3.5 phút)
         has_registry = False
         try:
@@ -529,11 +504,7 @@ def cmd_runtime(project_name, project_root):
                     has_registry = True
         except Exception:
             pass
-<<<<<<< HEAD
-            
-=======
 
->>>>>>> a7ab32cf6d761ef39ae4917f81a9a40ca088e26e
         if not has_registry:
             print("  ⚠️ [PREFLIGHT] Không tìm thấy HKLM\\...\\InstallationLocation.")
             print("  ⚠️ Bỏ qua test để tránh treo 3-4 phút (INFRA_FAIL).")
@@ -553,11 +524,7 @@ def cmd_runtime(project_name, project_root):
             except subprocess.TimeoutExpired as exc:
                 status = "FAIL (TIMEOUT)"
                 output_str = f"Lệnh test vượt quá 10 phút (600s).\n{exc}"
-<<<<<<< HEAD
-            
-=======
 
->>>>>>> a7ab32cf6d761ef39ae4917f81a9a40ca088e26e
         report = f"# {report_name}\n\n## Status: {status}\n\n## Type: {rt_type}\n\n## Output\n```\n{output_str}\n```\n"
         report_path.write_text(report, encoding="utf-8")
         print(f"  → Status: {status}")
@@ -577,15 +544,9 @@ def cmd_gate(project_name, project_root):
     reports_dir = project_root / ".agent/reports"
     state_dir = project_root / ".agent/state"
     context_dir = project_root / ".agent/context"
-<<<<<<< HEAD
-    
-    req = profile.get("release_requires", {})
-    
-=======
 
     req = profile.get("release_requires", {})
 
->>>>>>> a7ab32cf6d761ef39ae4917f81a9a40ca088e26e
     # 1. Build pass
     build_pass = False
     if req.get("build_pass"):
@@ -599,11 +560,7 @@ def cmd_gate(project_name, project_root):
         qa_pass = report_status_is(reports_dir / "QA_REPORT.md", ["PASS", "EFFECTIVE PASS"])
     else:
         qa_pass = True
-<<<<<<< HEAD
-        
-=======
 
->>>>>>> a7ab32cf6d761ef39ae4917f81a9a40ca088e26e
     # 3. Codex real review pass (Rigorous Checks)
     codex_pass = False
     codex_real = False
@@ -611,11 +568,7 @@ def cmd_gate(project_name, project_root):
     task_id_match = False
     hash_match = False
     gate_issues = []
-<<<<<<< HEAD
-    
-=======
 
->>>>>>> a7ab32cf6d761ef39ae4917f81a9a40ca088e26e
     manifest_file = state_dir / "review_run.json"
     manifest = {}
     if manifest_file.exists():
@@ -632,11 +585,7 @@ def cmd_gate(project_name, project_root):
             schema_valid = True
         except Exception:
             schema_valid = False
-<<<<<<< HEAD
-            
-=======
 
->>>>>>> a7ab32cf6d761ef39ae4917f81a9a40ca088e26e
     # Check task scope task_id vs manifest task_id
     task_scope_file = context_dir / "TASK_SCOPE.json"
     scope = {}
@@ -666,11 +615,7 @@ def cmd_gate(project_name, project_root):
     except:
         current_hash = ""
         current_files = []
-<<<<<<< HEAD
-        
-=======
 
->>>>>>> a7ab32cf6d761ef39ae4917f81a9a40ca088e26e
     reviewed_hash = manifest.get("snapshot_hash", "")
     hash_match = (current_hash == reviewed_hash) and bool(current_hash)
     reviewed_files_match = current_files == manifest.get("included_files", [])
@@ -687,11 +632,7 @@ def cmd_gate(project_name, project_root):
     gate_issues.extend(evidence_issues)
 
     if req.get("codex_real_review_pass"):
-<<<<<<< HEAD
-        if manifest.get("status") == "PASS" and schema_valid and task_id_match and hash_match and reviewed_files_match:
-=======
         if manifest.get("status") in ("PASS", "PASS_WITH_ADVISORIES") and schema_valid and task_id_match and hash_match and reviewed_files_match:
->>>>>>> a7ab32cf6d761ef39ae4917f81a9a40ca088e26e
             codex_pass = True
             if manifest.get("exit_code") == 0:
                 codex_real = True
@@ -702,19 +643,11 @@ def cmd_gate(project_name, project_root):
         task_id_match = True
         hash_match = True
         reviewed_files_match = True
-<<<<<<< HEAD
-        
-    evidence_complete = not manifest.get("evidence_truncated", False)
-    if not evidence_complete:
-        gate_issues.append("Evidence was truncated (too large).")
-        
-=======
 
     evidence_complete = not manifest.get("evidence_truncated", False)
     if not evidence_complete:
         gate_issues.append("Evidence was truncated (too large).")
 
->>>>>>> a7ab32cf6d761ef39ae4917f81a9a40ca088e26e
     # 5. Runtime validation pass
     runtime_pass = False
     if req.get("runtime_validation_pass"):
@@ -734,31 +667,18 @@ def cmd_gate(project_name, project_root):
     guardrails_pass = report_status_is(reports_dir / "GUARDRAILS_REPORT.md", ["PASS", "WARN"])
 
     batches = manifest.get("batches", [])
-<<<<<<< HEAD
-    
-=======
 
->>>>>>> a7ab32cf6d761ef39ae4917f81a9a40ca088e26e
     def check_batch_pass(b):
         children = b.get("children")
         if children:
             return all(check_batch_pass(c) for c in children)
-<<<<<<< HEAD
-        return b.get("status") == "PASS"
-        
-=======
         return is_review_success(b.get("status"))
 
->>>>>>> a7ab32cf6d761ef39ae4917f81a9a40ca088e26e
     if batches:
         batch_complete = all(check_batch_pass(b) for b in batches)
     else:
         batch_complete = True
-<<<<<<< HEAD
-        
-=======
 
->>>>>>> a7ab32cf6d761ef39ae4917f81a9a40ca088e26e
     if not batch_complete:
         gate_issues.append("One or more Codex review batches did not pass.")
 
@@ -778,11 +698,7 @@ def cmd_gate(project_name, project_root):
 
     all_pass = all(c[2] for c in checks if c[1] or c[0] == "Guardrails pass")
     status = "ALLOW_RELEASE" if all_pass else "BLOCK_RELEASE"
-<<<<<<< HEAD
-    
-=======
 
->>>>>>> a7ab32cf6d761ef39ae4917f81a9a40ca088e26e
     report = f"# RELEASE_GATE_REPORT.md\n\n## Status: {status}\n\n## Gate Checks\n\n| Check | Required | Status |\n|---|---|---|\n"
     for name, required, passed in checks:
         if not required and name != "Guardrails pass":
@@ -791,11 +707,7 @@ def cmd_gate(project_name, project_root):
             st = "PASS" if passed else "FAIL"
         report += f"| {name} | {'Yes' if required else 'No'} | {st} |\n"
         print(f"  {name:<25}: {st}")
-<<<<<<< HEAD
-        
-=======
 
->>>>>>> a7ab32cf6d761ef39ae4917f81a9a40ca088e26e
     report += f"\n## Decision\n- {status}\n"
     if gate_issues:
         report += "\n## Gate Issues\n"
@@ -804,11 +716,7 @@ def cmd_gate(project_name, project_root):
             report += f"- {issue}\n"
             print(f"    - {issue}")
     (reports_dir / "RELEASE_GATE_REPORT.md").write_text(report, encoding="utf-8")
-<<<<<<< HEAD
-    
-=======
 
->>>>>>> a7ab32cf6d761ef39ae4917f81a9a40ca088e26e
     sep()
     if status == "ALLOW_RELEASE":
         print("  ✅ ALLOW_RELEASE")
@@ -835,11 +743,8 @@ def cmd_codex(project_name, project_root, *args):
     task_id = None
     requested_feature = None
     review_purpose = "release"
-<<<<<<< HEAD
-=======
     cycle = 1
     max_cycles = 1
->>>>>>> a7ab32cf6d761ef39ae4917f81a9a40ca088e26e
     for i, a in enumerate(args):
         if a == "--task-id" and i + 1 < len(args):
             task_id = args[i+1]
@@ -847,25 +752,17 @@ def cmd_codex(project_name, project_root, *args):
             requested_feature = args[i+1]
         if a == "--review-purpose" and i + 1 < len(args):
             review_purpose = args[i+1]
-<<<<<<< HEAD
-            
-=======
         if a == "--cycle" and i + 1 < len(args):
             cycle = int(args[i+1])
         if a == "--max-cycles" and i + 1 < len(args):
             max_cycles = int(args[i+1])
 
->>>>>>> a7ab32cf6d761ef39ae4917f81a9a40ca088e26e
     if not task_id:
         state = load_state(project_root)
         task_id = state.get("task_id", "unknown_task_id")
 
     feature_name = requested_feature or "Autodetected Feature"
-<<<<<<< HEAD
-    
-=======
 
->>>>>>> a7ab32cf6d761ef39ae4917f81a9a40ca088e26e
     ctx = project_root / ".agent/context/PROJECT_CONTEXT.md"
     if not requested_feature and ctx.exists():
         for line in ctx.read_text(encoding="utf-8").splitlines():
@@ -878,25 +775,16 @@ def cmd_codex(project_name, project_root, *args):
     manifest = run_codex_review(
         project_root, task_id, feature_name, codex_path,
         review_purpose=review_purpose,
-<<<<<<< HEAD
-    )
-    
-=======
         cycle=cycle,
         max_cycles=max_cycles
     )
 
->>>>>>> a7ab32cf6d761ef39ae4917f81a9a40ca088e26e
     status = manifest.get("status")
 
     # Cập nhật state
     state = load_state(project_root)
     state["codex_status"] = status.lower() if status else "infra_fail"
-<<<<<<< HEAD
-    if status == ReviewStatus.PASS:
-=======
     if is_review_success(status):
->>>>>>> a7ab32cf6d761ef39ae4917f81a9a40ca088e26e
         state["next_step"] = "07_release"
         state["current_agent"] = "codex_done"
         state["retry_count"] = 0
@@ -910,19 +798,11 @@ def cmd_codex(project_name, project_root, *args):
             state["next_step"] = "gemini_fixer"
     else:
         state["next_step"] = "blocked" # Wait for manual fix
-<<<<<<< HEAD
-        
-    save_state(project_root, state)
-
-    sep()
-    if status == ReviewStatus.PASS:
-=======
 
     save_state(project_root, state)
 
     sep()
     if is_review_success(status):
->>>>>>> a7ab32cf6d761ef39ae4917f81a9a40ca088e26e
         print("  ✅ CODEX PASS")
         print("  → Bước tiếp: python harness.py revit next")
     elif status == ReviewStatus.FAIL:
@@ -974,14 +854,10 @@ def parse_dual_args(args):
             opts["artifacts"].extend(split_list_arg(args[i + 1]))
             i += 2
         elif arg == "--max-cycles" and i + 1 < len(args):
-<<<<<<< HEAD
-            opts["max_cycles"] = max(1, int(args[i + 1]))
-=======
             val = int(args[i + 1])
             if val < 1 or val > 3:
                 raise ValueError("max_cycles must be between 1 and 3")
             opts["max_cycles"] = val
->>>>>>> a7ab32cf6d761ef39ae4917f81a9a40ca088e26e
             i += 2
         elif arg == "--skip-verify":
             opts["skip_verify"] = True
@@ -1558,11 +1434,7 @@ def cmd_dual(project_name, project_root, *args):
             "status": codex_status,
             "detail": manifest.get("reason", ""),
         })
-<<<<<<< HEAD
-        passed = codex_status == ReviewStatus.PASS
-=======
         passed = codex_status in (ReviewStatus.PASS, ReviewStatus.PASS_WITH_ADVISORIES)
->>>>>>> a7ab32cf6d761ef39ae4917f81a9a40ca088e26e
         final_status = "PASS" if passed else "BLOCKED"
         state = load_state(project_root)
         state["dual_mode"] = mode
@@ -1581,8 +1453,6 @@ def cmd_dual(project_name, project_root, *args):
             )
             print(f"  DUAL PIPELINE PASS ({mode})")
             return True
-<<<<<<< HEAD
-=======
 
         # Terminal statuses that block retries
         if codex_status in ("BLOCKED_NO_PROGRESS", "BLOCKED_OSCILLATION", "STALE", "INFRA_FAIL"):
@@ -1592,7 +1462,6 @@ def cmd_dual(project_name, project_root, *args):
             print(f"  ❌ DUAL PIPELINE STOPPED: {codex_status}")
             sys.exit(1)
 
->>>>>>> a7ab32cf6d761ef39ae4917f81a9a40ca088e26e
         _, exhausted = record_failed_attempt(
             project_root,
             stage=f"{mode}_review",
@@ -1633,11 +1502,7 @@ def cmd_dual(project_name, project_root, *args):
 
     guardrails = cmd_guardrails(project_name, project_root)
     guardrail_status = guardrails.get("status", "FAIL")
-<<<<<<< HEAD
-    gr_ok = guardrail_status == ReviewStatus.PASS
-=======
     gr_ok = guardrail_status in (ReviewStatus.PASS, ReviewStatus.PASS_WITH_ADVISORIES)
->>>>>>> a7ab32cf6d761ef39ae4917f81a9a40ca088e26e
     steps.append({"name": "guardrails", "status": guardrail_status, "detail": "Shared task-delta scope decision"})
     if not gr_ok:
         _record_blocked_guardrails(
@@ -1654,21 +1519,14 @@ def cmd_dual(project_name, project_root, *args):
             "--task-id", task_id,
             "--feature", feature,
             "--review-purpose", mode,
-<<<<<<< HEAD
-=======
             "--cycle", str(cycle),
             "--max-cycles", str(opts["max_cycles"]),
->>>>>>> a7ab32cf6d761ef39ae4917f81a9a40ca088e26e
         )
         manifest_file = project_root / ".agent/state/review_run.json"
         manifest = json.loads(manifest_file.read_text(encoding="utf-8")) if manifest_file.exists() else {}
         codex_status = manifest.get("status", "INFRA_FAIL")
         steps.append({"name": f"codex_cycle_{cycle}", "status": codex_status, "detail": manifest.get("reason", "")})
-<<<<<<< HEAD
-        if codex_status == ReviewStatus.PASS:
-=======
         if codex_status in (ReviewStatus.PASS, ReviewStatus.PASS_WITH_ADVISORIES):
->>>>>>> a7ab32cf6d761ef39ae4917f81a9a40ca088e26e
             update_task_context(
                 project_root,
                 status="review_passed",
@@ -1677,8 +1535,6 @@ def cmd_dual(project_name, project_root, *args):
                 detail=f"run_id={manifest.get('run_id', 'unknown')}",
             )
             break
-<<<<<<< HEAD
-=======
 
         # Terminal statuses that block retries
         if codex_status in ("BLOCKED_NO_PROGRESS", "BLOCKED_OSCILLATION", "STALE", "INFRA_FAIL"):
@@ -1688,7 +1544,6 @@ def cmd_dual(project_name, project_root, *args):
             print(f"  ❌ DUAL PIPELINE STOPPED: {codex_status}")
             sys.exit(1)
 
->>>>>>> a7ab32cf6d761ef39ae4917f81a9a40ca088e26e
         _, exhausted = record_failed_attempt(
             project_root,
             stage="codex_review",
@@ -1721,11 +1576,6 @@ def cmd_dual(project_name, project_root, *args):
             if fix_command:
                 fixer_ok, fixer_detail = run_fixer_command(project_root, fix_command)
                 steps.append({"name": f"fixer_cycle_{cycle}", "status": "PASS" if fixer_ok else "FAIL", "detail": fixer_detail})
-<<<<<<< HEAD
-                if not fixer_ok:
-                    write_fixer_handoff(project_name, project_root, task_id, feature, cycle, fixer_detail, mode, manifest)
-                    break
-=======
 
                 if not fixer_ok:
                     write_fixer_handoff(project_name, project_root, task_id, feature, cycle, fixer_detail, mode, manifest)
@@ -1737,7 +1587,6 @@ def cmd_dual(project_name, project_root, *args):
                         sys.exit(1)
                     break
 
->>>>>>> a7ab32cf6d761ef39ae4917f81a9a40ca088e26e
                 if not opts["skip_verify"]:
                     cmd_verify(project_name, project_root)
                     steps.append({"name": f"verify_after_fix_{cycle}", "status": "DONE", "detail": "Build/test/lint reports refreshed"})
@@ -1748,32 +1597,21 @@ def cmd_dual(project_name, project_root, *args):
                     project_name, project_root, task_id, feature, cycle,
                     manifest.get("reason", codex_status), mode, manifest,
                 )
-<<<<<<< HEAD
-                fixer_ok, fixer_detail = run_antigravity_fixer(
-=======
                 fixer_res = run_antigravity_fixer(
->>>>>>> a7ab32cf6d761ef39ae4917f81a9a40ca088e26e
                     project_root,
                     handoff,
                     timeout_seconds=int(dual_agents.get("fixer_timeout_seconds", 900)),
                     model=dual_agents.get("antigravity_model") or None,
                     agent=dual_agents.get("antigravity_agent") or None,
                 )
-<<<<<<< HEAD
-=======
                 fixer_ok = fixer_res.get("ok", False)
                 fixer_status = fixer_res.get("status", "")
                 fixer_detail = fixer_res.get("reason", "")
->>>>>>> a7ab32cf6d761ef39ae4917f81a9a40ca088e26e
                 steps.append({
                     "name": f"antigravity_fixer_cycle_{cycle}",
                     "status": "PASS" if fixer_ok else "BLOCKED",
                     "detail": fixer_detail,
                 })
-<<<<<<< HEAD
-                if not fixer_ok:
-                    break
-=======
 
                 if not fixer_ok:
                     if fixer_status == "BLOCKED_NO_FIX_DELTA":
@@ -1784,7 +1622,6 @@ def cmd_dual(project_name, project_root, *args):
                         sys.exit(1)
                     break
 
->>>>>>> a7ab32cf6d761ef39ae4917f81a9a40ca088e26e
                 if not opts["skip_verify"]:
                     refreshed = cmd_verify(project_name, project_root)
                     steps.append({
@@ -1800,30 +1637,18 @@ def cmd_dual(project_name, project_root, *args):
                     "status": refreshed_guardrails.get("status", "FAIL"),
                     "detail": "Post-fix scope validation",
                 })
-<<<<<<< HEAD
-                if refreshed_guardrails.get("status") != ReviewStatus.PASS:
-=======
                 if refreshed_guardrails.get("status") not in (ReviewStatus.PASS, ReviewStatus.PASS_WITH_ADVISORIES):
->>>>>>> a7ab32cf6d761ef39ae4917f81a9a40ca088e26e
                     break
                 continue
             print("  ⚠️ Codex chưa PASS. Hãy để Anti/Fixer sửa theo CODEX_REVIEW.md rồi chạy lại dual.")
             break
 
-<<<<<<< HEAD
-    if steps and steps[-1]["name"].startswith("codex_cycle_") and steps[-1]["status"] != ReviewStatus.PASS and opts["max_cycles"] > 1 and not has_fixer:
-=======
     if steps and steps[-1]["name"].startswith("codex_cycle_") and steps[-1]["status"] not in (ReviewStatus.PASS, ReviewStatus.PASS_WITH_ADVISORIES) and opts["max_cycles"] > 1 and not has_fixer:
->>>>>>> a7ab32cf6d761ef39ae4917f81a9a40ca088e26e
         write_fixer_handoff(project_name, project_root, task_id, feature, opts["max_cycles"], steps[-1].get("detail", "Codex review did not pass"), mode, manifest)
         steps.append({"name": "fixer_handoff", "status": "BLOCKED", "detail": "No fixer command configured; wrote FIXER_HANDOFF.md"})
 
     if mode == "code":
-<<<<<<< HEAD
-        code_ok = codex_status == ReviewStatus.PASS
-=======
         code_ok = codex_status in (ReviewStatus.PASS, ReviewStatus.PASS_WITH_ADVISORIES)
->>>>>>> a7ab32cf6d761ef39ae4917f81a9a40ca088e26e
         smoke_run = opts["skip_verify"]
         steps.append({
             "name": "code_gate",
@@ -2011,11 +1836,7 @@ def cmd_done(project_name, project_root, step_key=None):
         idx = STEP_ORDER.index(current) if current in STEP_ORDER else 0
         if idx + 1 < len(STEP_ORDER):
             state["next_step"] = STEP_ORDER[idx + 1]
-<<<<<<< HEAD
-            
-=======
 
->>>>>>> a7ab32cf6d761ef39ae4917f81a9a40ca088e26e
     state["status"] = "in_progress"
     save_state(project_root, state)
     log(f"Step '{current}' đánh dấu xong → next: {state['next_step']}")
@@ -2025,11 +1846,7 @@ def cmd_done(project_name, project_root, step_key=None):
 
 def cmd_promote(project_name, project_root):
     header(f"PROMOTION GATE — {project_name}")
-<<<<<<< HEAD
-    
-=======
 
->>>>>>> a7ab32cf6d761ef39ae4917f81a9a40ca088e26e
     # Deploy Lock (Check Review Status)
     manifest_file = project_root / ".agent/state/review_run.json"
     if manifest_file.exists():
@@ -2042,28 +1859,17 @@ def cmd_promote(project_name, project_root):
     if not gate_report.exists() or "Status: ALLOW_RELEASE" not in gate_report.read_text(encoding="utf-8"):
         print("  ❌ BLOCK_RELEASE: Release Gate chưa PASS. Chạy `python harness.py [project] gate` để kiểm tra.")
         return
-<<<<<<< HEAD
-        
-    source = project_root / "source-code"
-    target = SOURCE_DIR.get(project_name)
-    
-=======
 
     source = project_root / "source-code"
     target = SOURCE_DIR.get(project_name)
 
->>>>>>> a7ab32cf6d761ef39ae4917f81a9a40ca088e26e
     print(f"  Bắt đầu promote code từ sandbox về {target}...\n")
     src_cs = source / "src"
     if src_cs.exists():
         print(f'  xcopy /E /I /Y "{src_cs}\\*" "{target}\\src\\"')
     else:
         print(f'  xcopy /E /I /Y "{source}\\*" "{target}\\"')
-<<<<<<< HEAD
-        
-=======
 
->>>>>>> a7ab32cf6d761ef39ae4917f81a9a40ca088e26e
     print(f"""
   [2] Kiểm tra diff:
   cd "{target}"
