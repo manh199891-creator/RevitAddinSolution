@@ -1,4 +1,4 @@
-﻿
+
 Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio Version 17
 VisualStudioVersion = 17.0.31903.59
@@ -63,15 +63,13 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Antigravity.HatchPatterns.C
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Antigravity.AutoFoundation", "src\Antigravity.AutoFoundation\Antigravity.AutoFoundation.csproj", "{B142D220-ED65-43B5-9CA2-B5BEE069547A}"
 EndProject
-<<<<<<< HEAD
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Antigravity.Formwork.Core", "src\Antigravity.Formwork.Core\Antigravity.Formwork.Core.csproj", "{A53425C6-56C9-487B-884D-05E7A6150527}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Antigravity.Formwork", "src\Antigravity.Formwork\Antigravity.Formwork.csproj", "{F940553E-2957-4E80-A92C-6D10D8B8F067}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Antigravity.LOQN1_Location", "src\Antigravity.LOQN1_Location\Antigravity.LOQN1_Location.csproj", "{D7734B3F-3463-4CF9-95E9-2CF225AF1AFF}"
-=======
+EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Antigravity.DrawBeams.Tests", "tests\Antigravity.DrawBeams.Tests\Antigravity.DrawBeams.Tests.csproj", "{9CF7F050-2A9C-4910-BEC9-554691F3FA4E}"
->>>>>>> a7ab32cf6d761ef39ae4917f81a9a40ca088e26e
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -419,7 +417,6 @@ Global
 		{B142D220-ED65-43B5-9CA2-B5BEE069547A}.Release|x64.Build.0 = Release|Any CPU
 		{B142D220-ED65-43B5-9CA2-B5BEE069547A}.Release|x86.ActiveCfg = Release|Any CPU
 		{B142D220-ED65-43B5-9CA2-B5BEE069547A}.Release|x86.Build.0 = Release|Any CPU
-<<<<<<< HEAD
 		{A53425C6-56C9-487B-884D-05E7A6150527}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
 		{A53425C6-56C9-487B-884D-05E7A6150527}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{A53425C6-56C9-487B-884D-05E7A6150527}.Debug|x64.ActiveCfg = Debug|Any CPU
@@ -456,7 +453,6 @@ Global
 		{D7734B3F-3463-4CF9-95E9-2CF225AF1AFF}.Release|x64.Build.0 = Release|x64
 		{D7734B3F-3463-4CF9-95E9-2CF225AF1AFF}.Release|x86.ActiveCfg = Release|x64
 		{D7734B3F-3463-4CF9-95E9-2CF225AF1AFF}.Release|x86.Build.0 = Release|x64
-=======
 		{9CF7F050-2A9C-4910-BEC9-554691F3FA4E}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
 		{9CF7F050-2A9C-4910-BEC9-554691F3FA4E}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{9CF7F050-2A9C-4910-BEC9-554691F3FA4E}.Debug|x64.ActiveCfg = Debug|Any CPU
@@ -469,7 +465,6 @@ Global
 		{9CF7F050-2A9C-4910-BEC9-554691F3FA4E}.Release|x64.Build.0 = Release|Any CPU
 		{9CF7F050-2A9C-4910-BEC9-554691F3FA4E}.Release|x86.ActiveCfg = Release|Any CPU
 		{9CF7F050-2A9C-4910-BEC9-554691F3FA4E}.Release|x86.Build.0 = Release|Any CPU
->>>>>>> a7ab32cf6d761ef39ae4917f81a9a40ca088e26e
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
@@ -496,12 +491,9 @@ Global
 		{D768DFAF-5928-4E7C-9CDE-FF688D590AA4} = {827E0CD3-B72D-47B6-A68D-7590B98EB39B}
 		{334D9940-6837-4AC0-A14F-CB6D1B9A09B2} = {827E0CD3-B72D-47B6-A68D-7590B98EB39B}
 		{B142D220-ED65-43B5-9CA2-B5BEE069547A} = {827E0CD3-B72D-47B6-A68D-7590B98EB39B}
-<<<<<<< HEAD
 		{A53425C6-56C9-487B-884D-05E7A6150527} = {827E0CD3-B72D-47B6-A68D-7590B98EB39B}
 		{F940553E-2957-4E80-A92C-6D10D8B8F067} = {827E0CD3-B72D-47B6-A68D-7590B98EB39B}
 		{D7734B3F-3463-4CF9-95E9-2CF225AF1AFF} = {827E0CD3-B72D-47B6-A68D-7590B98EB39B}
-=======
 		{9CF7F050-2A9C-4910-BEC9-554691F3FA4E} = {0AB3BF05-4346-4AA6-1389-037BE0695223}
->>>>>>> a7ab32cf6d761ef39ae4917f81a9a40ca088e26e
 	EndGlobalSection
 EndGlobal

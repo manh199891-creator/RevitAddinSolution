@@ -1,12 +1,8 @@
 param(
-<<<<<<< HEAD
-    [Parameter(Mandatory=$true)][string]$Project
-=======
     [Parameter(Mandatory=$true)][string]$Project,
     [switch]$AsJson,
     [switch]$Full,
     [switch]$FindingsOnly
->>>>>>> a7ab32cf6d761ef39ae4917f81a9a40ca088e26e
 )
 
 . (Join-Path $PSScriptRoot "dual_paths.ps1")
@@ -22,8 +18,6 @@ $aliases = @{
 $projectName = if ($aliases.ContainsKey($Project)) { $aliases[$Project] } else { $Project }
 $projectRoot = Join-Path $factoryRoot $projectName
 
-<<<<<<< HEAD
-=======
 $manifestPath = Join-Path $projectRoot ".agent\state\review_run.json"
 $manifest = $null
 if (Test-Path $manifestPath) {
@@ -104,7 +98,6 @@ if ($manifest) {
     Write-Output ""
 }
 
->>>>>>> a7ab32cf6d761ef39ae4917f81a9a40ca088e26e
 $reports = @(
     "DUAL_AGENT_REPORT.md",
     "CODEX_REVIEW.md",
@@ -117,16 +110,6 @@ foreach ($report in $reports) {
     if (Test-Path $path) {
         Write-Output "--- $report ---"
         Write-Output "Path: $path"
-<<<<<<< HEAD
-        
-        $content = Get-Content $path
-        $summary = $content | Where-Object { $_ -match "^## Status:" -or $_ -match "^## Summary:" }
-        if ($summary) {
-            Write-Output $summary
-        } else {
-            $firstLines = $content | Where-Object { $_.Trim() -ne "" } | Select-Object -First 2
-            Write-Output $firstLines
-=======
 
         $content = Get-Content $path
         if ($Full) {
@@ -139,7 +122,6 @@ foreach ($report in $reports) {
                 $firstLines = $content | Where-Object { $_.Trim() -ne "" } | Select-Object -First 2
                 Write-Output $firstLines
             }
->>>>>>> a7ab32cf6d761ef39ae4917f81a9a40ca088e26e
         }
         Write-Output ""
     }
