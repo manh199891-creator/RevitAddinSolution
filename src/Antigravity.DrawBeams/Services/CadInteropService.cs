@@ -1,4 +1,4 @@
-﻿using Antigravity.DrawBeams.Models;
+using Antigravity.DrawBeams.Models;
 using System;
 using System.Collections.Generic;
 using System.Globalization;
@@ -248,6 +248,24 @@ namespace Antigravity.DrawBeams.Services
             public string TextContent { get; set; }
             public double OverlapLength { get; set; }
             public double Confidence { get; set; }
+        }
+
+        public List<CadBeamData> ProcessScene(
+            CadScene scene,
+            string beamLayer,
+            string textLayer)
+        {
+            IReadOnlyList<string> beamLayers =
+                string.IsNullOrWhiteSpace(beamLayer)
+                    ? null
+                    : new[] { beamLayer };
+
+            IReadOnlyList<string> textLayers =
+                string.IsNullOrWhiteSpace(textLayer)
+                    ? null
+                    : new[] { textLayer };
+
+            return ProcessScene(scene, beamLayers, textLayers);
         }
 
         /// <summary>

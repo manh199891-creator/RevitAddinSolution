@@ -305,5 +305,54 @@ namespace Antigravity.DrawBeams.Tests
             Assert.Equal(600, beam.Height);
             Assert.Equal("B1", beam.Mark);
         }
+        [Fact]
+        public void ProcessScene_ListOverload_RecognizesBeam()
+        {
+            var scene = new CadScene();
+
+            scene.Segments.Add(new CadSegment
+            {
+                Id = "LINE1",
+                StartX = 0,
+                StartY = 0,
+                EndX = 4000,
+                EndY = 0,
+                Layer = "BEAM_LAYER",
+                Color = 1
+            });
+
+            scene.Segments.Add(new CadSegment
+            {
+                Id = "LINE2",
+                StartX = 0,
+                StartY = 200,
+                EndX = 4000,
+                EndY = 200,
+                Layer = "BEAM_LAYER",
+                Color = 1
+            });
+
+            scene.Texts.Add(new CadText
+            {
+                Id = "TXT1",
+                TextString = "200x500",
+                X = 2000,
+                Y = 100,
+                Rotation = 0.0,
+                TextHeight = 250,
+                Layer = "TEXT_LAYER",
+                ObjectName = "AcDbText"
+            });
+
+            IReadOnlyList<string> beamLayers = new[] { "BEAM_LAYER" };
+            IReadOnlyList<string> textLayers = new[] { "TEXT_LAYER" };
+            List<CadBeamData> beams = _service.ProcessScene(scene, beamLayers, textLayers);
+
+            Assert.Single(beams);
+            var beam = beams.First();
+            Assert.Equal(200, beam.Width);
+            Assert.Equal(500, beam.Height);
+            Assert.True(beam.IsPaired);
+        }
     }
 }
