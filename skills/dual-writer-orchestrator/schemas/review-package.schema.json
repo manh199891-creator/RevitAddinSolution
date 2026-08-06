@@ -1,0 +1,1 @@
+{"$schema":"https://json-schema.org/draft/2020-12/schema","title":"REVIEW_PACKAGE","type":"object","required":["schema_version","contract_id","results","integration_authorized"],"properties":{"schema_version":{"const":1},"contract_id":{"type":"string"},"results":{"type":"array"},"integration_authorized":{"type":"boolean"}},"additionalProperties":true}
