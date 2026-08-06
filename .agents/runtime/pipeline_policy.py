@@ -174,45 +174,41 @@ def build_fix_contract(project_root: Path, task_id: str, review_run_id: str, fin
 
 
 def validate_fix_result(result: dict, contract: dict, observed: dict | None = None) -> tuple[bool, str]:
+    return validate_fix_result_gate_a(result, contract)
+
+
+def normalize_relative_path(value: str) -> str:
+    path = str(value).replace("\\", "/")
+    while path.startswith("./"):
+        path = path[2:]
+    if ":" in path or path.startswith("/"):
+        raise ValueError("absolute path is not a repository-relative path")
+    return path
+
+
+def validate_fix_result_gate_a(result: dict, contract: dict) -> tuple[bool, str]:
+    """Validate only writer claims; host observations belong to Gate B."""
     required = {f["canonical_finding_id"] for f in contract.get("findings", [])}
-    entries = result.get("findings", [])
-    actual = {f.get("canonical_finding_id") for f in entries}
+    entries = result.get("finding_results", result.get("findings", []))
+    if result.get("schema_version", 1) != 1:
+        return False, "BLOCKED_INCOMPLETE_FIX: invalid result schema"
     if result.get("task_id") != contract.get("task_id") or result.get("review_run_id") != contract.get("review_run_id"):
         return False, "BLOCKED_INCOMPLETE_FIX: task or review run mismatch"
-    if result.get("fix_round") != 1:
-        return False, "BLOCKED_INCOMPLETE_FIX: fix_round must be 1"
-    if not result.get("previous_snapshot") or not result.get("result_snapshot"):
-        return False, "BLOCKED_INCOMPLETE_FIX: previous and result snapshots are required"
-    if result.get("plan_lock_sha256") != contract.get("plan_lock_sha256"):
-        return False, "BLOCKED_INCOMPLETE_FIX: plan lock hash mismatch"
-    if result.get("protected_files_changed"):
-        return False, "BLOCKED_SELF_MODIFICATION: protected files changed"
-    if observed:
-        if result.get("previous_snapshot") != observed.get("snapshot_before"):
-            return False, "BLOCKED_INCOMPLETE_FIX: fabricated previous snapshot"
-        if result.get("result_snapshot") != observed.get("snapshot_after"):
-            return False, "BLOCKED_INCOMPLETE_FIX: fabricated result snapshot"
-        if observed.get("protected_changed"):
-            return False, "BLOCKED_SELF_MODIFICATION: host observed protected change"
-        if observed.get("changed_files") is not None:
-            claimed = set(result.get("changed_files", []))
-            if claimed != set(observed["changed_files"]):
-                return False, "BLOCKED_INCOMPLETE_FIX: changed files do not match host observation"
-        evidence_text = str(observed.get("test_evidence", ""))
-        if not evidence_text:
-            return False, "BLOCKED_INCOMPLETE_FIX: no host test evidence is available"
-    if not required:
-        return True, "FIX_RESULT_NOT_REQUIRED: no blocking findings"
-    if required != actual:
-        return False, "BLOCKED_INCOMPLETE_FIX: one result is required for every blocking finding"
-    if any(f.get("status") not in {"FIXED", "BLOCKED", "NOT_REPRODUCED"} for f in entries):
-        return False, "BLOCKED_INCOMPLETE_FIX: invalid finding result status"
+    if result.get("fix_round") != 1 or result.get("plan_lock_sha256") != contract.get("plan_lock_sha256"):
+        return False, "BLOCKED_INCOMPLETE_FIX: fix round or plan lock mismatch"
+    if not isinstance(result.get("declared_changed_files"), list) or not isinstance(result.get("declared_tests"), list) or not result.get("completed_at"):
+        return False, "BLOCKED_INCOMPLETE_FIX: writer claim fields are incomplete"
+    if {f.get("canonical_finding_id") for f in entries} != required:
+        return False, "BLOCKED_INCOMPLETE_FIX: finding coverage mismatch"
+    try:
+        [normalize_relative_path(item) for item in result.get("declared_changed_files", [])]
+    except ValueError as exc:
+        return False, f"BLOCKED_INCOMPLETE_FIX: {exc}"
     for finding in entries:
-        if not str(finding.get("evidence", "")).strip():
-            return False, "BLOCKED_INCOMPLETE_FIX: evidence is required for every finding"
-        tests = finding.get("tests", finding.get("test_references", []))
-        if not tests or not all(isinstance(item, str) and item.strip() for item in tests):
-            return False, "BLOCKED_INCOMPLETE_FIX: required test references are missing"
-        if observed and any(str(test) not in str(observed.get("test_evidence", "")) for test in tests):
-            return False, "BLOCKED_INCOMPLETE_FIX: test reference has no matching host evidence"
-    return True, "FIX_RESULT_VALID"
+        if finding.get("status") == "BLOCKED":
+            return False, "HUMAN_DECISION: blocking finding was not fixed"
+        if finding.get("status") == "NOT_REPRODUCED":
+            return False, "HUMAN_DECISION: NOT_REPRODUCED requires deterministic host evidence"
+        if finding.get("status") != "FIXED":
+            return False, "BLOCKED_INCOMPLETE_FIX: invalid finding status"
+    return True, "FIX_RESULT_GATE_A_PASS"

@@ -2,7 +2,7 @@
 harness.py v2 — AI Software Factory Full Pipeline Orchestrator
 Điều phối toàn bộ 8 bước workflow: status, next-step, codex, sync, commit
 """
-import subprocess, sys, json, shutil, time, os
+import subprocess, sys, json, shutil, time, os, fnmatch
 from pathlib import Path
 from datetime import datetime
 
@@ -163,6 +163,7 @@ from workflow_governance import (
 from pipeline_policy import (
     MAX_AUTOMATIC_FIXES, MAX_CODEX_REVIEWS, build_fix_contract,
     create_plan_lock, parse_safe_command, validate_fix_result,
+    validate_fix_result_gate_a, normalize_relative_path,
     validate_max_cycles, validate_plan_lock, atomic_write_json,
 )
 
@@ -1388,12 +1389,63 @@ def validate_agy_fix_result(project_root, manifest, observed=None):
         return False, f"BLOCKED_INCOMPLETE_FIX: invalid fix result ({exc})"
     if not contract.get("findings"):
         return False, "BLOCKED_INCOMPLETE_FIX: empty FIX_CONTRACT for fixer invocation"
+    gate_ok, gate_detail = validate_fix_result_gate_a(result, contract)
+    if not gate_ok:
+        return gate_ok, gate_detail
     if observed is not None:
-        evidence_path = project_root / ".agent/state/EVIDENCE_MANIFEST.json"
-        if evidence_path.exists():
-            observed = dict(observed)
-            observed["test_evidence"] = evidence_path.read_text(encoding="utf-8", errors="replace")
-    return validate_fix_result(result, contract, observed)
+        if observed.get("protected_changed"):
+            return False, "BLOCKED_SELF_MODIFICATION: host observed protected change"
+        if not observed.get("artifact_changed"):
+            return False, "BLOCKED_INCOMPLETE_FIX: writer produced no source delta"
+        declared = [normalize_relative_path(item) for item in result.get("declared_changed_files", [])]
+        if sorted(declared) != sorted(normalize_relative_path(item) for item in observed.get("changed_files", [])):
+            return False, "BLOCKED_INCOMPLETE_FIX: declared files do not match host observation"
+        scope_path = project_root / ".agent/context/TASK_SCOPE.json"
+        scope = json.loads(scope_path.read_text(encoding="utf-8"))
+        allowed = scope.get("allowed_files", [])
+        if any(not any(fnmatch.fnmatchcase(path, pattern) or fnmatch.fnmatchcase(path, pattern + "/*") for pattern in allowed) for path in declared):
+            return False, "BLOCKED_INCOMPLETE_FIX: declared file is outside task scope"
+    return True, gate_detail
+
+
+def validate_post_fix_evidence(project_root, manifest, observed, verification):
+    """Gate B: bind writer claims to fresh host verification evidence."""
+    result_path = project_root / ".agent/writer-outbox/AGY_FIX_RESULT.json"
+    contract_path = project_root / ".agent/state/FIX_CONTRACT.json"
+    try:
+        result = json.loads(result_path.read_text(encoding="utf-8"))
+        contract = json.loads(contract_path.read_text(encoding="utf-8"))
+        evidence = json.loads((project_root / ".agent/state/EVIDENCE_MANIFEST.json").read_text(encoding="utf-8"))
+        declared = sorted(normalize_relative_path(item) for item in result.get("declared_changed_files", []))
+        actual = sorted(normalize_relative_path(item) for item in observed.get("changed_files", []))
+        tests = [str(item) for item in result.get("declared_tests", [])]
+        evidence_text = json.dumps(evidence, ensure_ascii=False)
+        if observed.get("protected_changed"):
+            return False, "BLOCKED_SELF_MODIFICATION: host observed protected change"
+        if declared != actual:
+            return False, "BLOCKED_INCOMPLETE_FIX: declared files do not match host files"
+        if observed.get("snapshot_after") != evidence.get("snapshot_after"):
+            return False, "BLOCKED_INCOMPLETE_FIX: verification snapshot is stale"
+        if evidence.get("status") != "PASS" or not evidence.get("fresh"):
+            return False, "BLOCKED_INCOMPLETE_FIX: post-fix verification is not fresh PASS"
+        if any(test not in evidence_text for test in tests):
+            return False, "BLOCKED_INCOMPLETE_FIX: test reference has no fresh host evidence"
+        host_evidence = {
+            "task_id": manifest.get("task_id"), "review_run_id": manifest.get("run_id"),
+            "actual_snapshot_before": observed.get("snapshot_before"),
+            "actual_snapshot_after": observed.get("snapshot_after"),
+            "actual_changed_files": actual,
+            "protected_snapshot_before": observed.get("protected_before"),
+            "protected_snapshot_after": observed.get("protected_after"),
+            "protected_changed": observed.get("protected_changed"),
+            "verification_run_id": verification.get("run_id"),
+            "verification_snapshot": evidence.get("snapshot_after"),
+            "verification_status": evidence.get("status"),
+        }
+        atomic_write_json(project_root / ".agent/state/HOST_FIX_EVIDENCE.json", host_evidence)
+        return True, "FIX_RESULT_GATE_B_PASS"
+    except (OSError, ValueError, KeyError) as exc:
+        return False, f"BLOCKED_INCOMPLETE_FIX: post-fix evidence invalid ({exc})"
 
 def cmd_dual(project_name, project_root, *args):
     header(f"DUAL AGENT PIPELINE — {project_name}")
@@ -1406,6 +1458,8 @@ def cmd_dual(project_name, project_root, *args):
         sys.exit(1)
     state = load_state(project_root)
     task_id = opts["task_id"] or state.get("task_id") or f"{project_name}_{datetime.now().strftime('%Y%m%d_%H%M%S')}"
+    previous_task_id = state.get("task_id")
+    new_task = previous_task_id != task_id
     feature = opts["feature"]
     fix_command = opts["fix_command"] or profile.get("fixer_command") or ""
     dual_agents = profile.get("dual_agents", {})
@@ -1416,7 +1470,7 @@ def cmd_dual(project_name, project_root, *args):
     has_fixer = bool(fix_command) or antigravity_auto_fix
     steps = []
 
-    if state.get("task_id") == task_id and state.get("dual_status") == "human_decision":
+    if not new_task and state.get("dual_status") == "human_decision":
         reason = "HUMAN_DECISION is terminal; explicit HUMAN_OVERRIDE.json is required."
         write_dual_report(project_root, task_id, feature, "HUMAN_DECISION", [], reason, mode)
         print(f"  ❌ DUAL PIPELINE STOPPED: {reason}")
@@ -1431,7 +1485,7 @@ def cmd_dual(project_name, project_root, *args):
     state["task_id"] = task_id
     state["dual_mode"] = mode
     state["dual_status"] = "running"
-    if state.get("task_id") != task_id:
+    if new_task:
         state["automatic_fix_count"] = 0
         state["codex_review_count"] = 0
         state["automatic_fix_used"] = False
@@ -1716,8 +1770,9 @@ def cmd_dual(project_name, project_root, *args):
                 fix_gate_ok, fix_gate_detail = validate_agy_fix_result(project_root, manifest, None)
                 steps.append({"name": f"fix_result_gate_{cycle}", "status": "PASS" if fix_gate_ok else "BLOCKED_INCOMPLETE_FIX", "detail": fix_gate_detail})
                 if not fix_gate_ok:
-                    write_dual_report(project_root, task_id, feature, "BLOCKED_INCOMPLETE_FIX", steps, fix_gate_detail, mode)
-                    save_dual_terminal_state(project_root, task_id, mode, "BLOCKED_INCOMPLETE_FIX", "human_decision", fix_gate_detail)
+                    terminal = "HUMAN_DECISION" if fix_gate_detail.startswith("HUMAN_DECISION") else "BLOCKED_INCOMPLETE_FIX"
+                    write_dual_report(project_root, task_id, feature, terminal, steps, fix_gate_detail, mode)
+                    save_dual_terminal_state(project_root, task_id, mode, terminal, "human_decision", fix_gate_detail)
                     print(f"  ❌ DUAL PIPELINE STOPPED: {fix_gate_detail}")
                     sys.exit(1)
 
@@ -1773,8 +1828,9 @@ def cmd_dual(project_name, project_root, *args):
                 fix_gate_ok, fix_gate_detail = validate_agy_fix_result(project_root, manifest, fixer_res if isinstance(fixer_res, dict) else None)
                 steps.append({"name": f"fix_result_gate_{cycle}", "status": "PASS" if fix_gate_ok else "BLOCKED_INCOMPLETE_FIX", "detail": fix_gate_detail})
                 if not fix_gate_ok:
-                    write_dual_report(project_root, task_id, feature, "BLOCKED_INCOMPLETE_FIX", steps, fix_gate_detail, mode)
-                    save_dual_terminal_state(project_root, task_id, mode, "BLOCKED_INCOMPLETE_FIX", "human_decision", fix_gate_detail)
+                    terminal = "HUMAN_DECISION" if fix_gate_detail.startswith("HUMAN_DECISION") else "BLOCKED_INCOMPLETE_FIX"
+                    write_dual_report(project_root, task_id, feature, terminal, steps, fix_gate_detail, mode)
+                    save_dual_terminal_state(project_root, task_id, mode, terminal, "human_decision", fix_gate_detail)
                     print(f"  ❌ DUAL PIPELINE STOPPED: {fix_gate_detail}")
                     sys.exit(1)
 
@@ -1787,6 +1843,15 @@ def cmd_dual(project_name, project_root, *args):
                     })
                     if refreshed.get("status") != "PASS":
                         break
+                    fix_gate_ok, fix_gate_detail = validate_post_fix_evidence(
+                        project_root, manifest, fixer_res, refreshed,
+                    )
+                    steps.append({"name": f"post_fix_evidence_gate_{cycle}", "status": "PASS" if fix_gate_ok else "BLOCKED_INCOMPLETE_FIX", "detail": fix_gate_detail})
+                    if not fix_gate_ok:
+                        write_dual_report(project_root, task_id, feature, "BLOCKED_INCOMPLETE_FIX", steps, fix_gate_detail, mode)
+                        save_dual_terminal_state(project_root, task_id, mode, "BLOCKED_INCOMPLETE_FIX", "human_decision", fix_gate_detail)
+                        print(f"  ❌ DUAL PIPELINE STOPPED: {fix_gate_detail}")
+                        sys.exit(1)
                 refreshed_guardrails = cmd_guardrails(project_name, project_root)
                 steps.append({
                     "name": f"guardrails_after_fix_{cycle}",

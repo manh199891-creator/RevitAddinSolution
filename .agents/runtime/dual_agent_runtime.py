@@ -200,6 +200,9 @@ def build_handoff(project_root: Path, task_id: str, feature: str, cycle: int,
         "feature": feature,
         "mode": mode,
         "cycle": cycle,
+        "workspace_root": str(project_root.resolve()),
+        "source_root": str((project_root / "source-code").resolve()),
+        "writer_output_path": str((project_root / ".agent/writer-outbox/AGY_FIX_RESULT.json").resolve()),
         "review_run_id": review_manifest.get("run_id"),
         "review_snapshot_hash": review_manifest.get("snapshot_hash"),
         "allowed_files": task_context.get("scope", {}).get("allowed_files", []),
@@ -232,11 +235,16 @@ def write_handoff(project_root: Path, handoff: dict) -> Path:
 
 
 def antigravity_prompt(handoff_path: Path) -> str:
+    handoff = json.loads(handoff_path.read_text(encoding="utf-8"))
+    writer_output = handoff.get(
+        "writer_output_path",
+        str((handoff_path.parents[2] / ".agent/writer-outbox/AGY_FIX_RESULT.json").resolve()),
+    )
     return f"""You are the single writer in a dual-agent software pipeline.
 Read the machine handoff at {handoff_path} and every required input it names.
 Fix only evidence-backed Codex findings and only inside allowed_files. Never edit
 host state, contracts, or reports. The only permitted output is the exact
-`.agent/writer-outbox/AGY_FIX_RESULT.json` path, written atomically through its
+absolute path `{writer_output}`, written atomically through its
 `.tmp` sibling. Do not run Codex or claim review passed; report BLOCKED in the
 result when constraints cannot be met.
 """
@@ -273,7 +281,11 @@ def _scoped_writer_fingerprints(project_root: Path, handoff: dict) -> dict[str, 
                         "/obj/"
                     ]) or posix_path.endswith(".pyc"):
                         continue
-                    files[str(path.resolve()).lower()] = path
+                    try:
+                        relative_key = path.relative_to(project_root / "source-code").as_posix()
+                    except ValueError:
+                        relative_key = path.relative_to(project_root).as_posix()
+                    files[relative_key] = path
             except (OSError, ValueError):
                 continue
     return {key: hashlib.sha256(path.read_bytes()).hexdigest() for key, path in files.items()}

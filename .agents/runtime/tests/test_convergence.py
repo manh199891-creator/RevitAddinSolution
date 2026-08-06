@@ -438,14 +438,14 @@ class TestConvergenceFull(unittest.TestCase):
             (self.project_root / ".agent/writer-outbox").mkdir(parents=True, exist_ok=True)
             (self.project_root / ".agent/writer-outbox/AGY_FIX_RESULT.json").write_text(json.dumps({
                 "task_id": "test", "review_run_id": "review-fixture", "fix_round": 1,
-                "previous_snapshot": "before", "result_snapshot": "after",
                 "plan_lock_sha256": contract["plan_lock_sha256"],
-                "findings": [{"canonical_finding_id": contract["findings"][0]["canonical_finding_id"],
-                              "status": "FIXED", "evidence": "fixture", "tests": ["fixture"]}],
+                "finding_results": [{"canonical_finding_id": contract["findings"][0]["canonical_finding_id"],
+                                      "status": "FIXED"}],
+                "declared_changed_files": [], "declared_tests": [], "completed_at": "fixture",
             }))
             (self.project_root / ".agent/state/EVIDENCE_MANIFEST.json").write_text("fixture")
             return {"ok": True, "status": "PASS", "reason": "", "reason_code": "", "artifact_changed": True,
-                    "snapshot_before": "before", "snapshot_after": "after", "protected_changed": False,
+                    "snapshot_before": "hash123", "snapshot_after": "hash123", "protected_changed": False,
                     "changed_files": []}
         mock_fixer.side_effect = successful_fix
         try:

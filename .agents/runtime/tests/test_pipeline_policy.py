@@ -41,11 +41,11 @@ class PipelinePolicyTests(unittest.TestCase):
     def test_fix_result_requires_complete_evidence(self):
         contract = {"task_id": "t", "review_run_id": "r", "plan_lock_sha256": "p",
                     "findings": [{"canonical_finding_id": "f"}]}
-        result = {"task_id": "t", "review_run_id": "r", "fix_round": 1,
-                  "previous_snapshot": "a", "result_snapshot": "b", "plan_lock_sha256": "p",
-                  "findings": [{"canonical_finding_id": "f", "status": "FIXED",
-                                 "evidence": "test", "tests": ["pytest test.py"]}]}
-        self.assertEqual(validate_fix_result(result, contract), (True, "FIX_RESULT_VALID"))
+        result = {"schema_version": 1, "task_id": "t", "review_run_id": "r", "fix_round": 1,
+                  "plan_lock_sha256": "p", "declared_changed_files": [],
+                  "declared_tests": [], "completed_at": "now",
+                  "finding_results": [{"canonical_finding_id": "f", "status": "FIXED"}]}
+        self.assertEqual(validate_fix_result(result, contract), (True, "FIX_RESULT_GATE_A_PASS"))
         self.assertFalse(validate_fix_result(dict(result, fix_round=2), contract)[0])
 
 
