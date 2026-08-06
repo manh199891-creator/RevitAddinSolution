@@ -90,7 +90,7 @@ def save_state(project_root, state):
 
 
 def save_dual_terminal_state(project_root, task_id, mode, status, next_step, reason=""):
-    """Persist terminal dual status for runners that only read workflow state."""
+    """Persist terminal status in both host state files as one lifecycle write."""
     state = load_state(project_root)
     state["task_id"] = task_id
     state["dual_mode"] = mode
@@ -99,6 +99,15 @@ def save_dual_terminal_state(project_root, task_id, mode, status, next_step, rea
     if reason:
         state["dual_reason"] = reason
     save_state(project_root, state)
+    context = load_task_context(project_root)
+    if context.get("task_id") in (None, task_id):
+        update_task_context(
+            project_root,
+            status=status.lower(),
+            resume_cursor=next_step,
+            event_type="terminal_state_written",
+            detail=reason or status,
+        )
 
 
 def initialize_dual_run_state(project_root, task_id, feature, mode, next_step):
@@ -143,12 +152,18 @@ from workflow_governance import (
     build_evidence_manifest,
     ensure_knowledge_layout,
     initialize_task_context,
+    load_task_context,
     prepare_failure_budget_retry,
     record_failed_attempt,
     sha256_text,
     update_task_context,
     validate_fresh_evidence,
     write_later_finding,
+)
+from pipeline_policy import (
+    MAX_AUTOMATIC_FIXES, MAX_CODEX_REVIEWS, build_fix_contract,
+    create_plan_lock, parse_safe_command, validate_max_cycles,
+    validate_plan_lock,
 )
 
 def file_has_content(project_root, rel_path):
@@ -855,9 +870,7 @@ def parse_dual_args(args):
             i += 2
         elif arg == "--max-cycles" and i + 1 < len(args):
             val = int(args[i + 1])
-            if val < 1 or val > 3:
-                raise ValueError("max_cycles must be between 1 and 3")
-            opts["max_cycles"] = val
+            opts["max_cycles"] = validate_max_cycles(val)
             i += 2
         elif arg == "--skip-verify":
             opts["skip_verify"] = True
@@ -1186,7 +1199,9 @@ def ensure_task_scope(project_root, profile, task_id, allow_autoscope=True, mode
         raise Exception("TASK_SCOPE.json is missing and --no-autoscope was provided.")
 
     changed_files = get_changed_files_for_scope(project_root)
-    allowed_files = changed_files if changed_files else profile.get("stage_patterns", ["**/*"])
+    if not changed_files:
+        raise Exception("BLOCKED_SCOPE_CONFIGURATION: TASK_SCOPE.json is missing and no narrow changed-file scope is available")
+    allowed_files = changed_files
     scope = {
         "schema_version": 1,
         "task_id": task_id,
@@ -1307,6 +1322,19 @@ python E:\\AI_SOFTWARE_FACTORY\\harness.py {project_name} dual --task-id {task_i
 """
     (reports_dir / "FIXER_HANDOFF.md").write_text(content, encoding="utf-8")
     manifest = review_manifest or {}
+    lock_path = project_root / ".agent/state/PLAN_LOCK.json"
+    if lock_path.exists():
+        try:
+            contract = build_fix_contract(
+                project_root, task_id, manifest.get("run_id", ""),
+                manifest.get("findings", []),
+                json.loads(lock_path.read_text(encoding="utf-8")),
+            )
+            (reports_dir / "FIX_CONTRACT.json").write_text(
+                json.dumps(contract, indent=2, ensure_ascii=False) + "\n", encoding="utf-8"
+            )
+        except Exception as exc:
+            log(f"Fix contract warning: {exc}")
     handoff = build_agent_handoff(project_root, task_id, feature, cycle, mode, manifest)
     write_agent_handoff(project_root, handoff)
     return handoff
@@ -1314,7 +1342,11 @@ python E:\\AI_SOFTWARE_FACTORY\\harness.py {project_name} dual --task-id {task_i
 def run_fixer_command(project_root, command):
     if not command:
         return False, "No fixer command configured"
-    result = subprocess.run(command, cwd=project_root, capture_output=True, text=True, shell=True, encoding="utf-8", errors="replace")
+    try:
+        argv = parse_safe_command(command)
+    except ValueError as exc:
+        return False, f"BLOCKED_UNTRUSTED_COMMAND: {exc}"
+    result = subprocess.run(argv, cwd=project_root, capture_output=True, text=True, shell=False, encoding="utf-8", errors="replace")
     reports_dir = project_root / ".agent/reports"
     reports_dir.mkdir(parents=True, exist_ok=True)
     report = f"# FIXER_COMMAND_REPORT.md\n\n## Status: {'PASS' if result.returncode == 0 else 'FAIL'}\n\n## Command\n`{command}`\n\n## Output\n```\n{result.stdout}\n{result.stderr}\n```\n"
@@ -1372,6 +1404,10 @@ def cmd_dual(project_name, project_root, *args):
                 expected_task_id=task_id,
             )
             preflight_snapshot_hash = preflight_scope["snapshot_hash"]
+            if mode in {"code", "release"}:
+                lock_ok, lock_detail = validate_plan_lock(project_root, task_id)
+                if not lock_ok:
+                    raise Exception(lock_detail)
         budget_ready, budget_detail = prepare_failure_budget_retry(
             project_root,
             preflight_snapshot_hash,
@@ -1435,6 +1471,21 @@ def cmd_dual(project_name, project_root, *args):
             "detail": manifest.get("reason", ""),
         })
         passed = codex_status in (ReviewStatus.PASS, ReviewStatus.PASS_WITH_ADVISORIES)
+        if passed and mode == "plan":
+            try:
+                create_plan_lock(
+                    project_root, task_id, manifest.get("run_id", ""),
+                    baseline_commit=subprocess.run(
+                        ["git", "rev-parse", "HEAD"], cwd=project_root / "source-code",
+                        capture_output=True, text=True,
+                    ).stdout.strip() or None,
+                    approved_plan_snapshot_hash=manifest.get("snapshot_hash", ""),
+                )
+            except Exception as exc:
+                passed = False
+                codex_status = ReviewStatus.FAIL
+                manifest["reason"] = str(exc)
+                steps.append({"name": "plan_lock", "status": "BLOCKED_PLAN_CHANGED", "detail": str(exc)})
         final_status = "PASS" if passed else "BLOCKED"
         state = load_state(project_root)
         state["dual_mode"] = mode

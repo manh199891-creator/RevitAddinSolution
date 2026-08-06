@@ -17,6 +17,9 @@ import uuid
 from dataclasses import dataclass, asdict
 from datetime import datetime, timezone
 from pathlib import Path
+import sys
+sys.path.insert(0, str(Path(__file__).parent))
+from pipeline_policy import protected_path, validate_plan_lock
 
 
 def utc_now() -> str:
@@ -266,6 +269,27 @@ def _scoped_writer_snapshot(project_root: Path, handoff: dict) -> str:
     return hasher.hexdigest()
 
 
+def _protected_writer_snapshot(project_root: Path) -> dict[str, str]:
+    """Capture host-protected paths, including index/worktree fingerprints."""
+    result = {}
+    try:
+        for root in (project_root, project_root / "source-code"):
+            if not root.exists():
+                continue
+            for path in root.rglob("*"):
+                if not path.is_file() or "__pycache__" in path.parts:
+                    continue
+                try:
+                    relative = path.relative_to(root).as_posix()
+                except ValueError:
+                    continue
+                if protected_path(relative):
+                    result[str(path.resolve()).lower()] = hashlib.sha256(path.read_bytes()).hexdigest()
+    except OSError:
+        result["__snapshot_error__"] = "ERROR"
+    return result
+
+
 def run_antigravity_fixer(project_root: Path, handoff: dict, *, timeout_seconds: int = 900,
                            model: str | None = None, agent: str | None = None) -> dict:
     """Run Antigravity non-interactively as the only writer.
@@ -304,6 +328,7 @@ def run_antigravity_fixer(project_root: Path, handoff: dict, *, timeout_seconds:
 
     started = utc_now()
     snapshot_before = _scoped_writer_snapshot(project_root, handoff)
+    protected_before = _protected_writer_snapshot(project_root)
     proc = None
     return_code = None
     reason_code = "WRITER_LAUNCH_FAILED"
@@ -336,7 +361,13 @@ def run_antigravity_fixer(project_root: Path, handoff: dict, *, timeout_seconds:
         status, reason, reason_code = "INFRA_FAIL", f"Antigravity launch failed: {exc}", "WRITER_LAUNCH_FAILED"
 
     snapshot_after = _scoped_writer_snapshot(project_root, handoff)
+    protected_after = _protected_writer_snapshot(project_root)
     artifact_changed = snapshot_before != snapshot_after
+    protected_changed = protected_before != protected_after
+    if protected_changed:
+        status = "BLOCKED_SELF_MODIFICATION"
+        reason = "Antigravity changed host-protected pipeline files. User changes were preserved."
+        reason_code = "BLOCKED_SELF_MODIFICATION"
 
     if status == "PASS" and not artifact_changed:
         status = "BLOCKED_NO_FIX_DELTA"
@@ -357,6 +388,9 @@ def run_antigravity_fixer(project_root: Path, handoff: dict, *, timeout_seconds:
         "snapshot_before": snapshot_before,
         "snapshot_after": snapshot_after,
         "artifact_changed": artifact_changed,
+        "protected_before": protected_before,
+        "protected_after": protected_after,
+        "protected_changed": protected_changed,
     }
     (reports / "FIXER_COMMAND_REPORT.json").write_text(
         json.dumps(report, indent=2, ensure_ascii=False) + "\n", encoding="utf-8"

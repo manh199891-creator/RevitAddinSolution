@@ -3,6 +3,7 @@ from pathlib import Path
 from datetime import datetime, timezone
 import os
 from learning_guard import build_learning_guard
+from pipeline_policy import MAX_CODEX_REVIEWS, canonical_finding_id, normalize_findings
 
 class ReviewStatus:
     QUEUED = "QUEUED"
@@ -649,17 +650,19 @@ def _normalize_string(s):
 
 
 def evaluate_focused_retry_progress(previous_manifest: dict, current_findings: list) -> tuple:
+    current_findings[:] = normalize_findings(current_findings)
+    previous_manifest["findings"] = normalize_findings(previous_manifest.get("findings", []))
     prev_findings = previous_manifest.get("findings", [])
     prev_blocking = [f for f in prev_findings if f.get("severity") in {"P0", "P1", "P2"} and f.get("status") not in {"RESOLVED", "ADVISORY", "DEFERRED"}]
     curr_blocking = [f for f in current_findings if f.get("severity") in {"P0", "P1", "P2"} and f.get("status") not in {"RESOLVED", "ADVISORY", "DEFERRED"}]
 
-    prev_blocking_ids = {f.get("finding_id") for f in prev_blocking if f.get("finding_id")}
-    curr_blocking_ids = {f.get("finding_id") for f in curr_blocking if f.get("finding_id")}
+    prev_blocking_ids = {f.get("canonical_finding_id") for f in prev_blocking if f.get("canonical_finding_id")}
+    curr_blocking_ids = {f.get("canonical_finding_id") for f in curr_blocking if f.get("canonical_finding_id")}
 
     contract_failed = False
     for pf in prev_blocking:
-        pf_id = pf.get("finding_id")
-        if pf_id and pf_id not in {f.get("finding_id") for f in current_findings}:
+        pf_id = pf.get("canonical_finding_id")
+        if pf_id and pf_id not in {f.get("canonical_finding_id") for f in current_findings}:
             missing_f = pf.copy()
             missing_f["status"] = "STILL_OPEN"
             missing_f["body"] = "(Omitted by Codex in retry, assuming STILL_OPEN) " + pf.get("body", "")
@@ -706,6 +709,15 @@ def evaluate_focused_retry_progress(previous_manifest: dict, current_findings: l
             reason_code = "BLOCKING_FINDINGS_UNCHANGED"
 
         prev_prev_blocking_ids = set(previous_manifest.get("previous_blocking_ids", []))
+        if prev_prev_blocking_ids:
+            prior_findings = previous_manifest.get("findings", [])
+            model_to_canonical = {
+                f.get("finding_id"): canonical_finding_id(f)
+                for f in prior_findings if f.get("finding_id")
+            }
+            prev_prev_blocking_ids = {
+                model_to_canonical.get(item, item) for item in prev_prev_blocking_ids
+            }
         if prev_prev_blocking_ids and curr_blocking_ids == prev_prev_blocking_ids and curr_blocking_ids != prev_blocking_ids:
             status = "BLOCKED_OSCILLATION"
             reason = "Findings are oscillating back and forth between states."
@@ -728,15 +740,14 @@ def classify_review_status(findings):
     return ReviewStatus.PASS
 
 def generate_finding_id(finding):
-    if "finding_id" in finding:
-        return finding["finding_id"]
+    if "canonical_finding_id" in finding:
+        return finding["canonical_finding_id"]
     rule = finding.get("rule_id", "")
     f = finding.get("file", "")
     sym = finding.get("symbol", "")
     title = finding.get("title", "")
 
-    raw = f"{_normalize_string(rule)}\0{_normalize_string(f)}\0{_normalize_string(sym)}\0{_normalize_string(title)}"
-    return hashlib.sha256(raw.encode("utf-8")).hexdigest()[:16]
+    return canonical_finding_id(finding)
 
 def parse_codex_result(stdout, stderr, exit_code, expected_run_id, expected_hash, expected_files=None):
     if exit_code != 0:

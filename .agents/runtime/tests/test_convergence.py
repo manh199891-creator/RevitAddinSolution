@@ -55,6 +55,20 @@ class TestConvergenceFull(unittest.TestCase):
         self.orig_run_git = review_pipeline._run_git
         review_pipeline._run_git = lambda r, a: b""
         (self.project_root / ".agent/context/TASK_SCOPE.json").write_text(json.dumps({"task_id": "test", "included_files": ["f.py"]}))
+        # Synthetic pipeline fixtures now opt into the production plan-lock
+        # contract explicitly; real tasks get this lock from plan PASS.
+        for name in ("PLAN.md", "TECHNICAL_DESIGN.md", "ACCEPTANCE_CRITERIA.md"):
+            (self.project_root / ".agent/context" / name).write_text(name, encoding="utf-8")
+        scope = {"task_id": "test", "included_files": ["f.py"]}
+        lock = {
+            "schema_version": 1, "task_id": "test", "approved_plan_run_id": "fixture",
+            "approved_plan_snapshot_hash": "", "plan_sha256": hashlib.sha256(b"PLAN.md").hexdigest(),
+            "technical_design_sha256": hashlib.sha256(b"TECHNICAL_DESIGN.md").hexdigest(),
+            "acceptance_criteria_sha256": hashlib.sha256(b"ACCEPTANCE_CRITERIA.md").hexdigest(),
+            "task_scope_sha256": hashlib.sha256(json.dumps(scope, sort_keys=True, ensure_ascii=False).encode()).hexdigest(),
+            "baseline_commit": "fixture", "approved_at": "fixture",
+        }
+        (self.project_root / ".agent/state/PLAN_LOCK.json").write_text(json.dumps(lock), encoding="utf-8")
         import yaml
         (self.project_root / "project.yaml").write_text(yaml.dump({"dual_agents": {"fixer_provider": "antigravity", "auto_fix": True}}))
 
