@@ -10,6 +10,7 @@ import json
 import shlex
 import re
 import subprocess
+import os
 from datetime import datetime, timezone
 from pathlib import Path
 
@@ -46,6 +47,16 @@ def scope_projection_hash(scope: dict) -> str:
 
 def plan_lock_path(project_root: Path) -> Path:
     return project_root / ".agent" / "state" / "PLAN_LOCK.json"
+
+
+def atomic_write_json(path: Path, payload: dict) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    temporary = path.with_name(path.name + ".tmp")
+    with temporary.open("w", encoding="utf-8") as handle:
+        handle.write(json.dumps(payload, indent=2, ensure_ascii=False) + "\n")
+        handle.flush()
+        os.fsync(handle.fileno())
+    os.replace(temporary, path)
 
 
 def create_plan_lock(project_root: Path, task_id: str, approved_plan_run_id: str,
@@ -158,11 +169,11 @@ def build_fix_contract(project_root: Path, task_id: str, review_run_id: str, fin
     if blocking:
         path = project_root / ".agent" / "state" / "FIX_CONTRACT.json"
         path.parent.mkdir(parents=True, exist_ok=True)
-        path.write_text(json.dumps(contract, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
+        atomic_write_json(path, contract)
     return contract
 
 
-def validate_fix_result(result: dict, contract: dict) -> tuple[bool, str]:
+def validate_fix_result(result: dict, contract: dict, observed: dict | None = None) -> tuple[bool, str]:
     required = {f["canonical_finding_id"] for f in contract.get("findings", [])}
     entries = result.get("findings", [])
     actual = {f.get("canonical_finding_id") for f in entries}
@@ -176,6 +187,20 @@ def validate_fix_result(result: dict, contract: dict) -> tuple[bool, str]:
         return False, "BLOCKED_INCOMPLETE_FIX: plan lock hash mismatch"
     if result.get("protected_files_changed"):
         return False, "BLOCKED_SELF_MODIFICATION: protected files changed"
+    if observed:
+        if result.get("previous_snapshot") != observed.get("snapshot_before"):
+            return False, "BLOCKED_INCOMPLETE_FIX: fabricated previous snapshot"
+        if result.get("result_snapshot") != observed.get("snapshot_after"):
+            return False, "BLOCKED_INCOMPLETE_FIX: fabricated result snapshot"
+        if observed.get("protected_changed"):
+            return False, "BLOCKED_SELF_MODIFICATION: host observed protected change"
+        if observed.get("changed_files") is not None:
+            claimed = set(result.get("changed_files", []))
+            if claimed != set(observed["changed_files"]):
+                return False, "BLOCKED_INCOMPLETE_FIX: changed files do not match host observation"
+        evidence_text = str(observed.get("test_evidence", ""))
+        if not evidence_text:
+            return False, "BLOCKED_INCOMPLETE_FIX: no host test evidence is available"
     if not required:
         return True, "FIX_RESULT_NOT_REQUIRED: no blocking findings"
     if required != actual:
@@ -188,4 +213,6 @@ def validate_fix_result(result: dict, contract: dict) -> tuple[bool, str]:
         tests = finding.get("tests", finding.get("test_references", []))
         if not tests or not all(isinstance(item, str) and item.strip() for item in tests):
             return False, "BLOCKED_INCOMPLETE_FIX: required test references are missing"
+        if observed and any(str(test) not in str(observed.get("test_evidence", "")) for test in tests):
+            return False, "BLOCKED_INCOMPLETE_FIX: test reference has no matching host evidence"
     return True, "FIX_RESULT_VALID"

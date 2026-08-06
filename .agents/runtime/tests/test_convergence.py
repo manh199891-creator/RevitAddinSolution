@@ -239,7 +239,12 @@ class TestConvergenceFull(unittest.TestCase):
         self.assertEqual(data["blocking_count_after"], 0)
 
     def _write_mock_manifest(self, status):
-        (self.project_root / ".agent/state/review_run.json").write_text(json.dumps({"status": status}))
+        (self.project_root / ".agent/state/review_run.json").write_text(json.dumps({
+            "status": status,
+            "run_id": "review-fixture",
+            "findings": [{"finding_id": "F1", "severity": "P1", "status": "OPEN",
+                          "file": "f.py", "problem": "fixture issue"}] if status == "FAIL" else [],
+        }))
         return {"status": status}
 
     # =========================================================================
@@ -344,7 +349,7 @@ class TestConvergenceFull(unittest.TestCase):
                     target = repo / k
                     target.parent.mkdir(parents=True, exist_ok=True)
                     target.write_text(v)
-                rep_json = repo.parent / ".agent/reports/FIXER_COMMAND_REPORT.json"
+                rep_json = repo.parent / ".agent/writer-outbox/AGY_FIX_RESULT.json"
                 rep_json.parent.mkdir(parents=True, exist_ok=True)
                 rep_json.write_text(json.dumps(report_data))
                 return "output", ""
@@ -428,7 +433,21 @@ class TestConvergenceFull(unittest.TestCase):
         def mock_codex_call(*a, **kw):
             return self._write_mock_manifest(mock_codex_returns.pop(0))
         mock_codex.side_effect = mock_codex_call
-        mock_fixer.return_value = {"ok": True, "status": "PASS", "reason": "", "reason_code": "", "artifact_changed": True}
+        def successful_fix(*args, **kwargs):
+            contract = json.loads((self.project_root / ".agent/state/FIX_CONTRACT.json").read_text())
+            (self.project_root / ".agent/writer-outbox").mkdir(parents=True, exist_ok=True)
+            (self.project_root / ".agent/writer-outbox/AGY_FIX_RESULT.json").write_text(json.dumps({
+                "task_id": "test", "review_run_id": "review-fixture", "fix_round": 1,
+                "previous_snapshot": "before", "result_snapshot": "after",
+                "plan_lock_sha256": contract["plan_lock_sha256"],
+                "findings": [{"canonical_finding_id": contract["findings"][0]["canonical_finding_id"],
+                              "status": "FIXED", "evidence": "fixture", "tests": ["fixture"]}],
+            }))
+            (self.project_root / ".agent/state/EVIDENCE_MANIFEST.json").write_text("fixture")
+            return {"ok": True, "status": "PASS", "reason": "", "reason_code": "", "artifact_changed": True,
+                    "snapshot_before": "before", "snapshot_after": "after", "protected_changed": False,
+                    "changed_files": []}
+        mock_fixer.side_effect = successful_fix
         try:
             cmd_dual("project", self.project_root, "--task-id", "test", "--max-cycles", "2")
         except SystemExit:

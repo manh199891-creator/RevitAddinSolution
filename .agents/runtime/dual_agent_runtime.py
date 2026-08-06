@@ -213,8 +213,8 @@ def build_handoff(project_root: Path, task_id: str, feature: str, cycle: int,
             ".agent/context/ACCEPTANCE_CRITERIA.md",
             ".agent/state/PLAN_LOCK.json",
             ".agent/state/FIX_CONTRACT.json",
-            ".agent/state/AGY_FIX_RESULT.json",
         ],
+        "required_outputs": [".agent/writer-outbox/AGY_FIX_RESULT.json"],
         "completion_contract": {
             "must_change_snapshot": True,
             "must_stay_in_scope": True,
@@ -235,14 +235,25 @@ def antigravity_prompt(handoff_path: Path) -> str:
     return f"""You are the single writer in a dual-agent software pipeline.
 Read the machine handoff at {handoff_path} and every required input it names.
 Fix only evidence-backed Codex findings and only inside allowed_files. Never edit
-forbidden paths or pipeline state/reports. Add focused regression tests. Do not
-run Codex and do not claim review passed. Finish by summarizing changed files,
-tests run, remaining risks, and a falsifiable retry hypothesis.
+host state, contracts, or reports. The only permitted output is the exact
+`.agent/writer-outbox/AGY_FIX_RESULT.json` path, written atomically through its
+`.tmp` sibling. Do not run Codex or claim review passed; report BLOCKED in the
+result when constraints cannot be met.
 """
 
 
 def _scoped_writer_snapshot(project_root: Path, handoff: dict) -> str:
     hasher = hashlib.sha256()
+    files = _scoped_writer_fingerprints(project_root, handoff)
+    for key, digest in sorted(files.items()):
+        hasher.update(key.encode("utf-8", errors="replace"))
+        hasher.update(b"\0")
+        hasher.update(digest.encode("ascii"))
+        hasher.update(b"\0")
+    return hasher.hexdigest()
+
+
+def _scoped_writer_fingerprints(project_root: Path, handoff: dict) -> dict[str, str]:
     roots = [project_root / "source-code", project_root]
     files = {}
     for pattern in handoff.get("allowed_files", []):
@@ -256,6 +267,7 @@ def _scoped_writer_snapshot(project_root: Path, handoff: dict) -> str:
                     if any(exclude in posix_path for exclude in [
                         ".agent/state",
                         ".agent/reports",
+                        ".agent/writer-outbox",
                         "__pycache__",
                         "/bin/",
                         "/obj/"
@@ -264,12 +276,7 @@ def _scoped_writer_snapshot(project_root: Path, handoff: dict) -> str:
                     files[str(path.resolve()).lower()] = path
             except (OSError, ValueError):
                 continue
-    for key, path in sorted(files.items()):
-        hasher.update(key.encode("utf-8", errors="replace"))
-        hasher.update(b"\0")
-        hasher.update(path.read_bytes())
-        hasher.update(b"\0")
-    return hasher.hexdigest()
+    return {key: hashlib.sha256(path.read_bytes()).hexdigest() for key, path in files.items()}
 
 
 def _protected_writer_snapshot(project_root: Path) -> dict[str, str]:
@@ -287,7 +294,7 @@ def _protected_writer_snapshot(project_root: Path) -> dict[str, str]:
                 except ValueError:
                     continue
                 if protected_path(relative):
-                    if root == project_root and relative.startswith((".agent/state/", ".agent/reports/")):
+                    if relative in (".agent/writer-outbox/AGY_FIX_RESULT.json", ".agent/writer-outbox/AGY_FIX_RESULT.json.tmp"):
                         continue
                     result[str(path.resolve()).lower()] = hashlib.sha256(path.read_bytes()).hexdigest()
     except OSError:
@@ -306,6 +313,17 @@ def run_antigravity_fixer(project_root: Path, handoff: dict, *, timeout_seconds:
     executable = find_antigravity()
     reports = project_root / ".agent/reports"
     reports.mkdir(parents=True, exist_ok=True)
+    writer_outbox = project_root / ".agent/writer-outbox"
+    writer_outbox.mkdir(parents=True, exist_ok=True)
+    stale_result = writer_outbox / "AGY_FIX_RESULT.json"
+    stale_temp = writer_outbox / "AGY_FIX_RESULT.json.tmp"
+    for stale in (stale_result, stale_temp):
+        try:
+            stale.unlink()
+        except FileNotFoundError:
+            pass
+        except OSError as exc:
+            return {"ok": False, "status": "BLOCKED_INCOMPLETE_FIX", "reason": f"Cannot clear stale writer result: {exc}", "reason_code": "STALE_WRITER_RESULT"}
     if not executable:
         return {
             "ok": False,
@@ -333,6 +351,7 @@ def run_antigravity_fixer(project_root: Path, handoff: dict, *, timeout_seconds:
 
     started = utc_now()
     snapshot_before = _scoped_writer_snapshot(project_root, handoff)
+    files_before = _scoped_writer_fingerprints(project_root, handoff)
     protected_before = _protected_writer_snapshot(project_root)
     proc = None
     return_code = None
@@ -366,9 +385,13 @@ def run_antigravity_fixer(project_root: Path, handoff: dict, *, timeout_seconds:
         status, reason, reason_code = "INFRA_FAIL", f"Antigravity launch failed: {exc}", "WRITER_LAUNCH_FAILED"
 
     snapshot_after = _scoped_writer_snapshot(project_root, handoff)
+    files_after = _scoped_writer_fingerprints(project_root, handoff)
     protected_after = _protected_writer_snapshot(project_root)
     artifact_changed = snapshot_before != snapshot_after
     protected_changed = protected_before != protected_after
+    changed_files = sorted({*files_before, *files_after} - {
+        key for key in set(files_before) & set(files_after) if files_before[key] == files_after[key]
+    })
     if protected_changed:
         status = "BLOCKED_SELF_MODIFICATION"
         reason = "Antigravity changed host-protected pipeline files. User changes were preserved."
@@ -396,6 +419,7 @@ def run_antigravity_fixer(project_root: Path, handoff: dict, *, timeout_seconds:
         "protected_before": protected_before,
         "protected_after": protected_after,
         "protected_changed": protected_changed,
+        "changed_files": changed_files,
     }
     (reports / "FIXER_COMMAND_REPORT.json").write_text(
         json.dumps(report, indent=2, ensure_ascii=False) + "\n", encoding="utf-8"
@@ -406,4 +430,8 @@ def run_antigravity_fixer(project_root: Path, handoff: dict, *, timeout_seconds:
         "reason": reason,
         "reason_code": reason_code,
         "artifact_changed": artifact_changed,
+        "snapshot_before": snapshot_before,
+        "snapshot_after": snapshot_after,
+        "protected_changed": protected_changed,
+        "changed_files": changed_files,
     }

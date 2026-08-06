@@ -163,7 +163,7 @@ from workflow_governance import (
 from pipeline_policy import (
     MAX_AUTOMATIC_FIXES, MAX_CODEX_REVIEWS, build_fix_contract,
     create_plan_lock, parse_safe_command, validate_fix_result,
-    validate_max_cycles, validate_plan_lock,
+    validate_max_cycles, validate_plan_lock, atomic_write_json,
 )
 
 def file_has_content(project_root, rel_path):
@@ -1340,18 +1340,20 @@ python E:\\AI_SOFTWARE_FACTORY\\harness.py {project_name} dual --task-id {task_i
     (reports_dir / "FIXER_HANDOFF.md").write_text(content, encoding="utf-8")
     manifest = review_manifest or {}
     lock_path = project_root / ".agent/state/PLAN_LOCK.json"
-    if lock_path.exists():
-        try:
-            contract = build_fix_contract(
-                project_root, task_id, manifest.get("run_id", ""),
-                manifest.get("findings", []),
-                json.loads(lock_path.read_text(encoding="utf-8")),
-            )
-            (reports_dir / "FIX_CONTRACT.json").write_text(
-                json.dumps(contract, indent=2, ensure_ascii=False) + "\n", encoding="utf-8"
-            )
-        except Exception as exc:
-            log(f"Fix contract warning: {exc}")
+    if not lock_path.exists():
+        raise RuntimeError("BLOCKED_INCOMPLETE_FIX: PLAN_LOCK.json is missing")
+    contract = build_fix_contract(
+        project_root, task_id, manifest.get("run_id", ""),
+        manifest.get("findings", []),
+        json.loads(lock_path.read_text(encoding="utf-8")),
+    )
+    if contract.get("findings"):
+        contract_path = project_root / ".agent/state/FIX_CONTRACT.json"
+        if not contract_path.exists():
+            raise RuntimeError("BLOCKED_INCOMPLETE_FIX: FIX_CONTRACT.json was not created")
+        written = json.loads(contract_path.read_text(encoding="utf-8"))
+        if written != contract:
+            raise RuntimeError("BLOCKED_INCOMPLETE_FIX: FIX_CONTRACT.json validation failed")
     handoff = build_agent_handoff(project_root, task_id, feature, cycle, mode, manifest)
     write_agent_handoff(project_root, handoff)
     return handoff
@@ -1371,12 +1373,12 @@ def run_fixer_command(project_root, command):
     return result.returncode == 0, f"exit_code={result.returncode}"
 
 
-def validate_agy_fix_result(project_root, manifest):
+def validate_agy_fix_result(project_root, manifest, observed=None):
     """Require the writer's machine result before any post-fix gate runs."""
     contract_path = project_root / ".agent/state/FIX_CONTRACT.json"
-    result_path = project_root / ".agent/state/AGY_FIX_RESULT.json"
+    result_path = project_root / ".agent/writer-outbox/AGY_FIX_RESULT.json"
     if not contract_path.exists():
-        return True, "NO_FIX_CONTRACT"
+        return False, "BLOCKED_INCOMPLETE_FIX: FIX_CONTRACT.json is missing"
     if not result_path.exists():
         return False, "BLOCKED_INCOMPLETE_FIX: AGY_FIX_RESULT.json is missing"
     try:
@@ -1385,8 +1387,13 @@ def validate_agy_fix_result(project_root, manifest):
     except (OSError, ValueError) as exc:
         return False, f"BLOCKED_INCOMPLETE_FIX: invalid fix result ({exc})"
     if not contract.get("findings"):
-        return True, "NO_BLOCKING_FINDINGS"
-    return validate_fix_result(result, contract)
+        return False, "BLOCKED_INCOMPLETE_FIX: empty FIX_CONTRACT for fixer invocation"
+    if observed is not None:
+        evidence_path = project_root / ".agent/state/EVIDENCE_MANIFEST.json"
+        if evidence_path.exists():
+            observed = dict(observed)
+            observed["test_evidence"] = evidence_path.read_text(encoding="utf-8", errors="replace")
+    return validate_fix_result(result, contract, observed)
 
 def cmd_dual(project_name, project_root, *args):
     header(f"DUAL AGENT PIPELINE — {project_name}")
@@ -1409,12 +1416,29 @@ def cmd_dual(project_name, project_root, *args):
     has_fixer = bool(fix_command) or antigravity_auto_fix
     steps = []
 
+    if state.get("task_id") == task_id and state.get("dual_status") == "human_decision":
+        reason = "HUMAN_DECISION is terminal; explicit HUMAN_OVERRIDE.json is required."
+        write_dual_report(project_root, task_id, feature, "HUMAN_DECISION", [], reason, mode)
+        print(f"  ❌ DUAL PIPELINE STOPPED: {reason}")
+        sys.exit(1)
+    if fix_command:
+        reason = "BLOCKED_UNSUPPORTED_FIXER: external fix_command is disabled; use the AGY writer contract."
+        save_dual_terminal_state(project_root, task_id, mode, "BLOCKED_UNSUPPORTED_FIXER", "human_decision", reason)
+        write_dual_report(project_root, task_id, feature, "BLOCKED_UNSUPPORTED_FIXER", [], reason, mode)
+        print(f"  ❌ DUAL PIPELINE STOPPED: {reason}")
+        sys.exit(1)
+
     state["task_id"] = task_id
     state["dual_mode"] = mode
     state["dual_status"] = "running"
-    state["automatic_fix_count"] = 0
-    state["codex_review_count"] = 0
-    state["automatic_fix_used"] = False
+    if state.get("task_id") != task_id:
+        state["automatic_fix_count"] = 0
+        state["codex_review_count"] = 0
+        state["automatic_fix_used"] = False
+    else:
+        state.setdefault("automatic_fix_count", 0)
+        state.setdefault("codex_review_count", 0)
+        state.setdefault("automatic_fix_used", False)
     state.pop("dual_reason", None)
     save_state(project_root, state)
 
@@ -1689,7 +1713,7 @@ def cmd_dual(project_name, project_root, *args):
                         sys.exit(1)
                     break
 
-                fix_gate_ok, fix_gate_detail = validate_agy_fix_result(project_root, manifest)
+                fix_gate_ok, fix_gate_detail = validate_agy_fix_result(project_root, manifest, None)
                 steps.append({"name": f"fix_result_gate_{cycle}", "status": "PASS" if fix_gate_ok else "BLOCKED_INCOMPLETE_FIX", "detail": fix_gate_detail})
                 if not fix_gate_ok:
                     write_dual_report(project_root, task_id, feature, "BLOCKED_INCOMPLETE_FIX", steps, fix_gate_detail, mode)
@@ -1703,6 +1727,12 @@ def cmd_dual(project_name, project_root, *args):
                 cmd_guardrails(project_name, project_root)
                 continue
             if antigravity_auto_fix:
+                blocking_findings = [item for item in manifest.get("findings", [])
+                                     if item.get("severity") in {"P0", "P1", "P2"}
+                                     and item.get("status", "OPEN") not in {"RESOLVED", "ADVISORY", "DEFERRED"}]
+                if not blocking_findings:
+                    steps.append({"name": f"fixer_cycle_{cycle}", "status": "SKIPPED", "detail": "No blocking findings; writer contract not invoked"})
+                    break
                 state = load_state(project_root)
                 if int(state.get("automatic_fix_count", 0)) >= MAX_AUTOMATIC_FIXES:
                     save_dual_terminal_state(project_root, task_id, mode, "HUMAN_DECISION", "human_decision", "Automatic fix budget exhausted")
@@ -1740,7 +1770,7 @@ def cmd_dual(project_name, project_root, *args):
                         sys.exit(1)
                     break
 
-                fix_gate_ok, fix_gate_detail = validate_agy_fix_result(project_root, manifest)
+                fix_gate_ok, fix_gate_detail = validate_agy_fix_result(project_root, manifest, fixer_res if isinstance(fixer_res, dict) else None)
                 steps.append({"name": f"fix_result_gate_{cycle}", "status": "PASS" if fix_gate_ok else "BLOCKED_INCOMPLETE_FIX", "detail": fix_gate_detail})
                 if not fix_gate_ok:
                     write_dual_report(project_root, task_id, feature, "BLOCKED_INCOMPLETE_FIX", steps, fix_gate_detail, mode)
