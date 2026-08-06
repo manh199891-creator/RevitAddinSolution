@@ -15,9 +15,9 @@ from review_pipeline import (
     evaluate_focused_retry_progress, run_codex_review, is_review_success
 )
 import review_pipeline
-from harness import cmd_gate, cmd_dual
+from harness import cmd_gate, cmd_dual, validate_post_fix_evidence
 import harness
-from dual_agent_runtime import run_antigravity_fixer
+from dual_agent_runtime import run_antigravity_fixer, build_handoff
 import dual_agent_runtime
 from pipeline_policy import scope_projection_hash
 
@@ -243,7 +243,7 @@ class TestConvergenceFull(unittest.TestCase):
             "status": status,
             "run_id": "review-fixture",
             "findings": [{"finding_id": "F1", "severity": "P1", "status": "OPEN",
-                          "file": "f.py", "problem": "fixture issue"}] if status == "FAIL" else [],
+                          "file": "f.py", "problem": "fixture issue", "test_required": False}] if status == "FAIL" else [],
         }))
         return {"status": status}
 
@@ -330,6 +330,36 @@ class TestConvergenceFull(unittest.TestCase):
     # =========================================================================
     # FIXER TESTS
     # =========================================================================
+
+    def test_handoff_contains_executable_writer_contract(self):
+        (self.project_root / ".agent/context/TASK_CONTEXT.json").write_text(json.dumps({
+            "scope": {"allowed_files": ["f.py"], "forbidden": [".agent/**"]}
+        }))
+        handoff = build_handoff(self.project_root, "test", "fixture", 1, "code", {
+            "run_id": "review-fixture", "snapshot_hash": "hash123", "findings": []
+        })
+        self.assertEqual(handoff["input_base"], str(self.project_root.resolve()))
+        self.assertTrue(all(Path(item).is_absolute() for item in handoff["required_inputs"]))
+        contract = handoff["writer_result_contract"]
+        self.assertTrue(contract["atomic_write_required"])
+        self.assertEqual(contract["output_path"], str((self.project_root / ".agent/writer-outbox/AGY_FIX_RESULT.json").resolve()))
+
+    def test_structured_evidence_requires_passing_zero_exit_stage(self):
+        state = self.project_root / ".agent/state"
+        result = {
+            "declared_changed_files": [], "declared_tests": ["unit"],
+        }
+        (self.project_root / ".agent/writer-outbox").mkdir(parents=True, exist_ok=True)
+        (self.project_root / ".agent/writer-outbox/AGY_FIX_RESULT.json").write_text(json.dumps(result))
+        (state / "FIX_CONTRACT.json").write_text(json.dumps({"findings": [{"test_required": True}]}))
+        evidence = {"snapshot_after": "after", "status": "PASS", "fresh": True,
+                    "results": [{"stage": "unit", "command": "pytest", "status": "FAIL", "exit_code": 1}]}
+        (state / "EVIDENCE_MANIFEST.json").write_text(json.dumps(evidence))
+        observed = {"protected_changed": False, "changed_files": [], "snapshot_after": "after",
+                    "snapshot_before": "before", "protected_before": {}, "protected_after": {}}
+        ok, detail = validate_post_fix_evidence(self.project_root, {"task_id": "t", "run_id": "r"}, observed, {"run_id": "v"})
+        self.assertFalse(ok)
+        self.assertIn("passing structured", detail)
     
     def _mock_fixer_exec(self, repo_files, new_repo_files, report_data):
         repo = self.project_root / "source-code"
@@ -416,6 +446,17 @@ class TestConvergenceFull(unittest.TestCase):
         self.assertEqual(mock_codex.call_count, 1)
         mock_fixer.assert_not_called()
 
+    @patch('harness.run_antigravity_fixer')
+    @patch('harness.run_codex_review')
+    def test_skip_verify_blocks_auto_fixer_before_review(self, mock_codex, mock_fixer):
+        with self.assertRaises(SystemExit) as ctx:
+            cmd_dual("project", self.project_root, "--task-id", "test", "--max-cycles", "2", "--skip-verify")
+        self.assertEqual(ctx.exception.code, 1)
+        mock_fixer.assert_not_called()
+        mock_codex.assert_not_called()
+        report = (self.project_root / ".agent/reports/DUAL_AGENT_REPORT.md").read_text()
+        self.assertIn("BLOCKED_VERIFY_REQUIRED", report)
+
     @patch('harness.run_codex_review')
     @patch('harness.run_antigravity_fixer')
     def test_oscillation_stops_fixer(self, mock_fixer, mock_codex):
@@ -440,7 +481,8 @@ class TestConvergenceFull(unittest.TestCase):
                 "task_id": "test", "review_run_id": "review-fixture", "fix_round": 1,
                 "plan_lock_sha256": contract["plan_lock_sha256"],
                 "finding_results": [{"canonical_finding_id": contract["findings"][0]["canonical_finding_id"],
-                                      "status": "FIXED"}],
+                                      "status": "FIXED", "evidence": "fixture source delta",
+                                      "test_references": []}],
                 "declared_changed_files": [], "declared_tests": [], "completed_at": "fixture",
             }))
             (self.project_root / ".agent/state/EVIDENCE_MANIFEST.json").write_text("fixture")

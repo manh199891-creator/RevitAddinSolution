@@ -201,6 +201,7 @@ def build_handoff(project_root: Path, task_id: str, feature: str, cycle: int,
         "mode": mode,
         "cycle": cycle,
         "workspace_root": str(project_root.resolve()),
+        "input_base": str(project_root.resolve()),
         "source_root": str((project_root / "source-code").resolve()),
         "writer_output_path": str((project_root / ".agent/writer-outbox/AGY_FIX_RESULT.json").resolve()),
         "review_run_id": review_manifest.get("run_id"),
@@ -209,15 +210,27 @@ def build_handoff(project_root: Path, task_id: str, feature: str, cycle: int,
         "forbidden": task_context.get("scope", {}).get("forbidden", []),
         "findings": review_manifest.get("findings", []),
         "required_inputs": [
-            ".agent/reports/CODEX_REVIEW.md",
-            ".agent/context/MEMORY_CONTEXT.md",
-            ".agent/context/TASK_CONTEXT.json",
-            ".agent/context/TASK_SCOPE.json",
-            ".agent/context/ACCEPTANCE_CRITERIA.md",
-            ".agent/state/PLAN_LOCK.json",
-            ".agent/state/FIX_CONTRACT.json",
+            str((project_root / item).resolve()) for item in [
+                ".agent/reports/CODEX_REVIEW.md",
+                ".agent/context/MEMORY_CONTEXT.md",
+                ".agent/context/TASK_CONTEXT.json",
+                ".agent/context/TASK_SCOPE.json",
+                ".agent/context/ACCEPTANCE_CRITERIA.md",
+                ".agent/state/PLAN_LOCK.json",
+                ".agent/state/FIX_CONTRACT.json",
+            ]
         ],
         "required_outputs": [".agent/writer-outbox/AGY_FIX_RESULT.json"],
+        "writer_result_contract": {
+            "schema_version": 1,
+            "required_fields": ["schema_version", "task_id", "review_run_id", "fix_round",
+                                 "plan_lock_sha256", "finding_results", "declared_changed_files",
+                                 "declared_tests", "completed_at"],
+            "finding_result_required_fields": ["canonical_finding_id", "status", "evidence", "test_references"],
+            "allowed_finding_statuses": ["FIXED", "BLOCKED", "NOT_REPRODUCED"],
+            "atomic_write_required": True,
+            "output_path": str((project_root / ".agent/writer-outbox/AGY_FIX_RESULT.json").resolve()),
+        },
         "completion_contract": {
             "must_change_snapshot": True,
             "must_stay_in_scope": True,
@@ -246,7 +259,10 @@ Fix only evidence-backed Codex findings and only inside allowed_files. Never edi
 host state, contracts, or reports. The only permitted output is the exact
 absolute path `{writer_output}`, written atomically through its
 `.tmp` sibling. Do not run Codex or claim review passed; report BLOCKED in the
-result when constraints cannot be met.
+result when constraints cannot be met. Resolve every relative required input
+from input_base. Write exactly one JSON object using writer_result_contract,
+including exactly one result for every canonical finding. Never invent host
+snapshot hashes; report BLOCKED rather than modifying contracts.
 """
 
 
@@ -335,7 +351,9 @@ def run_antigravity_fixer(project_root: Path, handoff: dict, *, timeout_seconds:
         except FileNotFoundError:
             pass
         except OSError as exc:
-            return {"ok": False, "status": "BLOCKED_INCOMPLETE_FIX", "reason": f"Cannot clear stale writer result: {exc}", "reason_code": "STALE_WRITER_RESULT"}
+            return {"ok": False, "status": "BLOCKED_INCOMPLETE_FIX", "reason": f"Cannot clear stale writer result: {exc}", "reason_code": "STALE_WRITER_RESULT",
+                    "protected_before": None, "protected_after": None, "protected_changed": None,
+                    "changed_files": [], "artifact_changed": False}
     if not executable:
         return {
             "ok": False,
@@ -346,6 +364,10 @@ def run_antigravity_fixer(project_root: Path, handoff: dict, *, timeout_seconds:
             "exit_code": -1,
             "snapshot_before": None,
             "snapshot_after": None,
+            "protected_before": None,
+            "protected_after": None,
+            "protected_changed": None,
+            "changed_files": [],
         }
 
     handoff_path = write_handoff(project_root, handoff)
@@ -444,6 +466,8 @@ def run_antigravity_fixer(project_root: Path, handoff: dict, *, timeout_seconds:
         "artifact_changed": artifact_changed,
         "snapshot_before": snapshot_before,
         "snapshot_after": snapshot_after,
+        "protected_before": protected_before,
+        "protected_after": protected_after,
         "protected_changed": protected_changed,
         "changed_files": changed_files,
     }

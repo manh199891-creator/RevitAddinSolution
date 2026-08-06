@@ -40,13 +40,28 @@ class PipelinePolicyTests(unittest.TestCase):
 
     def test_fix_result_requires_complete_evidence(self):
         contract = {"task_id": "t", "review_run_id": "r", "plan_lock_sha256": "p",
-                    "findings": [{"canonical_finding_id": "f"}]}
+                    "findings": [{"canonical_finding_id": "f", "test_required": False}]}
         result = {"schema_version": 1, "task_id": "t", "review_run_id": "r", "fix_round": 1,
                   "plan_lock_sha256": "p", "declared_changed_files": [],
                   "declared_tests": [], "completed_at": "now",
-                  "finding_results": [{"canonical_finding_id": "f", "status": "FIXED"}]}
+                  "finding_results": [{"canonical_finding_id": "f", "status": "FIXED",
+                                        "evidence": "fixture diff verified"}]}
         self.assertEqual(validate_fix_result(result, contract), (True, "FIX_RESULT_GATE_A_PASS"))
         self.assertFalse(validate_fix_result(dict(result, fix_round=2), contract)[0])
+
+    def test_duplicate_or_missing_finding_evidence_is_rejected(self):
+        contract = {"task_id": "t", "review_run_id": "r", "plan_lock_sha256": "p",
+                    "findings": [{"canonical_finding_id": "f", "test_required": False}]}
+        base = {"schema_version": 1, "task_id": "t", "review_run_id": "r", "fix_round": 1,
+                "plan_lock_sha256": "p", "declared_changed_files": [], "declared_tests": [],
+                "completed_at": "now"}
+        missing = dict(base, finding_results=[{"canonical_finding_id": "f", "status": "FIXED"}])
+        self.assertFalse(validate_fix_result(missing, contract)[0])
+        duplicate = dict(base, finding_results=[
+            {"canonical_finding_id": "f", "status": "FIXED", "evidence": "x"},
+            {"canonical_finding_id": "f", "status": "FIXED", "evidence": "y"},
+        ])
+        self.assertFalse(validate_fix_result(duplicate, contract)[0])
 
 
 if __name__ == "__main__":

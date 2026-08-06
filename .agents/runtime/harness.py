@@ -1418,8 +1418,19 @@ def validate_post_fix_evidence(project_root, manifest, observed, verification):
         evidence = json.loads((project_root / ".agent/state/EVIDENCE_MANIFEST.json").read_text(encoding="utf-8"))
         declared = sorted(normalize_relative_path(item) for item in result.get("declared_changed_files", []))
         actual = sorted(normalize_relative_path(item) for item in observed.get("changed_files", []))
-        tests = [str(item) for item in result.get("declared_tests", [])]
-        evidence_text = json.dumps(evidence, ensure_ascii=False)
+        tests = result.get("declared_tests", [])
+        evidence_results = evidence.get("results")
+        if not isinstance(evidence_results, list):
+            return False, "BLOCKED_INCOMPLETE_FIX: structured evidence results are missing"
+        def evidence_match(claim):
+            if isinstance(claim, dict):
+                keys = {key: str(value) for key, value in claim.items() if key in {"stage", "command", "report", "output_hash"}}
+                return [item for item in evidence_results if all(str(item.get(key)) == value for key, value in keys.items())]
+            value = str(claim)
+            return [item for item in evidence_results if value in {
+                str(item.get("stage", "")), str(item.get("command", "")),
+                str(item.get("report", "")), str(item.get("output_hash", "")),
+            }]
         if observed.get("protected_changed"):
             return False, "BLOCKED_SELF_MODIFICATION: host observed protected change"
         if declared != actual:
@@ -1428,8 +1439,14 @@ def validate_post_fix_evidence(project_root, manifest, observed, verification):
             return False, "BLOCKED_INCOMPLETE_FIX: verification snapshot is stale"
         if evidence.get("status") != "PASS" or not evidence.get("fresh"):
             return False, "BLOCKED_INCOMPLETE_FIX: post-fix verification is not fresh PASS"
-        if any(test not in evidence_text for test in tests):
-            return False, "BLOCKED_INCOMPLETE_FIX: test reference has no fresh host evidence"
+        if not tests:
+            required_tests = any(item.get("test_required", True) for item in contract.get("findings", []))
+            if required_tests:
+                return False, "BLOCKED_INCOMPLETE_FIX: declared_tests is required"
+        for test in tests:
+            matches = evidence_match(test)
+            if len(matches) != 1 or matches[0].get("status") != "PASS" or matches[0].get("exit_code") != 0:
+                return False, "BLOCKED_INCOMPLETE_FIX: test reference has no passing structured host evidence"
         host_evidence = {
             "task_id": manifest.get("task_id"), "review_run_id": manifest.get("run_id"),
             "actual_snapshot_before": observed.get("snapshot_before"),
@@ -1568,6 +1585,17 @@ def cmd_dual(project_name, project_root, *args):
         steps.append({"name": "scope", "status": "FAIL", "detail": str(e)})
         write_dual_report(project_root, task_id, feature, "BLOCKED", steps, str(e), mode)
         print(f"  ❌ DUAL BLOCKED: {e}")
+        sys.exit(1)
+
+    # A writer invocation is inseparable from fresh host verification.  Reject
+    # this combination before the first review so --skip-verify cannot reach a
+    # fixer and then continue to a focused Codex review without Gate B.
+    if opts["skip_verify"] and antigravity_auto_fix:
+        reason = "BLOCKED_VERIFY_REQUIRED: automatic fixing requires mandatory post-fix verification"
+        steps.append({"name": "verify", "status": "BLOCKED_VERIFY_REQUIRED", "detail": "--skip-verify cannot be used with auto-fix"})
+        save_dual_terminal_state(project_root, task_id, mode, "BLOCKED_VERIFY_REQUIRED", "human_decision", reason)
+        write_dual_report(project_root, task_id, feature, "BLOCKED_VERIFY_REQUIRED", steps, reason, mode)
+        print(f"  ❌ DUAL PIPELINE STOPPED: {reason}")
         sys.exit(1)
 
     if mode in {"research", "plan"}:

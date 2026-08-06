@@ -165,7 +165,8 @@ def build_fix_contract(project_root: Path, task_id: str, review_run_id: str, fin
                 "plan_lock_sha256": hashlib.sha256(json.dumps(plan_lock, sort_keys=True).encode()).hexdigest(),
                 "findings": [{"canonical_finding_id": f["canonical_finding_id"], "model_finding_id": f.get("model_finding_id"),
                               "severity": f.get("severity"), "file": f.get("file"), "line": f.get("line"),
-                              "problem": f.get("problem", f.get("body", f.get("title", ""))), "required_evidence": "tests and diff"} for f in blocking]}
+                "problem": f.get("problem", f.get("body", f.get("title", ""))),
+                "required_evidence": "tests and diff", "test_required": f.get("test_required", True)} for f in blocking]}
     if blocking:
         path = project_root / ".agent" / "state" / "FIX_CONTRACT.json"
         path.parent.mkdir(parents=True, exist_ok=True)
@@ -189,26 +190,37 @@ def normalize_relative_path(value: str) -> str:
 def validate_fix_result_gate_a(result: dict, contract: dict) -> tuple[bool, str]:
     """Validate only writer claims; host observations belong to Gate B."""
     required = {f["canonical_finding_id"] for f in contract.get("findings", [])}
-    entries = result.get("finding_results", result.get("findings", []))
+    entries = result.get("finding_results")
     if result.get("schema_version", 1) != 1:
         return False, "BLOCKED_INCOMPLETE_FIX: invalid result schema"
     if result.get("task_id") != contract.get("task_id") or result.get("review_run_id") != contract.get("review_run_id"):
         return False, "BLOCKED_INCOMPLETE_FIX: task or review run mismatch"
     if result.get("fix_round") != 1 or result.get("plan_lock_sha256") != contract.get("plan_lock_sha256"):
         return False, "BLOCKED_INCOMPLETE_FIX: fix round or plan lock mismatch"
+    if not isinstance(entries, list):
+        return False, "BLOCKED_INCOMPLETE_FIX: finding_results must be a list"
     if not isinstance(result.get("declared_changed_files"), list) or not isinstance(result.get("declared_tests"), list) or not result.get("completed_at"):
         return False, "BLOCKED_INCOMPLETE_FIX: writer claim fields are incomplete"
-    if {f.get("canonical_finding_id") for f in entries} != required:
+    entry_ids = [f.get("canonical_finding_id") for f in entries if isinstance(f, dict)]
+    if len(entry_ids) != len(entries) or len(entry_ids) != len(set(entry_ids)) or set(entry_ids) != required:
         return False, "BLOCKED_INCOMPLETE_FIX: finding coverage mismatch"
     try:
         [normalize_relative_path(item) for item in result.get("declared_changed_files", [])]
     except ValueError as exc:
         return False, f"BLOCKED_INCOMPLETE_FIX: {exc}"
     for finding in entries:
+        if not isinstance(finding.get("evidence"), str) or not finding.get("evidence").strip():
+            return False, "BLOCKED_INCOMPLETE_FIX: every finding requires non-empty evidence"
         if finding.get("status") == "BLOCKED":
             return False, "HUMAN_DECISION: blocking finding was not fixed"
         if finding.get("status") == "NOT_REPRODUCED":
             return False, "HUMAN_DECISION: NOT_REPRODUCED requires deterministic host evidence"
         if finding.get("status") != "FIXED":
             return False, "BLOCKED_INCOMPLETE_FIX: invalid finding status"
+        contract_finding = next(item for item in contract.get("findings", [])
+                                if item.get("canonical_finding_id") == finding.get("canonical_finding_id"))
+        if contract_finding.get("test_required", True) and not result.get("declared_tests"):
+            return False, "BLOCKED_INCOMPLETE_FIX: declared_tests is required"
+        if contract_finding.get("test_required", True) and not finding.get("test_references"):
+            return False, "BLOCKED_INCOMPLETE_FIX: fixed finding requires test references"
     return True, "FIX_RESULT_GATE_A_PASS"
