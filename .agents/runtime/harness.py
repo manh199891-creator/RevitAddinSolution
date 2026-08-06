@@ -162,8 +162,8 @@ from workflow_governance import (
 )
 from pipeline_policy import (
     MAX_AUTOMATIC_FIXES, MAX_CODEX_REVIEWS, build_fix_contract,
-    create_plan_lock, parse_safe_command, validate_max_cycles,
-    validate_plan_lock,
+    create_plan_lock, parse_safe_command, validate_fix_result,
+    validate_max_cycles, validate_plan_lock,
 )
 
 def file_has_content(project_root, rel_path):
@@ -902,6 +902,7 @@ def parse_dual_init_args(args):
         "allowed": [],
         "forbidden": [],
         "force": False,
+        "task_kind": "application",
     }
     i = 0
     while i < len(args):
@@ -927,6 +928,9 @@ def parse_dual_init_args(args):
         elif arg == "--force":
             opts["force"] = True
             i += 1
+        elif arg == "--task-kind" and i + 1 < len(args):
+            opts["task_kind"] = args[i + 1].lower()
+            i += 2
         else:
             i += 1
     return opts
@@ -1108,7 +1112,17 @@ def cmd_dual_init(project_name, project_root, *args):
             sys.exit(1)
 
     same_task = existing.get("task_id") == opts["task_id"]
-    allowed = opts["allowed"] or (existing.get("allowed_files", []) if same_task else []) or profile.get("stage_patterns", ["**/*"])
+    allowed = opts["allowed"] or (existing.get("allowed_files", []) if same_task else [])
+    if not allowed:
+        if opts["task_kind"] == "pipeline_maintenance" and profile.get("stage_patterns"):
+            allowed = profile["stage_patterns"]
+        else:
+            print("  ERROR: BLOCKED_SCOPE_CONFIGURATION: application tasks require explicit allowed files")
+            sys.exit(1)
+    broad = {"**/*", "*", "**", "./**/*"}
+    if opts["task_kind"] != "pipeline_maintenance" and any(str(item).replace("\\", "/") in broad for item in allowed):
+        print("  ERROR: BLOCKED_SCOPE_CONFIGURATION: broad application scope is forbidden")
+        sys.exit(1)
     if same_task and not opts["force"]:
         forbidden = list(existing.get("forbidden", []))
     else:
@@ -1202,6 +1216,9 @@ def ensure_task_scope(project_root, profile, task_id, allow_autoscope=True, mode
     if not changed_files:
         raise Exception("BLOCKED_SCOPE_CONFIGURATION: TASK_SCOPE.json is missing and no narrow changed-file scope is available")
     allowed_files = changed_files
+    broad = {"**/*", "*", "**", "./**/*"}
+    if any(str(item).replace("\\", "/") in broad for item in allowed_files):
+        raise Exception("BLOCKED_SCOPE_CONFIGURATION: broad application scope is forbidden")
     scope = {
         "schema_version": 1,
         "task_id": task_id,
@@ -1353,6 +1370,24 @@ def run_fixer_command(project_root, command):
     (reports_dir / "FIXER_COMMAND_REPORT.md").write_text(report, encoding="utf-8")
     return result.returncode == 0, f"exit_code={result.returncode}"
 
+
+def validate_agy_fix_result(project_root, manifest):
+    """Require the writer's machine result before any post-fix gate runs."""
+    contract_path = project_root / ".agent/state/FIX_CONTRACT.json"
+    result_path = project_root / ".agent/state/AGY_FIX_RESULT.json"
+    if not contract_path.exists():
+        return True, "NO_FIX_CONTRACT"
+    if not result_path.exists():
+        return False, "BLOCKED_INCOMPLETE_FIX: AGY_FIX_RESULT.json is missing"
+    try:
+        contract = json.loads(contract_path.read_text(encoding="utf-8"))
+        result = json.loads(result_path.read_text(encoding="utf-8"))
+    except (OSError, ValueError) as exc:
+        return False, f"BLOCKED_INCOMPLETE_FIX: invalid fix result ({exc})"
+    if not contract.get("findings"):
+        return True, "NO_BLOCKING_FINDINGS"
+    return validate_fix_result(result, contract)
+
 def cmd_dual(project_name, project_root, *args):
     header(f"DUAL AGENT PIPELINE — {project_name}")
     _, profile = load_project(project_name)
@@ -1377,6 +1412,9 @@ def cmd_dual(project_name, project_root, *args):
     state["task_id"] = task_id
     state["dual_mode"] = mode
     state["dual_status"] = "running"
+    state["automatic_fix_count"] = 0
+    state["codex_review_count"] = 0
+    state["automatic_fix_used"] = False
     state.pop("dual_reason", None)
     save_state(project_root, state)
 
@@ -1564,6 +1602,11 @@ def cmd_dual(project_name, project_root, *args):
 
     codex_status = ReviewStatus.INFRA_FAIL
     for cycle in range(1, opts["max_cycles"] + 1):
+        state = load_state(project_root)
+        if int(state.get("codex_review_count", 0)) >= MAX_CODEX_REVIEWS:
+            raise RuntimeError("HUMAN_DECISION: Codex review budget exhausted")
+        state["codex_review_count"] = int(state.get("codex_review_count", 0)) + 1
+        save_state(project_root, state)
         log(f"Codex review cycle {cycle}/{opts['max_cycles']}")
         cmd_codex(
             project_name, project_root,
@@ -1625,6 +1668,14 @@ def cmd_dual(project_name, project_root, *args):
             sys.exit(1)
         if cycle < opts["max_cycles"]:
             if fix_command:
+                state = load_state(project_root)
+                if int(state.get("automatic_fix_count", 0)) >= MAX_AUTOMATIC_FIXES:
+                    save_dual_terminal_state(project_root, task_id, mode, "HUMAN_DECISION", "human_decision", "Automatic fix budget exhausted")
+                    write_dual_report(project_root, task_id, feature, "HUMAN_DECISION", steps, "Automatic fix budget exhausted", mode)
+                    sys.exit(1)
+                state["automatic_fix_count"] = int(state.get("automatic_fix_count", 0)) + 1
+                state["automatic_fix_used"] = True
+                save_state(project_root, state)
                 fixer_ok, fixer_detail = run_fixer_command(project_root, fix_command)
                 steps.append({"name": f"fixer_cycle_{cycle}", "status": "PASS" if fixer_ok else "FAIL", "detail": fixer_detail})
 
@@ -1638,12 +1689,28 @@ def cmd_dual(project_name, project_root, *args):
                         sys.exit(1)
                     break
 
+                fix_gate_ok, fix_gate_detail = validate_agy_fix_result(project_root, manifest)
+                steps.append({"name": f"fix_result_gate_{cycle}", "status": "PASS" if fix_gate_ok else "BLOCKED_INCOMPLETE_FIX", "detail": fix_gate_detail})
+                if not fix_gate_ok:
+                    write_dual_report(project_root, task_id, feature, "BLOCKED_INCOMPLETE_FIX", steps, fix_gate_detail, mode)
+                    save_dual_terminal_state(project_root, task_id, mode, "BLOCKED_INCOMPLETE_FIX", "human_decision", fix_gate_detail)
+                    print(f"  ❌ DUAL PIPELINE STOPPED: {fix_gate_detail}")
+                    sys.exit(1)
+
                 if not opts["skip_verify"]:
                     cmd_verify(project_name, project_root)
                     steps.append({"name": f"verify_after_fix_{cycle}", "status": "DONE", "detail": "Build/test/lint reports refreshed"})
                 cmd_guardrails(project_name, project_root)
                 continue
             if antigravity_auto_fix:
+                state = load_state(project_root)
+                if int(state.get("automatic_fix_count", 0)) >= MAX_AUTOMATIC_FIXES:
+                    save_dual_terminal_state(project_root, task_id, mode, "HUMAN_DECISION", "human_decision", "Automatic fix budget exhausted")
+                    write_dual_report(project_root, task_id, feature, "HUMAN_DECISION", steps, "Automatic fix budget exhausted", mode)
+                    sys.exit(1)
+                state["automatic_fix_count"] = int(state.get("automatic_fix_count", 0)) + 1
+                state["automatic_fix_used"] = True
+                save_state(project_root, state)
                 handoff = write_fixer_handoff(
                     project_name, project_root, task_id, feature, cycle,
                     manifest.get("reason", codex_status), mode, manifest,
@@ -1673,6 +1740,14 @@ def cmd_dual(project_name, project_root, *args):
                         sys.exit(1)
                     break
 
+                fix_gate_ok, fix_gate_detail = validate_agy_fix_result(project_root, manifest)
+                steps.append({"name": f"fix_result_gate_{cycle}", "status": "PASS" if fix_gate_ok else "BLOCKED_INCOMPLETE_FIX", "detail": fix_gate_detail})
+                if not fix_gate_ok:
+                    write_dual_report(project_root, task_id, feature, "BLOCKED_INCOMPLETE_FIX", steps, fix_gate_detail, mode)
+                    save_dual_terminal_state(project_root, task_id, mode, "BLOCKED_INCOMPLETE_FIX", "human_decision", fix_gate_detail)
+                    print(f"  ❌ DUAL PIPELINE STOPPED: {fix_gate_detail}")
+                    sys.exit(1)
+
                 if not opts["skip_verify"]:
                     refreshed = cmd_verify(project_name, project_root)
                     steps.append({
@@ -1697,6 +1772,13 @@ def cmd_dual(project_name, project_root, *args):
     if steps and steps[-1]["name"].startswith("codex_cycle_") and steps[-1]["status"] not in (ReviewStatus.PASS, ReviewStatus.PASS_WITH_ADVISORIES) and opts["max_cycles"] > 1 and not has_fixer:
         write_fixer_handoff(project_name, project_root, task_id, feature, opts["max_cycles"], steps[-1].get("detail", "Codex review did not pass"), mode, manifest)
         steps.append({"name": "fixer_handoff", "status": "BLOCKED", "detail": "No fixer command configured; wrote FIXER_HANDOFF.md"})
+
+    if codex_status not in (ReviewStatus.PASS, ReviewStatus.PASS_WITH_ADVISORIES) and int(load_state(project_root).get("codex_review_count", 0)) >= MAX_CODEX_REVIEWS:
+        reason = "Focused re-review failed; human decision required."
+        write_dual_report(project_root, task_id, feature, "HUMAN_DECISION", steps, reason, mode)
+        save_dual_terminal_state(project_root, task_id, mode, "HUMAN_DECISION", "human_decision", reason)
+        print("  ❌ DUAL PIPELINE STOPPED: HUMAN_DECISION")
+        sys.exit(1)
 
     if mode == "code":
         code_ok = codex_status in (ReviewStatus.PASS, ReviewStatus.PASS_WITH_ADVISORIES)

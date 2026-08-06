@@ -8,6 +8,7 @@ from __future__ import annotations
 import hashlib
 import json
 import shlex
+import re
 import subprocess
 from datetime import datetime, timezone
 from pathlib import Path
@@ -28,6 +29,21 @@ def _artifact_hash(root: Path, relative: str) -> str:
     return sha256_file(path) if path.is_file() else "MISSING"
 
 
+def immutable_scope_projection(scope: dict) -> dict:
+    """Return only task-boundary fields; runtime mode/artifacts are mutable."""
+    return {
+        "task_id": scope.get("task_id"),
+        "allowed_files": sorted(scope.get("allowed_files", scope.get("included_files", []))),
+        "forbidden": sorted(scope.get("forbidden", [])),
+        "repository_root": scope.get("repository_root"),
+    }
+
+
+def scope_projection_hash(scope: dict) -> str:
+    projection = immutable_scope_projection(scope)
+    return hashlib.sha256(json.dumps(projection, sort_keys=True, ensure_ascii=False).encode("utf-8")).hexdigest()
+
+
 def plan_lock_path(project_root: Path) -> Path:
     return project_root / ".agent" / "state" / "PLAN_LOCK.json"
 
@@ -45,7 +61,7 @@ def create_plan_lock(project_root: Path, task_id: str, approved_plan_run_id: str
         "plan_sha256": _artifact_hash(context, plan_files["plan"]),
         "technical_design_sha256": _artifact_hash(context, plan_files["technical_design"]),
         "acceptance_criteria_sha256": _artifact_hash(context, plan_files["acceptance_criteria"]),
-        "task_scope_sha256": hashlib.sha256(json.dumps(scope, sort_keys=True, ensure_ascii=False).encode("utf-8")).hexdigest(),
+        "task_scope_sha256": scope_projection_hash(scope),
         "baseline_commit": baseline_commit or _head(project_root / "source-code"),
         "approved_at": datetime.now(timezone.utc).isoformat(),
     }
@@ -78,7 +94,7 @@ def validate_plan_lock(project_root: Path, task_id: str) -> tuple[bool, str]:
             "plan_sha256": _artifact_hash(context, "PLAN.md"),
             "technical_design_sha256": _artifact_hash(context, "TECHNICAL_DESIGN.md"),
             "acceptance_criteria_sha256": _artifact_hash(context, "ACCEPTANCE_CRITERIA.md"),
-            "task_scope_sha256": hashlib.sha256(json.dumps(scope, sort_keys=True, ensure_ascii=False).encode("utf-8")).hexdigest(),
+            "task_scope_sha256": scope_projection_hash(scope),
         }
         if any(lock.get(key) != value for key, value in expected.items()):
             return False, "BLOCKED_PLAN_CHANGED: plan, design, acceptance, scope, or task id changed"
@@ -88,14 +104,19 @@ def validate_plan_lock(project_root: Path, task_id: str) -> tuple[bool, str]:
 
 
 def protected_path(path: str) -> bool:
-    normalized = path.replace("\\", "/").lstrip("./")
+    normalized = path.replace("\\", "/")
+    while normalized.startswith("./"):
+        normalized = normalized[2:]
     return any(normalized == item or normalized.startswith(item + "/") for item in PROTECTED_PATHS)
 
 
 def canonical_finding_id(finding: dict) -> str:
-    value = "\0".join(str(finding.get(key, "")).strip().lower() for key in (
-        "category", "rule_id", "severity", "file", "symbol", "line", "end_line", "title", "problem", "acceptance_criterion"
-    ))
+    def normalize(value: object) -> str:
+        return re.sub(r"[^a-z0-9]+", " ", str(value or "").lower()).strip()
+    problem = finding.get("problem", finding.get("body", finding.get("title", "")))
+    value = "\0".join(normalize(finding.get(key, "")) for key in (
+        "category", "rule_id", "file", "symbol", "acceptance_criterion"
+    )) + "\0" + normalize(problem)
     return hashlib.sha256(value.encode("utf-8")).hexdigest()[:20]
 
 
@@ -134,9 +155,10 @@ def build_fix_contract(project_root: Path, task_id: str, review_run_id: str, fin
                 "findings": [{"canonical_finding_id": f["canonical_finding_id"], "model_finding_id": f.get("model_finding_id"),
                               "severity": f.get("severity"), "file": f.get("file"), "line": f.get("line"),
                               "problem": f.get("problem", f.get("body", f.get("title", ""))), "required_evidence": "tests and diff"} for f in blocking]}
-    path = project_root / ".agent" / "state" / "FIX_CONTRACT.json"
-    path.parent.mkdir(parents=True, exist_ok=True)
-    path.write_text(json.dumps(contract, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
+    if blocking:
+        path = project_root / ".agent" / "state" / "FIX_CONTRACT.json"
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text(json.dumps(contract, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
     return contract
 
 
@@ -146,8 +168,24 @@ def validate_fix_result(result: dict, contract: dict) -> tuple[bool, str]:
     actual = {f.get("canonical_finding_id") for f in entries}
     if result.get("task_id") != contract.get("task_id") or result.get("review_run_id") != contract.get("review_run_id"):
         return False, "BLOCKED_INCOMPLETE_FIX: task or review run mismatch"
+    if result.get("fix_round") != 1:
+        return False, "BLOCKED_INCOMPLETE_FIX: fix_round must be 1"
+    if not result.get("previous_snapshot") or not result.get("result_snapshot"):
+        return False, "BLOCKED_INCOMPLETE_FIX: previous and result snapshots are required"
+    if result.get("plan_lock_sha256") != contract.get("plan_lock_sha256"):
+        return False, "BLOCKED_INCOMPLETE_FIX: plan lock hash mismatch"
+    if result.get("protected_files_changed"):
+        return False, "BLOCKED_SELF_MODIFICATION: protected files changed"
+    if not required:
+        return True, "FIX_RESULT_NOT_REQUIRED: no blocking findings"
     if required != actual:
         return False, "BLOCKED_INCOMPLETE_FIX: one result is required for every blocking finding"
     if any(f.get("status") not in {"FIXED", "BLOCKED", "NOT_REPRODUCED"} for f in entries):
         return False, "BLOCKED_INCOMPLETE_FIX: invalid finding result status"
+    for finding in entries:
+        if not str(finding.get("evidence", "")).strip():
+            return False, "BLOCKED_INCOMPLETE_FIX: evidence is required for every finding"
+        tests = finding.get("tests", finding.get("test_references", []))
+        if not tests or not all(isinstance(item, str) and item.strip() for item in tests):
+            return False, "BLOCKED_INCOMPLETE_FIX: required test references are missing"
     return True, "FIX_RESULT_VALID"

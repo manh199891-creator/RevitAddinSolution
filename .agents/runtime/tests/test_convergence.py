@@ -19,6 +19,7 @@ from harness import cmd_gate, cmd_dual
 import harness
 from dual_agent_runtime import run_antigravity_fixer
 import dual_agent_runtime
+from pipeline_policy import scope_projection_hash
 
 class TestConvergenceFull(unittest.TestCase):
     def setUp(self):
@@ -65,7 +66,7 @@ class TestConvergenceFull(unittest.TestCase):
             "approved_plan_snapshot_hash": "", "plan_sha256": hashlib.sha256(b"PLAN.md").hexdigest(),
             "technical_design_sha256": hashlib.sha256(b"TECHNICAL_DESIGN.md").hexdigest(),
             "acceptance_criteria_sha256": hashlib.sha256(b"ACCEPTANCE_CRITERIA.md").hexdigest(),
-            "task_scope_sha256": hashlib.sha256(json.dumps(scope, sort_keys=True, ensure_ascii=False).encode()).hexdigest(),
+            "task_scope_sha256": scope_projection_hash(scope),
             "baseline_commit": "fixture", "approved_at": "fixture",
         }
         (self.project_root / ".agent/state/PLAN_LOCK.json").write_text(json.dumps(lock), encoding="utf-8")
@@ -377,7 +378,7 @@ class TestConvergenceFull(unittest.TestCase):
         
     def test_generated_file_only_delta_is_no_fix_delta(self):
         res = self._mock_fixer_exec({"a.py": "1"}, {"a.py": "1", ".agent/reports/something.txt": "2"}, {"status": "SUCCESS", "reason_code": "OK"})
-        self.assertEqual(res["status"], "BLOCKED_NO_FIX_DELTA")
+        self.assertEqual(res["status"], "BLOCKED_SELF_MODIFICATION")
 
     @patch('harness.run_codex_review')
     @patch('harness.run_antigravity_fixer')

@@ -211,6 +211,9 @@ def build_handoff(project_root: Path, task_id: str, feature: str, cycle: int,
             ".agent/context/TASK_CONTEXT.json",
             ".agent/context/TASK_SCOPE.json",
             ".agent/context/ACCEPTANCE_CRITERIA.md",
+            ".agent/state/PLAN_LOCK.json",
+            ".agent/state/FIX_CONTRACT.json",
+            ".agent/state/AGY_FIX_RESULT.json",
         ],
         "completion_contract": {
             "must_change_snapshot": True,
@@ -284,6 +287,8 @@ def _protected_writer_snapshot(project_root: Path) -> dict[str, str]:
                 except ValueError:
                     continue
                 if protected_path(relative):
+                    if root == project_root and relative.startswith((".agent/state/", ".agent/reports/")):
+                        continue
                     result[str(path.resolve()).lower()] = hashlib.sha256(path.read_bytes()).hexdigest()
     except OSError:
         result["__snapshot_error__"] = "ERROR"
