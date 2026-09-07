@@ -1,0 +1,18 @@
+{
+    "schemaVersion":  1,
+    "project":  "Antigravity.BIMLink.Core",
+    "classification":  "SHARED_CORE",
+    "projectFile":  "src/Antigravity.BIMLink.Core/Antigravity.BIMLink.Core.csproj",
+    "assembly":  "Antigravity.BIMLink.Core.dll",
+    "entrypointSources":  [
+
+                          ],
+    "focusedTestProject":  "",
+    "runtimeBoundary":  "",
+    "smokeChecks":  [
+                        "S0_STRUCTURAL",
+                        "S1_BUILD_TEST"
+                    ],
+    "timeoutSeconds":  600,
+    "status":  "PENDING_CAPTURE"
+}

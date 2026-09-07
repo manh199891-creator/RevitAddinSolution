@@ -1,0 +1,23 @@
+{
+    "schemaVersion":  1,
+    "project":  "Antigravity.ZoneSplit",
+    "classification":  "REVIT_FEATURE",
+    "projectFile":  "src/Antigravity.ZoneSplit/Antigravity.ZoneSplit.csproj",
+    "assembly":  "Antigravity.ZoneSplit.dll",
+    "entrypointSources":  [
+                              "App.cs",
+                              "Commands/ZoneProcessCommand.cs",
+                              "Commands/ExportCommand.cs"
+                          ],
+    "focusedTestProject":  "src/Antigravity.ZoneSplit/tests/ZoneSplit.Tests.csproj",
+    "runtimeBoundary":  "",
+    "smokeChecks":  [
+                        "S0_STRUCTURAL",
+                        "S1_BUILD_TEST",
+                        "S2_REVIT_LOAD",
+                        "S3_COMMAND_SAFE_CANCEL",
+                        "S4_CRITICAL_PATH"
+                    ],
+    "timeoutSeconds":  600,
+    "status":  "PENDING_CAPTURE"
+}

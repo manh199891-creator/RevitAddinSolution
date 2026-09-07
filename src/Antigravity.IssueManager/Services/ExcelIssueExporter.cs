@@ -81,20 +81,28 @@ namespace Antigravity.IssueManager.Services
                         imgCounter++;
                     }
 
-                    if (!string.IsNullOrWhiteSpace(vp.SnapshotFilePath2) && File.Exists(vp.SnapshotFilePath2))
+                    if (!string.IsNullOrWhiteSpace(vp.SnapshotFilePath2))
                     {
-                        string ext = Path.GetExtension(vp.SnapshotFilePath2).TrimStart('.').ToLower();
-                        if (string.IsNullOrEmpty(ext)) ext = "png";
-                        excelImages.Add(new ExcelImage
+                        var paths = vp.SnapshotFilePath2.Split(new[] { '|' }, StringSplitOptions.RemoveEmptyEntries);
+                        var validPaths = paths.Where(p => File.Exists(p)).ToList();
+                        for (int pi = 0; pi < validPaths.Count; pi++)
                         {
-                            FilePath = vp.SnapshotFilePath2,
-                            RowIndex = 7 + i,
-                            RelId = "rId" + imgCounter,
-                            ZipPath = $"xl/media/image{imgCounter}.{ext}",
-                            Extension = ext,
-                            IsSecond = true
-                        });
-                        imgCounter++;
+                            string p = validPaths[pi];
+                            string ext = Path.GetExtension(p).TrimStart('.').ToLower();
+                            if (string.IsNullOrEmpty(ext)) ext = "png";
+                            excelImages.Add(new ExcelImage
+                            {
+                                FilePath = p,
+                                RowIndex = 7 + i,
+                                RelId = "rId" + imgCounter,
+                                ZipPath = $"xl/media/image{imgCounter}.{ext}",
+                                Extension = ext,
+                                IsSecond = true,
+                                ImageIndexInCell = pi,
+                                TotalImagesInCell = validPaths.Count
+                            });
+                            imgCounter++;
+                        }
                     }
                 }
             }
@@ -563,6 +571,18 @@ namespace Antigravity.IssueManager.Services
                     int endCol = img.IsSecond ? 15 : 14;
                     int endColOff = 0;
 
+                    if (img.TotalImagesInCell > 1)
+                    {
+                        long totalEmu = 2900000;
+                        long gapEmu = 150000;
+                        long stepEmu = totalEmu / img.TotalImagesInCell;
+                        long widthEmu = stepEmu - gapEmu;
+                        
+                        startColOff = 50000 + (int)(img.ImageIndexInCell * stepEmu);
+                        endCol = startCol; 
+                        endColOff = startColOff + (int)widthEmu;
+                    }
+
                     writer.WriteStartElement("xdr", "from", null);
                     writer.WriteElementString("xdr", "col", null, startCol.ToString(CultureInfo.InvariantCulture));
                     writer.WriteElementString("xdr", "colOff", null, startColOff.ToString(CultureInfo.InvariantCulture));
@@ -770,6 +790,8 @@ namespace Antigravity.IssueManager.Services
             public string ZipPath { get; set; }
             public string Extension { get; set; }
             public bool IsSecond { get; set; }
+            public int ImageIndexInCell { get; set; }
+            public int TotalImagesInCell { get; set; }
         }
 
         private class ExcelColumn

@@ -1,0 +1,37 @@
+{
+  "schemaVersion": 2,
+  "projectId": "revit-addin-solution",
+  "generatedFrom": "Agent Operating System adoption through Phase 12 consolidation, 2026-08-28",
+  "activeSkills": [
+    { "name": "addin-artifact-governance", "source": "project", "status": "ACTIVE" },
+    { "name": "project-workflow-governance", "source": "project", "status": "ACTIVE" },
+    { "name": "deep-research", "source": "agent-os-phase-1", "sourcePhase": 1, "targetType": "shared-adapted", "status": "ACTIVE" },
+    { "name": "deep-interview", "source": "agent-os-phase-2", "sourcePhase": 2, "targetType": "shared-adapted", "status": "ACTIVE" },
+    { "name": "consensus-plan", "source": "agent-os-phase-2", "sourcePhase": 2, "targetType": "shared-adapted", "status": "ACTIVE" },
+    { "name": "verified-execution", "source": "agent-os-phase-3", "sourcePhase": 3, "targetType": "shared-adapted", "status": "ACTIVE" },
+    { "name": "xaml-interface-quality", "source": "agent-os-phase-6", "sourcePhase": 6, "targetType": "revit-adapted", "status": "ACTIVE" },
+    { "name": "agent-security", "source": "agent-os-phase-7", "sourcePhase": 7, "targetType": "shared-adapted", "status": "ACTIVE" },
+    { "name": "memory-governance", "source": "agent-os-phase-9", "sourcePhase": 9, "targetType": "shared-adapted-existing-runtime", "status": "ACTIVE" },
+    { "name": "experience-learning", "source": "agent-os-phase-10", "sourcePhase": 10, "targetType": "shared-adapted-existing-runtime", "status": "ACTIVE" },
+    { "name": "consolidation", "source": "agent-os-phase-12", "sourcePhase": 12, "targetType": "shared-adapted", "status": "ACTIVE" }
+  ],
+  "plannedSkills": [],
+  "retiredCapabilities": [
+    { "name": "1-spec", "retiredInPhase": 12, "status": "RETIRED", "replacement": "deep-interview + project-workflow-governance + addin-artifact-governance" },
+    { "name": "2-plan", "retiredInPhase": 12, "status": "RETIRED", "replacement": "consensus-plan + project-workflow-governance + addin-artifact-governance" },
+    { "name": "3-code", "retiredInPhase": 12, "status": "RETIRED", "replacement": "Local Orchestrator workflow + verified-execution + project-workflow-governance" },
+    { "name": "4-ship", "retiredInPhase": 12, "status": "RETIRED", "replacement": "Local Orchestrator review/evidence + project-workflow-governance + addin-artifact-governance + agent-security" },
+    { "name": "dual-agent", "retiredInPhase": 12, "status": "RETIRED", "replacement": "Local Orchestrator workflow/review + verified-execution" },
+    { "name": "dual-agent-pipeline", "retiredInPhase": 12, "status": "RETIRED", "replacement": "Local Orchestrator workflow/review + LoopContract/verified-execution" }
+  ],
+  "activationPolicy": {
+    "loadAllSkillsByDefault": false,
+    "routerMayInvokeOnlyActiveSkills": true,
+    "retiredCapabilityMayContainSkillMd": false,
+    "routerMayInvokeRetiredCapability": false,
+    "promotionRequiresCanonicalAcceptance": true,
+    "promotionRequiresProjectAdoptionReview": true,
+    "localOrchestratorIsSingleWorkflowAuthority": true,
+    "localOrchestratorOwnsSharedConvergenceMemoryAndSkillRegistry": true
+  }
+}

@@ -1,0 +1,19 @@
+{
+    "schemaVersion":  1,
+    "project":  "Antigravity.BIMLink.Revit",
+    "classification":  "INTEGRATION_ADAPTER",
+    "projectFile":  "src/Antigravity.BIMLink.Revit/Antigravity.BIMLink.Revit.csproj",
+    "assembly":  "Antigravity.BIMLink.Revit.dll",
+    "entrypointSources":  [
+                              "RevitExtractor.cs"
+                          ],
+    "focusedTestProject":  "",
+    "runtimeBoundary":  "Revit",
+    "smokeChecks":  [
+                        "S0_STRUCTURAL",
+                        "S1_BUILD_TEST",
+                        "S2_REVIT_INTEGRATION_WHEN_AVAILABLE"
+                    ],
+    "timeoutSeconds":  600,
+    "status":  "PENDING_CAPTURE"
+}

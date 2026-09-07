@@ -1,0 +1,17 @@
+{
+  "schemaVersion": 1,
+  "gitCommit": "912a14a7b52b04366d8d338aec87b07966569bcd",
+  "gitRef": "refs/local-orchestrator/approved/revit-addin-solution",
+  "verifiedHeadAtClosure": "a1b06f11af425853bd988d66e30a367ac3e99b00",
+  "branch": "hotfix/agy-probe-isolation",
+  "releaseId": null,
+  "assemblyVersion": null,
+  "revitYear": 2024,
+  "verifiedAt": "2026-08-23",
+  "smokeStatus": "PENDING_REVALIDATION",
+  "evidence": {
+    "focusedTests": "75/75 PASS at DBR-1 working-copy closure",
+    "productionSwitch": false,
+    "note": "Identity is preserved for rollback comparison. Do not mark PASS for production until module smoke S2-S4 is executed against a staged release."
+  }
+}

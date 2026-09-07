@@ -1,0 +1,21 @@
+{
+  "schemaVersion": 1,
+  "project": "Antigravity.DrawBeams",
+  "assembly": "Antigravity.DrawBeams.dll",
+  "revitYears": [2024],
+  "entrypoints": [
+    "Antigravity.DrawBeams.CreateBeamCommand"
+  ],
+  "requiredModules": [
+    "Antigravity.Core"
+  ],
+  "smokeChecks": [
+    "S0_STRUCTURAL",
+    "S1_DRAWBEAMS_FOCUSED_TESTS",
+    "S2_REVIT_LOAD",
+    "S3_COMMAND_SAFE_CANCEL",
+    "S4_CAD_TO_REVIT_BEAM_CRITICAL_PATH"
+  ],
+  "focusedTestProject": "tests/Antigravity.DrawBeams.Tests/Antigravity.DrawBeams.Tests.csproj",
+  "timeoutSeconds": 600
+}

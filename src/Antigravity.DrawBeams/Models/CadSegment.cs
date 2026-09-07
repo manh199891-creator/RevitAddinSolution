@@ -19,6 +19,8 @@ namespace Antigravity.DrawBeams.Models
         /// <summary>ID nhóm cặp song song (cho Closed Polyline hình chữ nhật).</summary>
         public string GroupId { get; set; } = null;
 
+        public CadEntityProvenance Provenance { get; set; }
+
         // Vector hướng chuẩn hóa
         public double DirectionX => EndX - StartX;
         public double DirectionY => EndY - StartY;

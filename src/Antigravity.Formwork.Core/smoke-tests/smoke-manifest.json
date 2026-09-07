@@ -1,0 +1,18 @@
+{
+    "schemaVersion":  1,
+    "project":  "Antigravity.Formwork.Core",
+    "classification":  "SHARED_CORE",
+    "projectFile":  "src/Antigravity.Formwork.Core/Antigravity.Formwork.Core.csproj",
+    "assembly":  "Antigravity.Formwork.Core.dll",
+    "entrypointSources":  [
+
+                          ],
+    "focusedTestProject":  "",
+    "runtimeBoundary":  "",
+    "smokeChecks":  [
+                        "S0_STRUCTURAL",
+                        "S1_BUILD_TEST"
+                    ],
+    "timeoutSeconds":  600,
+    "status":  "PENDING_CAPTURE"
+}

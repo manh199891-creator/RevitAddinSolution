@@ -1,0 +1,21 @@
+{
+    "schemaVersion":  1,
+    "project":  "Antigravity.SharedParamMapper",
+    "classification":  "REVIT_FEATURE",
+    "projectFile":  "src/Antigravity.SharedParamMapper/Antigravity.SharedParamMapper.csproj",
+    "assembly":  "Antigravity.SharedParamMapper.dll",
+    "entrypointSources":  [
+                              "ParamMapperCommand.cs"
+                          ],
+    "focusedTestProject":  "",
+    "runtimeBoundary":  "",
+    "smokeChecks":  [
+                        "S0_STRUCTURAL",
+                        "S1_BUILD_TEST",
+                        "S2_REVIT_LOAD",
+                        "S3_COMMAND_SAFE_CANCEL",
+                        "S4_CRITICAL_PATH"
+                    ],
+    "timeoutSeconds":  600,
+    "status":  "PENDING_CAPTURE"
+}

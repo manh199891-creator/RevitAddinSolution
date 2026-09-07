@@ -1,0 +1,23 @@
+{
+    "schemaVersion":  1,
+    "project":  "Antigravity.DoorClearance",
+    "classification":  "REVIT_FEATURE",
+    "projectFile":  "src/Antigravity.DoorClearance/Antigravity.DoorClearance.csproj",
+    "assembly":  "DoorClearanceBox.dll",
+    "entrypointSources":  [
+                              "App.cs",
+                              "Commands/CreateClearanceBoxCommand.cs",
+                              "Commands/ClashControlCommand.cs"
+                          ],
+    "focusedTestProject":  "",
+    "runtimeBoundary":  "",
+    "smokeChecks":  [
+                        "S0_STRUCTURAL",
+                        "S1_BUILD_TEST",
+                        "S2_REVIT_LOAD",
+                        "S3_COMMAND_SAFE_CANCEL",
+                        "S4_CRITICAL_PATH"
+                    ],
+    "timeoutSeconds":  600,
+    "status":  "PENDING_CAPTURE"
+}

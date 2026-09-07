@@ -1,0 +1,56 @@
+{
+  "schemaVersion": 2,
+  "projectId": "revit-addin-solution",
+  "profile": "revit-addin",
+  "canonicalCapabilityOwner": "E:\\chatgpt-local-orchestrator",
+  "alwaysRead": [
+    ".agents/AGENTS.md",
+    ".agents/skill-manifest.json",
+    ".agents/policies/repository-structure.md",
+    ".agents/policies/capability-routing.md",
+    ".agents/policies/trust-and-security.md",
+    ".agents/policies/context-memory-policy.md",
+    ".agents/policies/consolidation-governance.md",
+    ".agents/skills/project-workflow-governance/SKILL.md"
+  ],
+  "specialistAgents": [
+    { "name": "planner", "phase": 2, "status": "ACTIVE", "invokedBy": "consensus-plan" },
+    { "name": "architect", "phase": 2, "status": "ACTIVE", "invokedBy": "consensus-plan" },
+    { "name": "critic", "phase": 2, "status": "ACTIVE", "invokedBy": "consensus-plan" },
+    { "name": "verifier", "phase": 3, "status": "ACTIVE", "invokedBy": "verified-execution" },
+    { "name": "autopilot", "phase": 4, "status": "ACTIVE", "invokedBy": "explicit-end-to-end-autopilot" }
+  ],
+  "retiredCapabilityNames": [
+    "1-spec",
+    "2-plan",
+    "3-code",
+    "4-ship",
+    "dual-agent",
+    "dual-agent-pipeline"
+  ],
+  "sharedRuntimeOnly": [
+    { "capability": "scheduler-workflow-state", "owner": "local-orchestrator" },
+    { "capability": "provider-execution-state", "owner": "local-orchestrator" },
+    { "capability": "review-evidence-runtime", "owner": "local-orchestrator" },
+    { "capability": "loop-contract-convergence", "phase": 3, "owner": "local-orchestrator", "status": "ACTIVE_CONSUMED" },
+    { "capability": "browser-chat-side-panel", "owner": "local-orchestrator" },
+    { "capability": "recovery-coordination", "owner": "local-orchestrator" },
+    { "capability": "mission-control", "phase": 5, "owner": "local-orchestrator", "status": "ACTIVE_CONSUMED_2026-08-25" },
+    { "capability": "code-intelligence-service", "phase": 8, "owner": "local-orchestrator", "status": "BASELINE_CONSUMED_2026-08-26" },
+    { "capability": "operational-memory-service", "phase": 9, "owner": "local-orchestrator", "status": "ACTIVE_CONSUMED_2026-08-26" },
+    { "capability": "skill-evolution-registry", "phase": 10, "owner": "local-orchestrator", "status": "ACTIVE_CONSUMED_2026-08-26" },
+    { "capability": "external-capability-router", "phase": 11, "owner": "local-orchestrator", "status": "ACTIVE_CONSUMED_2026-08-27" },
+    { "capability": "architecture-visualization", "phase": 13, "owner": "local-orchestrator", "status": "ACTIVE_CONSUMED_2026-08-31" }
+  ],
+  "rules": {
+    "loadAllSkillsByDefault": false,
+    "plannedCapabilitiesAreInvokable": false,
+    "retiredCapabilitiesAreRoutable": false,
+    "legacyExecutionRuntimeMayBeReactivated": false,
+    "localOrchestratorIsSingleWorkflowAuthority": true,
+    "localOrchestratorIsDefaultProductionExecutionLane": true,
+    "localOrchestratorOwnsSharedConvergenceMemoryAndSkillRegistry": true,
+    "supportingCoderIsReviewerAuthority": false,
+    "humanOnlyGatesRemainHumanOnly": true
+  }
+}

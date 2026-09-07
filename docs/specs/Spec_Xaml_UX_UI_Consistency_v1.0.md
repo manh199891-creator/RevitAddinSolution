@@ -114,7 +114,7 @@ Primary action lúc ở trái, lúc ở phải, lúc chiếm toàn chiều rộn
 
 ### 4.5 Mâu thuẫn design governance
 
-`VilaiViet_UI_Guidelines.md` mô tả light theme, trong khi `docs/superpowers/plans/Task_Apply_UI_Guidelines_v1.0.md` yêu cầu dark theme. Source hiện đang theo light theme phần lớn. Nếu không tuyên bố tài liệu nào là canonical, lần sửa sau sẽ tiếp tục đảo theme và copy style.
+`VilaiViet_UI_Guidelines.md` mô tả light theme, trong khi `docs/reports/legacy/superseded-ui/Task_Apply_UI_Guidelines_v1.0.md` yêu cầu dark theme. Source hiện đang theo light theme phần lớn. Nếu không tuyên bố tài liệu nào là canonical, lần sửa sau sẽ tiếp tục đảo theme và copy style.
 
 ### 4.6 Emoji và font fallback
 
@@ -339,7 +339,7 @@ Các file sau là đề xuất kiến trúc; chỉ tạo sau khi spec được p
 | `src/Antigravity.DoorClearance/Antigravity.DoorClearance.csproj` | Thêm project reference tới Core |
 | `src/Antigravity.TagArranger/Antigravity.TagArranger.csproj` | Thêm project reference tới Core; giữ explicit Page/Compile items hợp lệ |
 | `VilaiViet_UI_Guidelines.md` | Sửa encoding UTF-8, tuyên bố light theme canonical, trỏ tới tokens/component thay vì copy XAML |
-| `docs/superpowers/plans/Task_Apply_UI_Guidelines_v1.0.md` | Đánh dấu superseded/archived vì yêu cầu dark theme mâu thuẫn; không xóa lịch sử |
+| `docs/reports/legacy/superseded-ui/Task_Apply_UI_Guidelines_v1.0.md` | Đánh dấu superseded/archived vì yêu cầu dark theme mâu thuẫn; không xóa lịch sử |
 | `docs/specs/Spec_Xaml_UX_UI_Consistency_v1.0.md` | Cập nhật trạng thái Approved và các quyết định sau review |
 
 ### 9.2 Toàn bộ XAML thuộc phạm vi

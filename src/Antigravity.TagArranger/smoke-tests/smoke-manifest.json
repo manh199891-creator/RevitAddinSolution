@@ -1,0 +1,21 @@
+{
+    "schemaVersion":  1,
+    "project":  "Antigravity.TagArranger",
+    "classification":  "REVIT_FEATURE",
+    "projectFile":  "src/Antigravity.TagArranger/Antigravity.TagArranger.csproj",
+    "assembly":  "Antigravity.TagArranger.dll",
+    "entrypointSources":  [
+                              "TagArrangeCommand.cs"
+                          ],
+    "focusedTestProject":  "tests/Antigravity.TagArranger.RevitTests/Antigravity.TagArranger.RevitTests.csproj",
+    "runtimeBoundary":  "",
+    "smokeChecks":  [
+                        "S0_STRUCTURAL",
+                        "S1_BUILD_TEST",
+                        "S2_REVIT_LOAD",
+                        "S3_COMMAND_SAFE_CANCEL",
+                        "S4_CRITICAL_PATH"
+                    ],
+    "timeoutSeconds":  600,
+    "status":  "PENDING_CAPTURE"
+}

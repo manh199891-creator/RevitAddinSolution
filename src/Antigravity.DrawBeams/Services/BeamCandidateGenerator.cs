@@ -1,6 +1,7 @@
 using Antigravity.DrawBeams.Models;
 using System;
 using System.Collections.Generic;
+using System.Globalization;
 using System.Linq;
 
 namespace Antigravity.DrawBeams.Services
@@ -9,13 +10,19 @@ namespace Antigravity.DrawBeams.Services
     {
         private readonly BeamGeometryService _geometryService;
         private readonly BeamTextMatcher _textMatcher;
+        private readonly BeamCandidateScoringOptions _options;
+        private readonly BeamCandidateScorer _scorer;
 
         public BeamCandidateGenerator(
             BeamGeometryService geometryService = null,
-            BeamTextMatcher textMatcher = null)
+            BeamTextMatcher textMatcher = null,
+            BeamCandidateScoringOptions scoringOptions = null,
+            BeamCandidateScorer scorer = null)
         {
             _geometryService = geometryService ?? new BeamGeometryService();
             _textMatcher = textMatcher ?? new BeamTextMatcher(_geometryService);
+            _options = scoringOptions ?? new BeamCandidateScoringOptions();
+            _scorer = scorer ?? new BeamCandidateScorer(_options);
         }
 
         public List<BeamCandidate> GenerateCandidates(
@@ -26,8 +33,26 @@ namespace Antigravity.DrawBeams.Services
             var result = new List<BeamCandidate>();
             if (scene == null || scene.Segments == null) return result;
 
-            List<CadSegment> allSegments = scene.Segments;
-            List<CadText> allTexts = scene.Texts ?? new List<CadText>();
+            var orderedSourceSegments = scene.Segments
+                .Where(s => s != null)
+                .OrderBy(s => s.Id ?? string.Empty, StringComparer.Ordinal)
+                .ThenBy(s => s.StartX)
+                .ThenBy(s => s.StartY)
+                .ToList();
+
+            List<CadSegment> allSegments = _geometryService.PreProcessSegments(orderedSourceSegments)
+                .Where(s => s != null)
+                .OrderBy(s => s.Id ?? string.Empty, StringComparer.Ordinal)
+                .ThenBy(s => s.StartX)
+                .ThenBy(s => s.StartY)
+                .ToList();
+
+            List<CadText> allTexts = (scene.Texts ?? new List<CadText>())
+                .Where(t => t != null)
+                .OrderBy(t => t.Id ?? string.Empty, StringComparer.Ordinal)
+                .ThenBy(t => t.X)
+                .ThenBy(t => t.Y)
+                .ToList();
 
             if (!string.IsNullOrEmpty(textLayer))
             {
@@ -35,8 +60,6 @@ namespace Antigravity.DrawBeams.Services
                     .Where(t => string.Equals(t.Layer, textLayer, StringComparison.OrdinalIgnoreCase))
                     .ToList();
             }
-
-            allSegments = _geometryService.PreProcessSegments(allSegments);
 
             List<CadSegment> anchorLines;
             List<CadSegment> potentialPartners;
@@ -48,9 +71,8 @@ namespace Antigravity.DrawBeams.Services
                     .ToList();
 
                 if (anchorLines.Count == 0)
-                {
                     anchorLines = allSegments.Where(s => s.Layer == "0").ToList();
-                }
+
                 potentialPartners = allSegments;
             }
             else
@@ -64,111 +86,83 @@ namespace Antigravity.DrawBeams.Services
 
             foreach (var anchor in anchorLines)
             {
-                if (anchor == null) continue;
-                if (anchor.Length < 500) continue;
+                if (anchor.Length < _options.MinimumAnchorLength) continue;
 
-                // 1. PolylineWidth Candidate
-                if (anchor.PolylineWidth >= 100 && anchor.PolylineWidth < 3000)
+                if (anchor.PolylineWidth >= _options.MinimumPolylineWidth &&
+                    anchor.PolylineWidth < _options.MaximumPolylineWidth)
                 {
-                    var plMatches = _textMatcher.FindMatches(anchor, allTexts);
-                    var nearestMatch = plMatches.FirstOrDefault();
-
+                    var nearestMatch = _textMatcher.FindMatches(anchor, allTexts).FirstOrDefault();
                     string textId = nearestMatch?.Text?.Id ?? "NONE";
-                    string candidateId = $"WIDTH:{anchor.Id}:{textId}";
-
-                    candidates.Add(new BeamCandidate
+                    AddCandidate(candidates, new BeamCandidate
                     {
-                        Id = candidateId,
+                        Id = $"WIDTH:{anchor.Id}:{textId}",
                         Kind = BeamCandidateKind.PolylineWidth,
                         MainSegment = anchor,
-                        PartnerSegment = null,
                         TextMatch = nearestMatch,
                         MeasuredWidth = anchor.PolylineWidth,
                         ParsedWidth = nearestMatch != null ? nearestMatch.ParsedWidth : anchor.PolylineWidth,
                         ParsedHeight = nearestMatch != null ? nearestMatch.ParsedHeight : 500.0,
-                        TextContent = nearestMatch != null ? nearestMatch.Content : string.Empty,
-                        Mark = nearestMatch != null ? nearestMatch.Mark : string.Empty
+                        TextContent = nearestMatch?.Content ?? string.Empty,
+                        Mark = nearestMatch?.Mark ?? string.Empty
                     });
-
                     continue;
                 }
 
-                // 2. ClosedPolylinePair Candidate
                 if (anchor.GroupId != null)
                 {
                     var groupPartners = potentialPartners
                         .Where(p => p.GroupId == anchor.GroupId && p.Id != anchor.Id)
+                        .OrderBy(p => p.Id ?? string.Empty, StringComparer.Ordinal)
                         .ToList();
 
                     foreach (var groupPartner in groupPartners)
                     {
                         CanonicalizeSegments(anchor, groupPartner, out var canonicalMain, out var canonicalPartner);
+                        var nearestMatch = _textMatcher.FindMatches(canonicalMain, allTexts).FirstOrDefault();
+                        if (nearestMatch == null || nearestMatch.ParsedWidth <= 0) continue;
 
-                        var matchesOnMain = _textMatcher.FindMatches(canonicalMain, allTexts);
-                        var nearestMatch = matchesOnMain.FirstOrDefault();
+                        double angleDifference = _geometryService.GetAngleDifference(canonicalMain, canonicalPartner);
+                        if (angleDifference > _options.MaximumPairAngleDifference) continue;
 
-                        // Section 5.1: Must have valid text
-                        if (nearestMatch == null) continue;
+                        double measuredWidth = _geometryService.GetPerpendicularDistance(canonicalMain, canonicalPartner);
+                        if (measuredWidth < _options.MinimumBeamWidth || measuredWidth > _options.MaximumPairedWidth) continue;
+                        if (!_options.IsWidthAcceptable(measuredWidth, nearestMatch.ParsedWidth)) continue;
 
-                        // Section 5.3: Check parsed width > 0
-                        if (nearestMatch.ParsedWidth <= 0) continue;
-
-                        // Section 5.4: Parallel threshold 0.999
-                        if (!_geometryService.AreParallel(canonicalMain, canonicalPartner, 0.999)) continue;
-
-                        double measuredW = _geometryService.GetPerpendicularDistance(canonicalMain, canonicalPartner);
-
-                        // Section 5.5: Measured width limits 50..1200
-                        if (measuredW < 50 || measuredW > 1200) continue;
-
-                        // Section 5.3: Width match score threshold 0.7
-                        double widthScore = 1.0 - (Math.Abs(measuredW - nearestMatch.ParsedWidth) / nearestMatch.ParsedWidth);
-                        if (widthScore < 0.7) continue;
-
-                        // Section 5.6: Overlap & Projection
-                        double overlapLen = _geometryService.GetOverlapLength(canonicalMain, canonicalPartner);
-                        if (overlapLen <= 200) continue;
+                        double overlap = _geometryService.GetOverlapLength(canonicalMain, canonicalPartner);
+                        if (overlap <= _options.RequiredOverlap(canonicalMain.Length, canonicalPartner.Length)) continue;
                         if (!_geometryService.IsProjectionWithinRange(canonicalMain, canonicalPartner)) continue;
 
-                        string textId = nearestMatch.Text.Id;
-                        string candidateId = $"GROUP:{canonicalMain.Id}:{canonicalPartner.Id}:{textId}";
-
-                        candidates.Add(new BeamCandidate
+                        AddCandidate(candidates, new BeamCandidate
                         {
-                            Id = candidateId,
+                            Id = $"GROUP:{canonicalMain.Id}:{canonicalPartner.Id}:{nearestMatch.Text.Id}",
                             Kind = BeamCandidateKind.ClosedPolylinePair,
                             MainSegment = canonicalMain,
                             PartnerSegment = canonicalPartner,
                             TextMatch = nearestMatch,
-                            MeasuredWidth = measuredW,
+                            MeasuredWidth = measuredWidth,
                             ParsedWidth = nearestMatch.ParsedWidth,
                             ParsedHeight = nearestMatch.ParsedHeight,
                             TextContent = nearestMatch.Content,
                             Mark = nearestMatch.Mark,
-                            OverlapLength = overlapLen,
+                            OverlapLength = overlap,
                             OverlapRatio = _geometryService.GetOverlapRatio(canonicalMain, canonicalPartner),
-                            AngleDifference = _geometryService.GetAngleDifference(canonicalMain, canonicalPartner),
+                            AngleDifference = angleDifference,
                             SourceGroupId = canonicalMain.GroupId
                         });
                     }
-
                     continue;
                 }
 
                 var textMatches = _textMatcher.FindMatches(anchor, allTexts);
 
-                // 3. SingleLineWithText Candidates
                 foreach (var textMatch in textMatches)
                 {
-                    string candidateId = $"SINGLE:{anchor.Id}:{textMatch.Text.Id}";
-                    candidates.Add(new BeamCandidate
+                    AddCandidate(candidates, new BeamCandidate
                     {
-                        Id = candidateId,
+                        Id = $"SINGLE:{anchor.Id}:{textMatch.Text.Id}",
                         Kind = BeamCandidateKind.SingleLineWithText,
                         MainSegment = anchor,
-                        PartnerSegment = null,
                         TextMatch = textMatch,
-                        MeasuredWidth = 0,
                         ParsedWidth = textMatch.ParsedWidth,
                         ParsedHeight = textMatch.ParsedHeight,
                         TextContent = textMatch.Content,
@@ -177,7 +171,6 @@ namespace Antigravity.DrawBeams.Services
                     });
                 }
 
-                // 4. PairedEdges Candidates
                 if (textMatches.Count > 0)
                 {
                     foreach (var textMatch in textMatches)
@@ -186,41 +179,29 @@ namespace Antigravity.DrawBeams.Services
 
                         foreach (var partner in potentialPartners)
                         {
-                            if (partner.Id == anchor.Id) continue;
-                            if (partner.Length < 200) continue;
-
+                            if (partner.Id == anchor.Id || partner.Length < _options.MinimumPartnerLength) continue;
                             CanonicalizeSegments(anchor, partner, out var canonicalMain, out var canonicalPartner);
 
-                            var mainMatches = _textMatcher.FindMatches(canonicalMain, allTexts);
-                            var matchOnMain = mainMatches.FirstOrDefault(
-                                m => m.Text != null &&
-                                     string.Equals(m.Text.Id, textMatch.Text.Id, StringComparison.Ordinal));
+                            var matchOnMain = _textMatcher.FindMatches(canonicalMain, allTexts)
+                                .FirstOrDefault(m => m.Text != null && string.Equals(m.Text.Id, textMatch.Text.Id, StringComparison.Ordinal));
+                            if (matchOnMain == null || matchOnMain.ParsedWidth <= 0) continue;
 
-                            if (matchOnMain == null) continue;
-
-                            double expectedWidth = matchOnMain.ParsedWidth;
-                            if (expectedWidth <= 0) continue;
-
-                            if (!_geometryService.AreParallel(canonicalMain, canonicalPartner, 0.999)) continue;
+                            double angleDifference = _geometryService.GetAngleDifference(canonicalMain, canonicalPartner);
+                            if (angleDifference > _options.MaximumPairAngleDifference) continue;
 
                             double measuredWidth = _geometryService.GetPerpendicularDistance(canonicalMain, canonicalPartner);
-                            if (measuredWidth < 50 || measuredWidth > 1200) continue;
-                            if (canonicalMain.Length < measuredWidth * 1.2 && canonicalPartner.Length < measuredWidth * 1.2) continue;
-
-                            double widthScore = 1.0 - (Math.Abs(measuredWidth - expectedWidth) / expectedWidth);
-                            if (widthScore < 0.7) continue;
+                            if (measuredWidth < _options.MinimumBeamWidth || measuredWidth > _options.MaximumPairedWidth) continue;
+                            if (canonicalMain.Length < measuredWidth * _options.MinimumLengthToWidthRatio &&
+                                canonicalPartner.Length < measuredWidth * _options.MinimumLengthToWidthRatio) continue;
+                            if (!_options.IsWidthAcceptable(measuredWidth, matchOnMain.ParsedWidth)) continue;
 
                             double overlap = _geometryService.GetOverlapLength(canonicalMain, canonicalPartner);
-                            if (overlap < 200) continue;
-
+                            if (overlap < _options.RequiredOverlap(canonicalMain.Length, canonicalPartner.Length)) continue;
                             if (!_geometryService.IsProjectionWithinRange(canonicalMain, canonicalPartner)) continue;
 
-                            string textId = matchOnMain.Text.Id;
-                            string candidateId = $"PAIR:{canonicalMain.Id}:{canonicalPartner.Id}:{textId}";
-
-                            candidates.Add(new BeamCandidate
+                            AddCandidate(candidates, new BeamCandidate
                             {
-                                Id = candidateId,
+                                Id = $"PAIR:{canonicalMain.Id}:{canonicalPartner.Id}:{matchOnMain.Text.Id}",
                                 Kind = BeamCandidateKind.PairedEdges,
                                 MainSegment = canonicalMain,
                                 PartnerSegment = canonicalPartner,
@@ -230,78 +211,75 @@ namespace Antigravity.DrawBeams.Services
                                 ParsedHeight = matchOnMain.ParsedHeight,
                                 OverlapLength = overlap,
                                 OverlapRatio = _geometryService.GetOverlapRatio(canonicalMain, canonicalPartner),
-                                AngleDifference = _geometryService.GetAngleDifference(canonicalMain, canonicalPartner),
+                                AngleDifference = angleDifference,
                                 TextContent = matchOnMain.Content,
                                 Mark = matchOnMain.Mark
                             });
                         }
                     }
                 }
-                else
+                else if (commonWidths.Count > 0)
                 {
-                    // 5. CommonWidthFallback Candidates
-                    if (commonWidths.Count > 0)
+                    foreach (var partner in potentialPartners)
                     {
-                        foreach (var partner in potentialPartners)
+                        if (partner.Id == anchor.Id || partner.Length < _options.MinimumPartnerLength) continue;
+                        CanonicalizeSegments(anchor, partner, out var canonicalMain, out var canonicalPartner);
+
+                        double angleDifference = _geometryService.GetAngleDifference(canonicalMain, canonicalPartner);
+                        if (angleDifference > _options.MaximumPairAngleDifference) continue;
+
+                        double measuredWidth = _geometryService.GetPerpendicularDistance(canonicalMain, canonicalPartner);
+                        if (measuredWidth < _options.MinimumBeamWidth || measuredWidth > _options.MaximumFallbackWidth) continue;
+
+                        double overlap = _geometryService.GetOverlapLength(canonicalMain, canonicalPartner);
+                        if (overlap < _options.RequiredOverlap(canonicalMain.Length, canonicalPartner.Length)) continue;
+                        if (!_geometryService.IsProjectionWithinRange(canonicalMain, canonicalPartner)) continue;
+
+                        double matchedWidth = commonWidths
+                            .Where(w => w > 0 && Math.Abs(w - measuredWidth) / w < _options.CommonWidthRelativeError)
+                            .OrderBy(w => Math.Abs(w - measuredWidth))
+                            .ThenBy(w => w)
+                            .FirstOrDefault();
+
+                        if (matchedWidth <= 0) continue;
+
+                        string widthId = matchedWidth.ToString("0.###", CultureInfo.InvariantCulture);
+                        AddCandidate(candidates, new BeamCandidate
                         {
-                            if (partner.Id == anchor.Id) continue;
-                            if (partner.Length < 200) continue;
-
-                            CanonicalizeSegments(anchor, partner, out var canonicalMain, out var canonicalPartner);
-
-                            if (!_geometryService.AreParallel(canonicalMain, canonicalPartner, 0.999)) continue;
-
-                            double measuredWidth = _geometryService.GetPerpendicularDistance(canonicalMain, canonicalPartner);
-                            if (measuredWidth < 50.0 || measuredWidth > 3000.0) continue;
-
-                            double overlap = _geometryService.GetOverlapLength(canonicalMain, canonicalPartner);
-                            if (overlap < 200) continue;
-                            if (!_geometryService.IsProjectionWithinRange(canonicalMain, canonicalPartner)) continue;
-
-                            double matchedWidth = commonWidths
-                                .Where(w => Math.Abs(w - measuredWidth) / w < 0.15)
-                                .OrderBy(w => Math.Abs(w - measuredWidth))
-                                .FirstOrDefault();
-
-                            if (matchedWidth > 0)
-                            {
-                                string candidateId = $"COMMON:{canonicalMain.Id}:{canonicalPartner.Id}:{matchedWidth}";
-
-                                candidates.Add(new BeamCandidate
-                                {
-                                    Id = candidateId,
-                                    Kind = BeamCandidateKind.CommonWidthFallback,
-                                    MainSegment = canonicalMain,
-                                    PartnerSegment = canonicalPartner,
-                                    TextMatch = null,
-                                    MeasuredWidth = measuredWidth,
-                                    ParsedWidth = matchedWidth,
-                                    ParsedHeight = 500,
-                                    OverlapLength = overlap,
-                                    OverlapRatio = _geometryService.GetOverlapRatio(canonicalMain, canonicalPartner),
-                                    AngleDifference = _geometryService.GetAngleDifference(canonicalMain, canonicalPartner),
-                                    TextContent = string.Empty,
-                                    Mark = string.Empty
-                                });
-                            }
-                        }
+                            Id = $"COMMON:{canonicalMain.Id}:{canonicalPartner.Id}:{widthId}",
+                            Kind = BeamCandidateKind.CommonWidthFallback,
+                            MainSegment = canonicalMain,
+                            PartnerSegment = canonicalPartner,
+                            MeasuredWidth = measuredWidth,
+                            ParsedWidth = matchedWidth,
+                            ParsedHeight = 500,
+                            OverlapLength = overlap,
+                            OverlapRatio = _geometryService.GetOverlapRatio(canonicalMain, canonicalPartner),
+                            AngleDifference = angleDifference,
+                            TextContent = string.Empty,
+                            Mark = string.Empty
+                        });
                     }
                 }
             }
 
-            // Section 8: Deduplicate deterministically
-            var deduplicated = candidates
+            return candidates
                 .GroupBy(c => c.Id, StringComparer.Ordinal)
                 .Select(g => g
-                    .OrderBy(c => c.MainSegment?.Id, StringComparer.Ordinal)
+                    .OrderByDescending(c => c.Evidence?.FinalScore ?? 0.0)
+                    .ThenBy(c => c.MainSegment?.Id, StringComparer.Ordinal)
                     .ThenBy(c => c.PartnerSegment?.Id, StringComparer.Ordinal)
                     .ThenBy(c => c.TextMatch?.Text?.Id, StringComparer.Ordinal)
                     .ThenBy(c => c.MeasuredWidth)
                     .First())
                 .OrderBy(c => c.Id, StringComparer.Ordinal)
                 .ToList();
+        }
 
-            return deduplicated;
+        private void AddCandidate(List<BeamCandidate> candidates, BeamCandidate candidate)
+        {
+            candidate.Evidence = _scorer.BuildEvidence(candidate);
+            candidates.Add(candidate);
         }
 
         private static void CanonicalizeSegments(
@@ -331,11 +309,14 @@ namespace Antigravity.DrawBeams.Services
                 string content = txt.CleanText;
                 if (string.IsNullOrEmpty(content)) continue;
 
-                var dimMatch = System.Text.RegularExpressions.Regex.Match(content, @"(\d+[\.,]?\d*)\s*[xX\*\-\/]\s*(\d+[\.,]?\d*)", System.Text.RegularExpressions.RegexOptions.IgnoreCase);
+                var dimMatch = System.Text.RegularExpressions.Regex.Match(
+                    content,
+                    @"(\d+[\.,]?\d*)\s*[xX\*\-\/]\s*(\d+[\.,]?\d*)",
+                    System.Text.RegularExpressions.RegexOptions.IgnoreCase);
                 if (!dimMatch.Success) continue;
 
                 string val1 = dimMatch.Groups[1].Value.Replace(',', '.');
-                if (double.TryParse(val1, System.Globalization.NumberStyles.Any, System.Globalization.CultureInfo.InvariantCulture, out double b))
+                if (double.TryParse(val1, System.Globalization.NumberStyles.Any, CultureInfo.InvariantCulture, out double b))
                 {
                     if (b < 100) b *= 10;
                     if (b >= 100 && b <= 2000)
@@ -352,9 +333,7 @@ namespace Antigravity.DrawBeams.Services
                 .ToList();
 
             if (common.Count == 0)
-            {
                 common.AddRange(new[] { 200.0, 300.0, 400.0 });
-            }
 
             return common;
         }

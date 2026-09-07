@@ -1,0 +1,13 @@
+{
+  "schemaVersion": 1,
+  "project": "Antigravity.<Addin>",
+  "assembly": "Antigravity.<Addin>.dll",
+  "revitYears": [2024],
+  "entrypoints": [],
+  "requiredModules": [],
+  "smokeChecks": [
+    "S0_STRUCTURAL",
+    "S1_BUILD"
+  ],
+  "timeoutSeconds": 120
+}

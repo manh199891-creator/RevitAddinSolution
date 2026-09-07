@@ -1,0 +1,18 @@
+{
+    "schemaVersion":  1,
+    "project":  "Antigravity.WallMepClash.Tests",
+    "classification":  "TEST_ONLY",
+    "projectFile":  "src/Antigravity.WallMepClash.Tests/Antigravity.WallMepClash.Tests.csproj",
+    "assembly":  "Antigravity.WallMepClash.Tests.dll",
+    "entrypointSources":  [
+
+                          ],
+    "focusedTestProject":  "src/Antigravity.WallMepClash.Tests/Antigravity.WallMepClash.Tests.csproj",
+    "runtimeBoundary":  "",
+    "smokeChecks":  [
+                        "S0_STRUCTURAL",
+                        "S1_TEST_EXECUTION"
+                    ],
+    "timeoutSeconds":  600,
+    "status":  "PENDING_CAPTURE"
+}

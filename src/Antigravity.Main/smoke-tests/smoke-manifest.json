@@ -1,0 +1,20 @@
+{
+    "schemaVersion":  1,
+    "project":  "Antigravity.Main",
+    "classification":  "REVIT_HOST",
+    "projectFile":  "src/Antigravity.Main/Antigravity.Main.csproj",
+    "assembly":  "Antigravity.Main.dll",
+    "entrypointSources":  [
+                              "App.cs"
+                          ],
+    "focusedTestProject":  "",
+    "runtimeBoundary":  "",
+    "smokeChecks":  [
+                        "S0_STRUCTURAL",
+                        "S1_BUILD_TEST",
+                        "S2_REVIT_LOAD",
+                        "S3_RIBBON_HOST_STARTUP"
+                    ],
+    "timeoutSeconds":  600,
+    "status":  "PENDING_CAPTURE"
+}

@@ -5,8 +5,10 @@
     <RevitAddinsDir Condition="'$(RevitAddinsDir)' == ''">$(AppData)\Autodesk\Revit\Addins\$(RevitVersion)</RevitAddinsDir>
     <AntigravityDeployDir Condition="'$(AntigravityDeployDir)' == ''">$(RevitAddinsDir)\Antigravity</AntigravityDeployDir>
     <DeployToRevitAddins Condition="'$(DeployToRevitAddins)' == ''">false</DeployToRevitAddins>
+    <!-- Revit/Nice3point packages are opt-in. Pure libraries must not inherit them from the repository root. -->
+    <UseNice3pointRevitExtensions Condition="'$(UseNice3pointRevitExtensions)' == ''">false</UseNice3pointRevitExtensions>
   </PropertyGroup>
-  <ItemGroup>
+  <ItemGroup Condition="'$(UseNice3pointRevitExtensions)' == 'true'">
     <PackageReference Include="Nice3point.Revit.Extensions" Version="2024.0.0" />
   </ItemGroup>
 </Project>

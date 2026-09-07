@@ -25,6 +25,7 @@ namespace Antigravity.DrawBeams.Models
         public string Mark { get; set; }
 
         public string SourceGroupId { get; set; }
+        public BeamCandidateEvidence Evidence { get; set; }
 
         public bool HasPartner => PartnerSegment != null;
         public bool HasText => TextMatch != null;

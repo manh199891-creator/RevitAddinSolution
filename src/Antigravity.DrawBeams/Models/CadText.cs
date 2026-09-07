@@ -13,6 +13,7 @@ namespace Antigravity.DrawBeams.Models
         public double TextHeight { get; set; }
         public string Layer { get; set; }
         public string ObjectName { get; set; }
+        public CadEntityProvenance Provenance { get; set; }
 
         public string CleanText
         {

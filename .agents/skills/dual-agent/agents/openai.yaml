@@ -1,7 +1,0 @@
-interface:
-  display_name: "Dual Agent"
-  short_description: "Orchestrate Anti and Codex through gated phases"
-  default_prompt: "Use $dual-agent to route this task through the research, plan, code, or release pipeline with real Codex evidence."
-
-policy:
-  allow_implicit_invocation: true

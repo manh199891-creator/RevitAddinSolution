@@ -1,0 +1,12 @@
+{
+    "schemaVersion":  1,
+    "project":  "Antigravity.DrawFloors",
+    "gitCommit":  null,
+    "gitRef":  null,
+    "branch":  null,
+    "releaseId":  null,
+    "assemblyVersion":  null,
+    "verifiedAt":  null,
+    "smokeStatus":  "PENDING_CAPTURE",
+    "note":  "No verified project-local rollback baseline has been captured by Phase 2. Do not promote this status without actual verification evidence."
+}

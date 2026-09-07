@@ -1,0 +1,19 @@
+{
+    "schemaVersion":  1,
+    "project":  "Antigravity.BIMLink.Etabs",
+    "classification":  "INTEGRATION_ADAPTER",
+    "projectFile":  "src/Antigravity.BIMLink.Etabs/Antigravity.BIMLink.Etabs.csproj",
+    "assembly":  "Antigravity.BIMLink.Etabs.dll",
+    "entrypointSources":  [
+                              "EtabsAdapter.cs"
+                          ],
+    "focusedTestProject":  "",
+    "runtimeBoundary":  "ETABS",
+    "smokeChecks":  [
+                        "S0_STRUCTURAL",
+                        "S1_BUILD_TEST",
+                        "S2_ETABS_INTEGRATION_WHEN_AVAILABLE"
+                    ],
+    "timeoutSeconds":  600,
+    "status":  "PENDING_CAPTURE"
+}

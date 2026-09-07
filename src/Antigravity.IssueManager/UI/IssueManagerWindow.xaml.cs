@@ -571,9 +571,22 @@ namespace Antigravity.IssueManager.UI
         {
             try
             {
-                if (!string.IsNullOrWhiteSpace(path) && File.Exists(path))
+                if (string.IsNullOrWhiteSpace(path)) return existingBase64;
+                
+                var paths = path.Split(new[] { '|' }, StringSplitOptions.RemoveEmptyEntries);
+                var base64List = new List<string>();
+                
+                foreach (var p in paths)
                 {
-                    return Convert.ToBase64String(File.ReadAllBytes(path));
+                    if (File.Exists(p))
+                    {
+                        base64List.Add(Convert.ToBase64String(File.ReadAllBytes(p)));
+                    }
+                }
+                
+                if (base64List.Count > 0)
+                {
+                    return string.Join("|", base64List);
                 }
             }
             catch (Exception ex)
@@ -611,14 +624,27 @@ namespace Antigravity.IssueManager.UI
             try
             {
                 string safeIssueId = SanitizeFileName(string.IsNullOrWhiteSpace(issueId) ? Guid.NewGuid().ToString() : issueId);
-                string path = Path.Combine(dir, $"{safeIssueId}_{suffix}.png");
-                File.WriteAllBytes(path, Convert.FromBase64String(base64));
-                return path;
+                var b64s = base64.Split(new[] { '|' }, StringSplitOptions.RemoveEmptyEntries);
+                var restoredPaths = new List<string>();
+                
+                for (int i = 0; i < b64s.Length; i++)
+                {
+                    string path = Path.Combine(dir, $"{safeIssueId}_{suffix}_{(i > 0 ? i.ToString() : "")}.png");
+                    File.WriteAllBytes(path, Convert.FromBase64String(b64s[i]));
+                    restoredPaths.Add(path);
+                }
+                
+                if (restoredPaths.Count > 0)
+                {
+                    return string.Join("|", restoredPaths);
+                }
             }
             catch
             {
                 return existingPath;
             }
+            
+            return existingPath;
         }
 
         private static string SanitizeFileName(string value)

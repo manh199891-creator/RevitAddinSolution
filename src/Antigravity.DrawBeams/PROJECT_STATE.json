@@ -1,0 +1,190 @@
+{
+  "schemaVersion": 1,
+  "checkpointId": "drawbeams-dbr4c-actual-source-pass-ready-s4-20260827",
+  "projectId": "revit-addin-solution",
+  "ownerPath": "src/Antigravity.DrawBeams",
+  "capturedAt": "2026-08-27T12:06:00+07:00",
+  "sessionStatus": "PARTIAL",
+  "milestone": {
+    "id": "DBR-4C",
+    "status": "IMPLEMENTED_ACTUAL_SOURCE_REVIEW_PASS_READY_FOR_STAGED_S4"
+  },
+  "artifacts": {
+    "projectPath": "src/Antigravity.DrawBeams/PROJECT.md",
+    "roadmapPath": "src/Antigravity.DrawBeams/docs/plans/ROADMAP.md",
+    "planPath": "src/Antigravity.DrawBeams/docs/plans/2026-08-27-dbr4c-physical-beam-strip-pairing.md",
+    "planDigest": "feef76c91bc8780e6f81cf78ce126279073229feac790f75ef65bd80e392f6a3",
+    "designRefs": [
+      "src/Antigravity.DrawBeams/docs/design/2026-08-26-dbr4a-recognition-integration-boundary.md",
+      "src/Antigravity.DrawBeams/docs/design/2026-08-26-dbr4b-production-activation-boundary.md",
+      "src/Antigravity.DrawBeams/docs/design/2026-08-27-dbr4c-beam-strip-recognition-boundary.md"
+    ],
+    "acceptanceRefs": [
+      "src/Antigravity.DrawBeams/docs/acceptance/2026-08-26-dbr4a-production-integration-parity-harness.md",
+      "src/Antigravity.DrawBeams/docs/acceptance/2026-08-26-dbr4b-production-activation.md",
+      "src/Antigravity.DrawBeams/docs/acceptance/2026-08-27-dbr4c-physical-beam-strip-pairing.md"
+    ],
+    "reportRefs": [
+      "src/Antigravity.DrawBeams/docs/reports/DrawBeams_DBR4A_Integration_ParityHarness_20260826.md",
+      "src/Antigravity.DrawBeams/docs/reports/DrawBeams_DBR4B_Production_Activation_20260826.md",
+      "src/Antigravity.DrawBeams/docs/reports/2026-08-27-dbr4b-s4-deep-research-beam-pairing-topology.md",
+      "src/Antigravity.DrawBeams/docs/reports/DrawBeams_DBR4C_Physical_Beam_Strip_Pairing_20260827.md"
+    ]
+  },
+  "sourceIdentity": {
+    "kind": "WORKFLOW_CHECKPOINT",
+    "workflowId": "WF-ded08b56-05be-59c4-b83a-03683bd69a54",
+    "ownerCheckpointCommit": "de04704bf7b5c4c20da6731dd12a6afaf580ef60",
+    "ownerCheckpointRef": "refs/local-orchestrator/workflow-checkpoints/WF-ded08b56-05be-59c4-b83a-03683bd69a54"
+  },
+  "progress": {
+    "completed": [
+      "DBR-0 baseline + golden fixtures PASS / CLOSED",
+      "DBR-1 CAD extraction normalization PASS / CLOSED",
+      "DBR-2 candidate generation + evidence scoring PASS / CLOSED",
+      "DBR-3 conflict graph + global resolver + projected-overlap centerline PASS / CLOSED",
+      "DBR-4A non-production integration + parity harness PASS / CLOSED",
+      "DBR-4C deep research and Planner -> Architect -> Critic consensus planning completed",
+      "User explicitly approved the DBR-4C plan for Side Panel / Local Orchestrator execution on 2026-08-27"
+    ],
+    "partial": [
+      "DBR-4B production activation candidate remains staged and unpromoted",
+      "S2 Revit load PASS on the prior reviewed DBR-4B staged candidate",
+      "DBR-4C workflow WF-f61534f7-a6c4-8296-3fff-1daa39b1b881 preserves the integrated BeamCandidateGenerator -> BeamFaceAdjacencyGraph -> BeamStripResolver -> BeamStripSemanticMatcher -> BeamCandidate -> DBR-3 path, removes narrowest-width ownership, and bounds semantic text longitudinally and laterally before the legacy matcher",
+      "ChatGPT actual-source review PASS for WF-f615; final workflow evidence records DrawBeams build PASS, 54/54 focused DBR-4C/conflict fixtures PASS and 247/247 owner tests PASS",
+      "DBR-4C is approved for transient smoke staging only; canonical source promotion and LKG advancement remain blocked pending S3/S4"
+    ],
+    "pending": [
+      "Stage the reviewed WF-f615 DBR-4C DLL and required dependencies under src/Antigravity.DrawBeams/smoke-tests/results/WF-f61534f7-a6c4-8296-3fff-1daa39b1b881/package/",
+      "Run DBR-4C S2 load if needed and S3 command safe-cancel",
+      "Re-run real-CAD S4 on the previously failing stair/core and D5-E regions, checking wrong pair, duplicate beam, BxH/Mark ownership and lateral centerline shift",
+      "If raw recognition passes but endpoints still do not converge, plan/execute DBR-5 structural topology",
+      "Explicitly authorize canonical promotion/landing and LKG advancement only after required smoke gates pass"
+    ],
+    "deferred": [
+      "DBR-5 structural support/junction topology and Revit end-join verification until DBR-4C raw recognition is accepted",
+      "DBR-6 production acceptance / promotion"
+    ],
+    "explicitlyNotImplemented": [
+      "DBR-4C WF-f615 has not yet been manually accepted by Revit S3/S4 despite passing actual-source review",
+      "DBR-4B/DBR-4C staged source has not been promoted/landed into the canonical RevitAddinSolution production tree",
+      "Smoke last-known-good has not been advanced",
+      "Beam-end support/junction topology has not been changed"
+    ],
+    "mustRemainUnchanged": [
+      "Legacy CadInteropService.ProcessScene remains the rollback implementation in the staged candidate",
+      "DBR-4B production router remains the single staged activation boundary",
+      "DBR-4C must not laterally move a correct raw centerline to force Revit joins",
+      "RevitBeamBuilder and CoordinateService remain unchanged during DBR-4C unless a separately approved scope change follows isolated failing evidence",
+      "Canonical production source remains unpromoted until required S3/S4 and final review pass",
+      "Unrelated dirty work in RevitAddinSolution must remain untouched"
+    ]
+  },
+  "verification": {
+    "sourceSnapshot": "WF-f61534f7-a6c4-8296-3fff-1daa39b1b881_OWNER_RESULT",
+    "observedAt": "2026-08-27",
+    "build": "PASS_REPORTED_BY_WF_F615_DBR4C_FINAL_REPAIR",
+    "tests": "PASS_54_OF_54_FOCUSED_DBR4C_CONFLICT_AND_PASS_247_OF_247_OWNER_REPORTED_BY_WF_F615; INDEPENDENT_CODEXPRO_RERUN_BLOCKED_BY_VERIFY_ONLY_POWERSHELL_POLICY",
+    "typecheck": "NOT_RUN",
+    "manualAcceptance": "S2_PASS_ON_PRIOR_DBR4B_CANDIDATE; DBR4C_S2_PENDING_AFTER_STAGING; S3_PENDING; S4_PENDING_REVALIDATION",
+    "evidenceRefs": [
+      "src/Antigravity.DrawBeams/docs/acceptance/2026-08-26-dbr4b-production-activation.md",
+      "src/Antigravity.DrawBeams/docs/reports/DrawBeams_DBR4B_Production_Activation_20260826.md",
+      "src/Antigravity.DrawBeams/docs/reports/2026-08-27-dbr4b-s4-deep-research-beam-pairing-topology.md",
+      "src/Antigravity.DrawBeams/docs/plans/2026-08-27-dbr4c-physical-beam-strip-pairing.md",
+      "src/Antigravity.DrawBeams/smoke-tests/smoke-manifest.json",
+      "src/Antigravity.DrawBeams/smoke-tests/baseline/last-known-good.json"
+    ]
+  },
+  "humanDecisions": [
+    {
+      "decision": "Prefer precision before recall for ambiguous DBR-3 candidates",
+      "scope": "DrawBeams DBR-3+",
+      "decidedAt": "2026-08-23",
+      "sourceRef": "src/Antigravity.DrawBeams/docs/plans/2026-08-23-dbr3-conflict-graph-global-resolver-centerline.md"
+    },
+    {
+      "decision": "Use FinalScore as the primary DBR-3 winner signal with deterministic tie-breaking",
+      "scope": "DrawBeams DBR-3+",
+      "decidedAt": "2026-08-23",
+      "sourceRef": "src/Antigravity.DrawBeams/docs/plans/2026-08-23-dbr3-conflict-graph-global-resolver-centerline.md"
+    },
+    {
+      "decision": "Non-collinear crossing beams are not conflicts by geometry alone",
+      "scope": "DrawBeams DBR-3+",
+      "decidedAt": "2026-08-23",
+      "sourceRef": "src/Antigravity.DrawBeams/docs/plans/2026-08-23-dbr3-conflict-graph-global-resolver-centerline.md"
+    },
+    {
+      "decision": "Reject invalid projected overlap instead of falling back to legacy endpoint averaging",
+      "scope": "DrawBeams DBR-3+",
+      "decidedAt": "2026-08-23",
+      "sourceRef": "src/Antigravity.DrawBeams/docs/plans/2026-08-23-dbr3-conflict-graph-global-resolver-centerline.md"
+    },
+    {
+      "decision": "Adopt geometry-first physical beam-strip pairing before semantic BxH/Mark assignment; do not continue broad tolerance tuning for the observed S4 pairing defects",
+      "scope": "DrawBeams DBR-4C",
+      "decidedAt": "2026-08-27",
+      "sourceRef": "src/Antigravity.DrawBeams/docs/plans/2026-08-27-dbr4c-physical-beam-strip-pairing.md"
+    },
+    {
+      "decision": "Keep beam-end convergence/support/junction behavior separate as DBR-5 topology unless pure-recognition evidence proves otherwise",
+      "scope": "DrawBeams DBR-4C/DBR-5",
+      "decidedAt": "2026-08-27",
+      "sourceRef": "src/Antigravity.DrawBeams/docs/reports/2026-08-27-dbr4b-s4-deep-research-beam-pairing-topology.md"
+    },
+    {
+      "decision": "Approve DBR-4C physical beam-strip pairing for production-source implementation through Side Panel / Local Orchestrator only",
+      "scope": "DrawBeams DBR-4C",
+      "decidedAt": "2026-08-27",
+      "sourceRef": "src/Antigravity.DrawBeams/docs/plans/2026-08-27-dbr4c-physical-beam-strip-pairing.md"
+    }
+  ],
+  "blockers": [
+    "Canonical DBR-4B/DBR-4C production promotion remains blocked until the reviewed WF-f615 candidate passes required staged S3/S4 manual acceptance; LKG remains unchanged"
+  ],
+  "unresolvedQuestions": [
+    "After DBR-4C produces correct raw beam identity and centerlines, which remaining beam-end non-connections require DBR-5 topology versus normal Revit framing cutback/join presentation"
+  ],
+  "nextAction": {
+    "summary": "Stage the actual-source-reviewed WF-f615 DBR-4C DLL and required dependencies under the DrawBeams owner smoke results path, then run DBR-4C S2/S3 and real-CAD S4 on the known failure regions before any production promotion or DBR-5 topology work.",
+    "readFirst": [
+      "src/Antigravity.DrawBeams/PROJECT.md",
+      "src/Antigravity.DrawBeams/docs/plans/ROADMAP.md",
+      "src/Antigravity.DrawBeams/PROJECT_STATE.json",
+      "src/Antigravity.DrawBeams/docs/plans/2026-08-27-dbr4c-physical-beam-strip-pairing.md",
+      "src/Antigravity.DrawBeams/docs/reports/2026-08-27-dbr4b-s4-deep-research-beam-pairing-topology.md",
+      "src/Antigravity.DrawBeams/smoke-tests/smoke-manifest.json",
+      "src/Antigravity.DrawBeams/smoke-tests/baseline/last-known-good.json"
+    ],
+    "doNot": [
+      "Do not promote/land DBR-4B/4C source or advance LKG before required S3/S4 and final promotion review",
+      "Do not solve wrong physical pairing with broader global text/partner/overlap/snap tolerances",
+      "Do not move a raw centerline laterally to force beam joins",
+      "Do not treat a Local Orchestrator worktree path or DLL as the canonical owned artifact location",
+      "Do not default an add-in-scoped S1 gate to dotnet test Antigravity.sln",
+      "Do not absorb unrelated repository dirt"
+    ],
+    "verificationRequired": [
+      "DBR-4C S2 Revit load after staging",
+      "S3 Revit command safe-cancel",
+      "Staged S4 recognition recheck for wrong-pair/duplicate/BxH-Mark/lateral-centerline defects",
+      "If recognition passes but endpoints still do not converge, DBR-5 topology acceptance",
+      "Final promotion review before canonical landing and LKG advancement"
+    ]
+  },
+  "provenance": {
+    "producer": "ChatGPT/CodexPro Phase 2 consensus-plan durable-state synchronization",
+    "sourceArtifactRefs": [
+      "src/Antigravity.DrawBeams/PROJECT.md",
+      "src/Antigravity.DrawBeams/docs/plans/ROADMAP.md",
+      "src/Antigravity.DrawBeams/docs/plans/2026-08-27-dbr4c-physical-beam-strip-pairing.md",
+      "src/Antigravity.DrawBeams/docs/reports/2026-08-27-dbr4b-s4-deep-research-beam-pairing-topology.md",
+      "src/Antigravity.DrawBeams/docs/acceptance/2026-08-26-dbr4b-production-activation.md",
+      "src/Antigravity.DrawBeams/docs/reports/DrawBeams_DBR4B_Production_Activation_20260826.md",
+      "src/Antigravity.DrawBeams/smoke-tests/smoke-manifest.json",
+      "src/Antigravity.DrawBeams/smoke-tests/baseline/last-known-good.json"
+    ],
+    "supersedesCheckpointId": "drawbeams-dbr4b-staged-candidate-20260827"
+  }
+}

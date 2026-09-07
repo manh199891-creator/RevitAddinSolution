@@ -1,0 +1,18 @@
+{
+    "schemaVersion":  1,
+    "project":  "Antigravity.Core",
+    "classification":  "SHARED_CORE",
+    "projectFile":  "src/Antigravity.Core/Antigravity.Core.csproj",
+    "assembly":  "Antigravity.Core.dll",
+    "entrypointSources":  [
+
+                          ],
+    "focusedTestProject":  "tests/Antigravity.Core.Geometry.Tests/Antigravity.Core.Geometry.Tests.csproj",
+    "runtimeBoundary":  "",
+    "smokeChecks":  [
+                        "S0_STRUCTURAL",
+                        "S1_BUILD_TEST"
+                    ],
+    "timeoutSeconds":  600,
+    "status":  "PENDING_CAPTURE"
+}

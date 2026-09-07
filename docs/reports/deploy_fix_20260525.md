@@ -88,7 +88,7 @@ Ly do:
 
 ### 5. Deploy Script
 
-File: `DeployToRevit.ps1`
+File: `scripts/deploy/Deploy-ToRevit.ps1`
 
 Thay doi:
 
@@ -122,7 +122,7 @@ Ly do:
 
 ### 6. Package Script
 
-File: `PackageForDeployment.ps1`
+File: `scripts/deploy/Package-ForDeployment.ps1`
 
 Thay doi:
 
@@ -145,7 +145,7 @@ Ly do:
 Command used:
 
 ```powershell
-powershell -ExecutionPolicy Bypass -File .\DeployToRevit.ps1 -NoPause
+powershell -ExecutionPolicy Bypass -File .\scripts/deploy/Deploy-ToRevit.ps1 -NoPause
 ```
 
 Deploy output summary:

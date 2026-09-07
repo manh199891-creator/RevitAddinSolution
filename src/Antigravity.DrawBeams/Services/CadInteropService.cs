@@ -23,7 +23,7 @@ namespace Antigravity.DrawBeams.Services
             }
             catch (Exception ex)
             {
-                throw new Exception("KhÃ´ng thá»ƒ káº¿t ná»‘i vá»›i AutoCAD. Äáº£m báº£o AutoCAD Ä‘ang má»Ÿ.", ex);
+                throw new Exception("Không thể kết nối với AutoCAD. Đảm bảo AutoCAD đang mở.", ex);
             }
         }
 
@@ -38,7 +38,7 @@ namespace Antigravity.DrawBeams.Services
             }
             catch
             {
-                throw new Exception("Há»§y chá»n Ä‘iá»ƒm.");
+                throw new Exception("Hủy chọn điểm.");
             }
         }
 
@@ -76,7 +76,7 @@ namespace Antigravity.DrawBeams.Services
                 object entityObj = null;
                 object pickPt = null;
 
-                utility.GetEntity(out entityObj, out pickPt, "\nChá»n Ä‘á»‘i tÆ°á»£ng máº«u (Line hoáº·c Text)... ");
+                utility.GetEntity(out entityObj, out pickPt, "\nChọn đối tượng mẫu (Line hoặc Text)... ");
 
                 dynamic entity = entityObj;
                 return new Dictionary<string, string>
@@ -127,7 +127,7 @@ namespace Antigravity.DrawBeams.Services
                 try { sset = ssets.Add(ssetName); }
                 catch { sset = ssets.Item(ssetName); }
 
-                _acadDoc.Utility.Prompt("\nV12: QuÃ©t chá»n vÃ¹ng dáº§m cáº§n váº½... ");
+                _acadDoc.Utility.Prompt("\nV12: Quét chọn vùng dầm cần vẽ... ");
                 sset.SelectOnScreen();
 
                 return ExtractSceneFromSelectionSet(sset, textLayers);
@@ -150,69 +150,15 @@ namespace Antigravity.DrawBeams.Services
             var scene = new CadScene();
             if (sset == null) return scene;
 
-            for (int i = 0; i < sset.Count; i++)
+            var activeTextLayers = new HashSet<string>((textLayers ?? new List<string>())
+                .Where(l => !string.IsNullOrWhiteSpace(l)).Select(l => l.Trim()), StringComparer.OrdinalIgnoreCase);
+
+            int count = ReadInt(sset, "Count", 0);
+            for (int i = 0; i < count; i++)
             {
-                dynamic entity = sset.Item(i);
-                string objName = entity.ObjectName;
-                string entLayer = entity.Layer;
-
-                if (objName == "AcDbLine")
-                {
-                    double[] startPt = entity.StartPoint;
-                    double[] endPt = entity.EndPoint;
-
-                    scene.Segments.Add(new CadSegment
-                    {
-                        StartX = startPt[0],
-                        StartY = startPt[1],
-                        EndX = endPt[0],
-                        EndY = endPt[1],
-                        Id = entity.Handle,
-                        Layer = entLayer,
-                        Color = GetEntityColor(entity)
-                    });
-                }
-                else if (objName == "AcDbPolyline" || objName == "AcDb2dPolyline")
-                {
-                    var segments = ExtractSegmentsFromPolyline(entity);
-                    scene.Segments.AddRange(segments);
-                }
-                else if (objName == "AcDbHatch")
-                {
-                    var segments = ExtractSegmentsFromHatch(entity);
-                    scene.Segments.AddRange(segments);
-                }
-                else if (objName == "AcDbText" || objName == "AcDbMText")
-                {
-                    var activeTextLayers = (textLayers ?? new List<string>()).Where(l => !string.IsNullOrWhiteSpace(l)).Select(l => l.Trim()).ToHashSet(StringComparer.OrdinalIgnoreCase);
-                    if (activeTextLayers.Count == 0 || activeTextLayers.Contains(entLayer))
-                    {
-                        double rot = 0;
-                        try { rot = (double)entity.Rotation; } catch { }
-
-                        double textHeight = 0;
-                        try { textHeight = (double)entity.Height; }
-                        catch
-                        {
-                            try { textHeight = (double)entity.TextHeight; }
-                            catch { textHeight = 0; }
-                        }
-
-                        double[] insPt = entity.InsertionPoint;
-
-                        scene.Texts.Add(new CadText
-                        {
-                            Id = entity.Handle,
-                            TextString = entity.TextString,
-                            X = insPt[0],
-                            Y = insPt[1],
-                            Rotation = rot,
-                            TextHeight = textHeight,
-                            Layer = entLayer,
-                            ObjectName = objName
-                        });
-                    }
-                }
+                dynamic entity = null;
+                try { entity = sset.Item(i); } catch { continue; }
+                ExtractEntity(scene, entity, activeTextLayers, CadTransform2D.Identity, null, null, null, 0, new HashSet<string>(StringComparer.OrdinalIgnoreCase));
             }
 
             return scene;
@@ -230,12 +176,12 @@ namespace Antigravity.DrawBeams.Services
             }
             catch (Exception ex)
             {
-                throw new Exception("Lá»—i V12: " + ex.Message);
+                throw new Exception("Lỗi V12: " + ex.Message);
             }
         }
 
         // ================================================================
-        // V12: Cáº¤U TRÃšC Dá»® LIá»†U LINH HOáº T & THUáº¬T TOÃN BEAM PROCESSING
+        // V12: CẤU TRÚC DỮ LIỆU LINH HOẠT & THUẬT TOÁN BEAM PROCESSING
         // ================================================================
 
         private class LegacyBeamCandidate
@@ -511,7 +457,7 @@ namespace Antigravity.DrawBeams.Services
         }
 
         // ================================================================
-        // V12: CÃC HÃ€M CON - Thuáº­t toÃ¡n hÃ¬nh há»c & Text matching
+        // V12: CÁC HÀM CON - Thuật toán hình học & Text matching
         // ================================================================
 
         private class TextInfo
@@ -674,7 +620,7 @@ namespace Antigravity.DrawBeams.Services
             if (measuredWidth < 50 || measuredWidth > 3000) return double.NegativeInfinity;
 
             double widthScore = 1.0 - (Math.Abs(measuredWidth - expectedWidth) / expectedWidth);
-            if (widthScore < 0.0) return double.NegativeInfinity; // Cho phÃ©p sai sá»‘ tá»‘i Ä‘a 100%
+            if (widthScore < 0.0) return double.NegativeInfinity; // Cho phép sai số tối đa 100%
 
             double overlap = GetSegmentOverlapLength(anchor, candidate);
             if (overlap < 200) return double.NegativeInfinity;
@@ -853,8 +799,181 @@ namespace Antigravity.DrawBeams.Services
         }
 
         // ================================================================
-        // HÃ€M TIá»†N ÃCH - Geometry & COM Helper
+        // HÀM TIỆN ÍCH - Geometry & COM Helper
         // ================================================================
+
+        // COM reads remain inside this boundary. Each property is independently fail-soft so a
+        // partially readable entity never aborts the rest of the selected scene.
+        private void ExtractEntity(CadScene scene, dynamic entity, HashSet<string> textLayers, CadTransform2D transform,
+            string parentHandle, string parentId, string parentIdentity, int depth, HashSet<string> definitionStack)
+        {
+            if (entity == null || depth > 16) return;
+            string objectName = ReadString(entity, "ObjectName");
+            string handle = ReadString(entity, "Handle");
+            string entityId = ReadString(entity, "ObjectID");
+            var provenance = CreateProvenance(entity, objectName, parentHandle, parentId);
+            string identity = MakeChildId(parentIdentity, handle, entityId, objectName);
+
+            if (objectName == "AcDbLine") ExtractLine(scene, entity, transform, provenance, identity);
+            else if (objectName == "AcDbPolyline" || objectName == "AcDb2dPolyline") ExtractPolyline(scene, entity, transform, provenance, identity);
+            else if (objectName == "AcDbText" || objectName == "AcDbMText") ExtractText(scene, entity, textLayers, transform, provenance, identity);
+            else if (objectName == "AcDbHatch") ExtractHatch(scene, entity, transform, provenance, identity);
+            else if (objectName == "AcDbBlockReference") ExtractBlockReference(scene, entity, textLayers, transform, provenance, identity, depth, definitionStack);
+        }
+
+        private void ExtractLine(CadScene scene, dynamic entity, CadTransform2D transform, CadEntityProvenance provenance, string id)
+        {
+            var start = ReadPoint(entity, "StartPoint"); var end = ReadPoint(entity, "EndPoint");
+            if (start == null || end == null) return;
+            var a = transform.Apply(start[0], start[1]); var b = transform.Apply(end[0], end[1]);
+            scene.Segments.Add(new CadSegment { StartX = a.X, StartY = a.Y, EndX = b.X, EndY = b.Y, Id = id,
+                Layer = provenance.Layer, Color = provenance.Color ?? -1, Provenance = provenance });
+        }
+
+        private void ExtractPolyline(CadScene scene, dynamic pline, CadTransform2D transform, CadEntityProvenance provenance, string id)
+        {
+            int count = ReadInt(pline, "NumberOfVertices", 0);
+            bool closed = ReadBool(pline, "Closed", false);
+            if (count < 2) return;
+            double globalWidth = ReadDouble(pline, "GlobalWidth", ReadDouble(pline, "ConstantWidth", 0));
+            var result = new List<CadSegment>();
+            for (int i = 0; i < (closed ? count : count - 1); i++)
+            {
+                double[] p1 = ReadIndexedPoint(pline, i); double[] p2 = ReadIndexedPoint(pline, (i + 1) % count);
+                if (p1 == null || p2 == null) continue;
+                var a = transform.Apply(p1[0], p1[1]); var b = transform.Apply(p2[0], p2[1]);
+                double length = Math.Sqrt((a.X - b.X) * (a.X - b.X) + (a.Y - b.Y) * (a.Y - b.Y));
+                if (length <= 50) continue;
+                double width = globalWidth > 0 ? globalWidth : ReadPolylineWidth(pline, i);
+                if (width > 0)
+                {
+                    double localAngle = Math.Atan2(p2[1] - p1[1], p2[0] - p1[0]);
+                    width = transform.TransformLength(width, localAngle + Math.PI / 2.0);
+                }
+                result.Add(new CadSegment { StartX = a.X, StartY = a.Y, EndX = b.X, EndY = b.Y, Id = id + "_" + i,
+                    Layer = provenance.Layer, Color = provenance.Color ?? -1, PolylineWidth = width,
+                    Provenance = CopyProvenance(provenance, "Polyline", id, i) });
+            }
+            if (closed && result.Count == 4)
+            {
+                result[0].GroupId = id + "_pairA"; result[2].GroupId = id + "_pairA";
+                result[1].GroupId = id + "_pairB"; result[3].GroupId = id + "_pairB";
+            }
+            scene.Segments.AddRange(result);
+        }
+
+        private void ExtractText(CadScene scene, dynamic entity, HashSet<string> textLayers, CadTransform2D transform, CadEntityProvenance provenance, string id)
+        {
+            if (textLayers.Count > 0 && !textLayers.Contains(provenance.Layer ?? string.Empty)) return;
+            var point = ReadPoint(entity, "InsertionPoint"); if (point == null) return;
+            var p = transform.Apply(point[0], point[1]);
+            double localRotation = ReadDouble(entity, "Rotation", 0);
+            double localHeight = ReadDouble(entity, "Height", ReadDouble(entity, "TextHeight", 0));
+            double transformedRotation = NormalizeAngle(transform.TransformAngle(localRotation));
+            double transformedHeight = localHeight > 0
+                ? transform.TransformLength(localHeight, localRotation + Math.PI / 2.0)
+                : 0;
+            scene.Texts.Add(new CadText { Id = id, TextString = ReadString(entity, "TextString"), X = p.X, Y = p.Y,
+                Rotation = transformedRotation, TextHeight = transformedHeight,
+                Layer = provenance.Layer, ObjectName = provenance.ObjectName, Provenance = provenance });
+        }
+
+        private void ExtractHatch(CadScene scene, dynamic hatch, CadTransform2D transform, CadEntityProvenance provenance, string id)
+        {
+            // Hatch loop APIs differ between AutoCAD versions; preserve the existing safe reader,
+            // then attach the hatch as parent provenance and transform its DTO coordinates.
+            foreach (var segment in ExtractSegmentsFromHatch(hatch))
+            {
+                var a = transform.Apply(segment.StartX, segment.StartY); var b = transform.Apply(segment.EndX, segment.EndY);
+                segment.StartX = a.X; segment.StartY = a.Y; segment.EndX = b.X; segment.EndY = b.Y;
+                segment.Id = id + "_" + segment.Id;
+                if (!string.IsNullOrEmpty(segment.GroupId)) segment.GroupId = id + "/" + segment.GroupId;
+                segment.Provenance = CopyProvenance(provenance, "Hatch", id, null);
+                scene.Segments.Add(segment);
+            }
+        }
+
+        private void ExtractBlockReference(CadScene scene, dynamic reference, HashSet<string> textLayers, CadTransform2D transform,
+            CadEntityProvenance provenance, string instanceIdentity, int depth, HashSet<string> definitionStack)
+        {
+            string definitionName = ReadString(reference, "Name");
+            if (string.IsNullOrEmpty(definitionName) || !definitionStack.Add(definitionName)) return;
+            try
+            {
+                dynamic definition = _acadDoc.Blocks.Item(definitionName);
+                var point = ReadPoint(reference, "InsertionPoint") ?? new double[] { 0, 0 };
+                var basePoint = ReadPoint(definition, "Origin") ?? new double[] { 0, 0 };
+                var local = CadTransform2D.CreateBlockPlacement(
+                    point[0],
+                    point[1],
+                    ReadDouble(reference, "Rotation", 0),
+                    ReadDouble(reference, "XScaleFactor", 1),
+                    ReadDouble(reference, "YScaleFactor", 1),
+                    basePoint[0],
+                    basePoint[1]);
+                var childTransform = transform.Compose(local);
+                int count = ReadInt(definition, "Count", 0);
+                for (int i = 0; i < count; i++)
+                {
+                    dynamic child = null; try { child = definition.Item(i); } catch { continue; }
+                    ExtractEntity(scene, child, textLayers, childTransform, provenance.EntityHandle, provenance.EntityId, instanceIdentity, depth + 1, definitionStack);
+                }
+            }
+            catch { /* Unsupported/unreadable definitions are deliberately skipped. */ }
+            finally { definitionStack.Remove(definitionName); }
+        }
+
+        private CadEntityProvenance CreateProvenance(dynamic entity, string objectName, string parentHandle, string parentId)
+        {
+            return new CadEntityProvenance { EntityHandle = ReadString(entity, "Handle"), EntityId = ReadString(entity, "ObjectID"),
+                ParentEntityHandle = parentHandle, ParentEntityId = parentId, Layer = ReadString(entity, "Layer"),
+                Color = ReadNullableInt(entity, "Color"), Linetype = ReadString(entity, "Linetype"), Lineweight = ReadNullableInt(entity, "Lineweight"),
+                SourceKind = objectName, ObjectName = objectName };
+        }
+
+        private CadEntityProvenance CopyProvenance(CadEntityProvenance source, string sourceKind, string polylineIdentity, int? segmentIndex)
+        {
+            return new CadEntityProvenance { EntityHandle = source.EntityHandle, EntityId = source.EntityId, ParentEntityHandle = source.ParentEntityHandle,
+                ParentEntityId = source.ParentEntityId, Layer = source.Layer, Color = source.Color, Linetype = source.Linetype,
+                Lineweight = source.Lineweight, SourceKind = sourceKind, ObjectName = source.ObjectName,
+                PolylineParentIdentity = polylineIdentity, SegmentIndex = segmentIndex };
+        }
+
+        private static string MakeChildId(string parentIdentity, string handle, string entityId, string objectName)
+        {
+            string leaf = !string.IsNullOrEmpty(handle) ? handle : !string.IsNullOrEmpty(entityId) ? entityId : objectName ?? "entity";
+            return string.IsNullOrEmpty(parentIdentity) ? leaf : parentIdentity + "/" + leaf;
+        }
+        private static double NormalizeAngle(double angle)
+        {
+            while (angle < 0) angle += Math.PI * 2.0;
+            while (angle >= Math.PI * 2.0) angle -= Math.PI * 2.0;
+            return angle;
+        }
+        private static string ReadString(dynamic entity, string property) { try { var value = entity.GetType().InvokeMember(property, System.Reflection.BindingFlags.GetProperty, null, entity, null); return value == null ? null : Convert.ToString(value, CultureInfo.InvariantCulture); } catch { return null; } }
+        private static int ReadInt(dynamic entity, string property, int fallback) { try { return Convert.ToInt32(entity.GetType().InvokeMember(property, System.Reflection.BindingFlags.GetProperty, null, entity, null), CultureInfo.InvariantCulture); } catch { return fallback; } }
+        private static int? ReadNullableInt(dynamic entity, string property) { try { return Convert.ToInt32(entity.GetType().InvokeMember(property, System.Reflection.BindingFlags.GetProperty, null, entity, null), CultureInfo.InvariantCulture); } catch { return null; } }
+        private static double ReadDouble(dynamic entity, string property, double fallback) { try { return Convert.ToDouble(entity.GetType().InvokeMember(property, System.Reflection.BindingFlags.GetProperty, null, entity, null), CultureInfo.InvariantCulture); } catch { return fallback; } }
+        private static bool ReadBool(dynamic entity, string property, bool fallback) { try { return Convert.ToBoolean(entity.GetType().InvokeMember(property, System.Reflection.BindingFlags.GetProperty, null, entity, null), CultureInfo.InvariantCulture); } catch { return fallback; } }
+        private static double[] ReadPoint(dynamic entity, string property) { try { return entity.GetType().InvokeMember(property, System.Reflection.BindingFlags.GetProperty, null, entity, null) as double[]; } catch { return null; } }
+        private static double[] ReadIndexedPoint(dynamic entity, int index)
+        {
+            try
+            {
+                var value = entity.GetType().InvokeMember(
+                    "Coordinate",
+                    System.Reflection.BindingFlags.GetProperty,
+                    null,
+                    entity,
+                    new object[] { index });
+                if (value is double[] point) return point;
+                if (value is Array array && array.Length >= 2)
+                    return new[] { Convert.ToDouble(array.GetValue(0), CultureInfo.InvariantCulture), Convert.ToDouble(array.GetValue(1), CultureInfo.InvariantCulture) };
+            }
+            catch { }
+            return null;
+        }
+        private static double ReadPolylineWidth(dynamic entity, int index) { try { double a, b; entity.GetWidthInfoAt(index, out a, out b); return a; } catch { try { return Convert.ToDouble(entity.GetStartWidthAt(index), CultureInfo.InvariantCulture); } catch { return 0; } } }
 
         private List<CadSegment> ExtractSegmentsFromPolyline(dynamic pline)
         {

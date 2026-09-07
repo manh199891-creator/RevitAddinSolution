@@ -14,6 +14,7 @@ namespace Antigravity.IssueManager.UI
         public string IssueDescription { get; private set; }
         public string Image3DPath { get; private set; }
         public string Image2DPath { get; private set; }
+        private string _preview2DPath;
 
         public Action OnCapture3DRequested { get; set; }
         public Action<CreateIssueDialog> OnCreateRequested { get; set; }
@@ -43,9 +44,16 @@ namespace Antigravity.IssueManager.UI
                 {
                     LoadImage3DPreview(issue.Viewpoint.SnapshotFilePath);
                 }
-                if (!string.IsNullOrEmpty(issue.Viewpoint.SnapshotFilePath2) && System.IO.File.Exists(issue.Viewpoint.SnapshotFilePath2))
+                if (!string.IsNullOrEmpty(issue.Viewpoint.SnapshotFilePath2))
                 {
-                    LoadImage2DPreview(issue.Viewpoint.SnapshotFilePath2);
+                    var paths = issue.Viewpoint.SnapshotFilePath2.Split(new[] { '|' }, StringSplitOptions.RemoveEmptyEntries);
+                    foreach (var p in paths)
+                    {
+                        if (System.IO.File.Exists(p))
+                        {
+                            LoadImage2DPreview(p, append: true);
+                        }
+                    }
                 }
             }
         }
@@ -167,11 +175,15 @@ namespace Antigravity.IssueManager.UI
             var dlg = new Microsoft.Win32.OpenFileDialog
             {
                 Filter = "Image files (*.png;*.jpg;*.jpeg;*.bmp)|*.png;*.jpg;*.jpeg;*.bmp",
-                Title = "Chọn hình ảnh 2D"
+                Title = "Chọn hình ảnh 2D",
+                Multiselect = true
             };
             if (dlg.ShowDialog() == true)
             {
-                LoadImage2DPreview(dlg.FileName);
+                foreach (var file in dlg.FileNames)
+                {
+                    LoadImage2DPreview(file, append: true);
+                }
             }
         }
 
@@ -207,14 +219,16 @@ namespace Antigravity.IssueManager.UI
                         string[] files = (string[])dataObject.GetData(DataFormats.FileDrop);
                         if (files != null)
                         {
+                            bool loadedAny = false;
                             foreach (string file in files)
                             {
                                 if (IsSupportedImageFile(file))
                                 {
-                                    LoadImage2DPreview(file);
-                                    return true;
+                                    LoadImage2DPreview(file, append: true);
+                                    loadedAny = true;
                                 }
                             }
+                            if (loadedAny) return true;
                         }
                     }
 
@@ -227,7 +241,7 @@ namespace Antigravity.IssueManager.UI
                             string trimmed = text.Trim().Trim('"'); // remove potential quotes
                             if (IsSupportedImageFile(trimmed))
                             {
-                                LoadImage2DPreview(trimmed);
+                                LoadImage2DPreview(trimmed, append: true);
                                 return true;
                             }
                         }
@@ -245,7 +259,7 @@ namespace Antigravity.IssueManager.UI
                                 string tempPath = SaveBitmapSourceToTemp(bitmapSource);
                                 if (tempPath != null)
                                 {
-                                    LoadImage2DPreview(tempPath);
+                                    LoadImage2DPreview(tempPath, append: true);
                                     return true;
                                 }
                             }
@@ -261,7 +275,7 @@ namespace Antigravity.IssueManager.UI
                             string tempPath = SaveBitmapSourceToTemp(bitmapSource);
                             if (tempPath != null)
                             {
-                                LoadImage2DPreview(tempPath);
+                                LoadImage2DPreview(tempPath, append: true);
                                 return true;
                             }
                         }
@@ -276,7 +290,7 @@ namespace Antigravity.IssueManager.UI
                             string tempPath = SaveBitmapSourceToTemp(bitmapSource);
                             if (tempPath != null)
                             {
-                                LoadImage2DPreview(tempPath);
+                                LoadImage2DPreview(tempPath, append: true);
                                 return true;
                             }
                         }
@@ -349,7 +363,7 @@ namespace Antigravity.IssueManager.UI
                 {
                     colorTableSize = (clrUsed > 0 ? clrUsed : (1 << bitCount)) * 4;
                 }
-                else if (compression == 3) // BI_BITFIELDS
+                else if (compression == 3 && headerSize == 40) // BI_BITFIELDS with BITMAPINFOHEADER
                 {
                     colorTableSize = 12;
                 }
@@ -397,10 +411,87 @@ namespace Antigravity.IssueManager.UI
             e.Handled = true;
         }
 
-        private void LoadImage2DPreview(string path)
+        private string AppendImagesHorizontally(string img1Path, string img2Path)
         {
             try
             {
+                var bmp1 = LoadBitmapSafely(img1Path);
+                var bmp2 = LoadBitmapSafely(img2Path);
+
+                if (bmp1 == null || bmp2 == null) return img2Path;
+
+                int gap = 20;
+                int width = bmp1.PixelWidth + bmp2.PixelWidth + gap;
+                int height = Math.Max(bmp1.PixelHeight, bmp2.PixelHeight);
+
+                var visual = new System.Windows.Media.DrawingVisual();
+                using (var ctx = visual.RenderOpen())
+                {
+                    ctx.DrawRectangle(System.Windows.Media.Brushes.White, null, new Rect(0, 0, width, height));
+
+                    double y1 = (height - bmp1.PixelHeight) / 2.0;
+                    ctx.DrawImage(bmp1, new Rect(0, y1, bmp1.PixelWidth, bmp1.PixelHeight));
+
+                    double y2 = (height - bmp2.PixelHeight) / 2.0;
+                    ctx.DrawImage(bmp2, new Rect(bmp1.PixelWidth + gap, y2, bmp2.PixelWidth, bmp2.PixelHeight));
+                }
+
+                var rtb = new RenderTargetBitmap(width, height, 96, 96, System.Windows.Media.PixelFormats.Pbgra32);
+                rtb.Render(visual);
+
+                string dir = System.IO.Path.Combine(System.IO.Path.GetTempPath(), "AntigravityIssueManager");
+                System.IO.Directory.CreateDirectory(dir);
+                string path = System.IO.Path.Combine(dir, "clipboard_" + Guid.NewGuid().ToString("N") + ".png");
+
+                using (var stream = new System.IO.FileStream(path, System.IO.FileMode.Create))
+                {
+                    var encoder = new PngBitmapEncoder();
+                    encoder.Frames.Add(BitmapFrame.Create(rtb));
+                    encoder.Save(stream);
+                }
+
+                return path;
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine("Failed to append images: " + ex.Message);
+                return img2Path;
+            }
+        }
+
+        private BitmapImage LoadBitmapSafely(string path)
+        {
+            if (!System.IO.File.Exists(path)) return null;
+            try
+            {
+                var bitmap = new BitmapImage();
+                bitmap.BeginInit();
+                bitmap.CacheOption = BitmapCacheOption.OnLoad;
+                using (var stream = new System.IO.FileStream(path, System.IO.FileMode.Open, System.IO.FileAccess.Read))
+                {
+                    bitmap.StreamSource = stream;
+                    bitmap.EndInit();
+                }
+                bitmap.Freeze();
+                return bitmap;
+            }
+            catch
+            {
+                return null;
+            }
+        }
+
+        private void LoadImage2DPreview(string path, bool append = false)
+        {
+            try
+            {
+                string newRaw = path;
+                if (append && !string.IsNullOrEmpty(_preview2DPath) && System.IO.File.Exists(_preview2DPath))
+                {
+                    path = AppendImagesHorizontally(_preview2DPath, path);
+                    newRaw = (string.IsNullOrEmpty(Image2DPath) ? _preview2DPath : Image2DPath) + "|" + newRaw;
+                }
+
                 var bitmap = new BitmapImage();
                 bitmap.BeginInit();
                 bitmap.UriSource = new Uri(path);
@@ -411,7 +502,8 @@ namespace Antigravity.IssueManager.UI
                 TxtHint2D.Visibility = Visibility.Collapsed;
                 BtnClearImage2D.Visibility = Visibility.Visible;
                 BtnMarkup2D.IsEnabled = true;
-                Image2DPath = path;
+                _preview2DPath = path;
+                Image2DPath = newRaw;
             }
             catch (Exception ex)
             {
@@ -426,15 +518,18 @@ namespace Antigravity.IssueManager.UI
             BtnClearImage2D.Visibility = Visibility.Collapsed;
             BtnMarkup2D.IsEnabled = false;
             Image2DPath = null;
+            _preview2DPath = null;
         }
 
         private void BtnMarkup2D_Click(object sender, RoutedEventArgs e)
         {
-            if (string.IsNullOrEmpty(Image2DPath)) return;
+            if (string.IsNullOrEmpty(_preview2DPath)) return;
 
-            var editor = new MarkupEditorWindow(Image2DPath) { Owner = this };
+            var editor = new MarkupEditorWindow(_preview2DPath) { Owner = this };
             if (editor.ShowDialog() == true)
             {
+                Image2DPath = null;
+                _preview2DPath = null;
                 LoadImage2DPreview(editor.ResultImagePath);
             }
         }

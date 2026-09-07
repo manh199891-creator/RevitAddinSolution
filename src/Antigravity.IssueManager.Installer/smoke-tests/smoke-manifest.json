@@ -1,0 +1,19 @@
+{
+    "schemaVersion":  1,
+    "project":  "Antigravity.IssueManager.Installer",
+    "classification":  "INSTALLER_SUPPORT",
+    "projectFile":  "src/Antigravity.IssueManager.Installer/Antigravity.IssueManager.Installer.csproj",
+    "assembly":  "Antigravity.IssueManager.Installer.exe",
+    "entrypointSources":  [
+                              "Program.cs"
+                          ],
+    "focusedTestProject":  "",
+    "runtimeBoundary":  "",
+    "smokeChecks":  [
+                        "S0_STRUCTURAL",
+                        "S1_BUILD_TEST",
+                        "S2_INSTALLER_PACKAGE_SMOKE"
+                    ],
+    "timeoutSeconds":  600,
+    "status":  "PENDING_CAPTURE"
+}
