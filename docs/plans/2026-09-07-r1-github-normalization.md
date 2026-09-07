@@ -1,7 +1,7 @@
 # R1 — RevitAddinSolution GitHub Normalization Plan
 
 Date: 2026-09-07
-Status: IN_PROGRESS / AUDIT_COMPLETE / REMOTE_VERIFIED / NOT_LANDING_READY
+Status: COMPLETE / AUTHORITATIVE_LOCAL_SNAPSHOT_PUBLISHED
 Scope: repository-level Git/GitHub normalization only; no production behavior changes
 Workspace: `E:\Antigravity\RevitAddinSolution`
 
@@ -151,6 +151,6 @@ This is repository health evidence only. It does not authorize landing mixed lan
 - `LANDING_READY`: all publish gates satisfied for one bounded lane.
 - `PUBLISHED`: bounded lane committed/pushed and remote SHA independently verified.
 
-Current state: `AUDIT_COMPLETE / REMOTE_VERIFIED / NOT_LANDING_READY`.
+Current state: `AUDIT_COMPLETE / REMOTE_VERIFIED / AUTHORITATIVE_SNAPSHOT_PUBLISHED`.
 
-Remaining landing blockers are: mixed working-tree lanes, the committed-but-unpushed IssueManager hotfix, unresolved loose REVIEW paths, HoanThien status/index normalization, and the branch/default-branch drift between the dirty local hotfix workspace and GitHub `main`. `lib/ClashNavigator.dll` is explicitly excluded from R1-G/R1-B and therefore no longer blocks those bounded lanes.
+After the audit, the user explicitly designated the current computer workspace as the authoritative source and authorized replacing the stale GitHub contents. R1 therefore published the complete durable local snapshot to GitHub `main`, including intentional local deletions, while excluding transient/generated/runtime content and failing closed on sensitive-path, credential-pattern, and oversized-file checks. The publish uses a temporary Git index and does not switch or clean the dirty local working branch.

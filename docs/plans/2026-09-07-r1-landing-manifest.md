@@ -1,7 +1,7 @@
 # R1 — RevitAddinSolution Bounded Landing Manifest
 
 Date: 2026-09-07
-Status: ACTIVE GATE / NO BROAD LANDING
+Status: SUPERSEDED BY USER-AUTHORIZED AUTHORITATIVE SNAPSHOT SYNC
 Repository: `manh199891-creator/RevitAddinSolution`
 GitHub default branch: `main`
 Current local branch: `hotfix/agy-probe-isolation`
@@ -145,4 +145,6 @@ Public visibility is acceptable for read-only Monitor operation, but a privilege
 
 ## Current decision
 
-`R1 AUDIT_COMPLETE / REMOTE_VERIFIED / LANDING_MANIFEST_CREATED / NO BROAD COMMIT OR PUSH`
+`R1 AUDIT_COMPLETE / REMOTE_VERIFIED / AUTHORITATIVE_SNAPSHOT_PUBLISHED`
+
+This bounded manifest remains as audit evidence only. After it was created, the user explicitly authorized treating the complete current computer workspace as authoritative and replacing stale GitHub contents. The actual publication therefore used the reviewed temporary-index snapshot publisher rather than staging lane-by-lane in the dirty working tree.

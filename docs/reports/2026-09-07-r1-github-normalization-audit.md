@@ -1,7 +1,7 @@
 # R1 — RevitAddinSolution Git/GitHub Normalization Audit
 
 Date: 2026-09-07
-Verdict: `AUDIT_COMPLETE / REMOTE_VERIFIED / PUBLISH_BLOCKED`
+Verdict: `AUDIT_COMPLETE / REMOTE_VERIFIED / AUTHORITATIVE_SNAPSHOT_PUBLISHED`
 Workspace: `E:\Antigravity\RevitAddinSolution`
 
 ## Executive summary
@@ -150,27 +150,21 @@ This classifies the ahead-one commit as IssueManager work. The repository regist
 
 R1 did not change repository visibility. The repository being public is now an evidence-backed fact and should be considered separately before privileged CI/runner rollout.
 
-## Publish blockers
+## Authoritative publication result
 
-1. Current branch is `hotfix/agy-probe-isolation` while GitHub's actual default branch is `main`.
-2. Current branch is ahead of tracked upstream by one committed IssueManager change that must not be folded into governance work.
-3. Working tree mixes at least seven logical lanes.
-4. `lib/ClashNavigator.dll` deletion lacks required forensic closure or an explicit exclusion from the first landing.
-5. HoanThien changes lack explicit lane ownership in the historical working-tree plan.
-6. Feature lanes DB/IM/ZS require project-local resume/LKG boundaries before landing.
-7. The GitHub repository is public; privileged self-hosted runner rollout must not proceed until visibility/isolation policy is decided explicitly.
+After this audit, the user explicitly designated `E:\Antigravity\RevitAddinSolution` as the source of truth and authorized replacing the stale GitHub contents. That later authorization superseded the earlier lane-by-lane publish hold for this one repository synchronization.
 
-## Safe next R1 action
+The authoritative publisher:
 
-Do not publish yet.
+- builds the snapshot from the current working tree with a temporary Git index;
+- preserves the real working branch/index and does not reset, clean, stash or switch branches;
+- reflects intentional local deletions on GitHub `main`;
+- removes transient/generated/runtime paths from the snapshot;
+- blocks sensitive path names, credential-like content patterns and files above the configured GitHub-safe size threshold;
+- creates the snapshot commit with the live GitHub `main` commit as parent;
+- uses a normal fast-forward push and aborts if the remote moves;
+- independently verifies the published GitHub SHA after push.
 
-Next bounded step is `R1-REMOTE + R1-LANE-GATE`:
+The first authoritative publication completed successfully. The R1 documentation was then updated locally and republished so the final GitHub snapshot again matches the durable local workspace.
 
-1. obtain authenticated read-only GitHub metadata for the actual origin;
-2. identify the one local ahead commit without changing history;
-3. resolve/exclude `lib/ClashNavigator.dll` deletion;
-4. construct a lane-by-lane landing manifest;
-5. run verification for the first bounded landing lane;
-6. only then commit/push that lane and independently compare remote SHA.
-
-No reset, clean, stash, broad restore, force push, or feature rewrite is justified by this audit.
+Repository visibility remains `public`; R1 did not change that setting. Privileged self-hosted runner rollout remains a separate visibility/isolation decision.
